@@ -1,0 +1,19 @@
+2021-01-02_20:05
+Ich will elektrische Netzwerke analysieren.
+
+
+erstmal pipenv
+
+pipenv check
+
+und es ist da.
+
+pipenv install sympy
+
+pipenv shell
+
+
+2021-01-03_13:45
+
+Resistor Netzwerke analysieren funktioniert.
+
