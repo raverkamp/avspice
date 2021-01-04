@@ -17,3 +17,9 @@ pipenv shell
 
 Resistor Netzwerke analysieren funktioniert.
 
+2021-01-04_10:37
+Symbolisch funktioniert es auch.
+
+
+2021-01-04_13:03
+Ich benutze jetzt pylint. 

@@ -60,7 +60,7 @@ def test3():
     connect(r3.p2, net.ground)
     n2 = analyze(net)
     pp.pprint(n2)
-    
+    xx = spice.sym_analyze(net)
     
 def main():
     test3()
