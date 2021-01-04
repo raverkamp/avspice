@@ -61,9 +61,32 @@ def test3():
     n2 = analyze(net)
     pp.pprint(n2)
     xx = spice.sym_analyze(net)
+
+def test4():
+    net = Network()
+    c1 = net.addV("v1", 1)
+    r1 = net.addR("r1",10)
+    connect(c1.p2, r1.p1)
+    connect(c1.p1, net.ground)
+    connect(r1.p2, net.ground)
+    n2 = analyze(net)
+    pp.pprint(n2)
+
+def test5():
+    net = Network()
+    v1 = net.addV("v1", 1)
+    v2 = net.addV("v2", 2)
+    r1 = net.addR("r1",10)
+    connect(v1.p2, v2.p1)
+    connect(v2.p2, r1.p1)
+    connect(v1.p1, net.ground)
+    connect(r1.p2, net.ground)
+    n2 = analyze(net)
+    pp.pprint(n2)
+
     
 def main():
-    test3()
+    test5()
     
     
 

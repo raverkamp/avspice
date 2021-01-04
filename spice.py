@@ -6,8 +6,9 @@ import sympy as sp
 
 class Component:
     """Componet in a electrical network, e.g. resistor, current source, node"""
-    def __init__(self, name):
+    def __init__(self, parent, name):
         self.name = name
+        self.parent = parent
 
     def ports(self):
         """retur the ports of this component"""
@@ -39,6 +40,7 @@ class Node2(Component):
     def ports(self):
         return [self.p1, self.p2]
 
+
 class Node(Component):
     """a node, just a port in the network"""
     def __init__(self, parent, name):
@@ -58,11 +60,28 @@ class Resistor(Node2):
         super().__init__(parent, name)
         self.ohm = ohm
 
+    def __repr__(self):
+        return "<Resistor {0}>".format(self.name)
+
+
 class Current(Node2):
     """current source"""
     def __init__(self, parent, name, amp):
         super().__init__(parent, name)
         self.amp = amp
+
+    def __repr__(self):
+        return "<Current {0}>".format(self.name)
+
+
+class Voltage(Node2):
+    """current source"""
+    def __init__(self, parent, name, volts):
+        super().__init__(parent, name)
+        self.volts = volts
+
+    def __repr__(self):
+        return "<Voltage {0}>".format(self.name)
 
 class Network:
     """ this class describes the toplogy of an electrical network
@@ -88,6 +107,14 @@ class Network:
         c = Current(self, name, amp)
         self.components[name] = c
         return c
+
+    def addV(self, name, volts):
+        """add a voltage source"""
+        if name in self.components:
+            raise Exception("Name {0} already exists".format(name))
+        v = Voltage(self, name, volts)
+        self.components[name] = v
+        return v
 
     def addN(self,name):
         """add a node"""
@@ -208,23 +235,40 @@ def compute_nodes(nw):
 def analyze(net):
     """do nodal analysis for a network of current sources and resistors"""
     nodes = compute_nodes(net)
-    ground = nodes[0]
+    nnodes = len(nodes)
 
-    nodes.pop(0)
+    voltages = []
+    for comp in net.components.values():
+        if isinstance(comp, Voltage):
+            voltages.append(comp)
 
-    n = len(nodes)
+    nvoltages = len(voltages)
 
+    def voltage_index(voltage):
+        return voltages.index(voltage) + nnodes
 
     def p_2_n_index(port):
-        for i in range(n):
+        for i in range(nnodes):
             if port in nodes[i].ports:
                 return i
         raise Exception("BUG")
 
-    mat = np.zeros((n,n))
-    v = np.zeros(n)
+    mat = np.zeros((nnodes + nvoltages,nnodes + nvoltages))
+    v = np.zeros(nnodes + nvoltages)
 
-    for i in range(n):
+    # equations for voltage sources
+    for vol in voltages:
+        k = voltage_index(vol)
+        mat[k][p_2_n_index(vol.p1)] = -1
+        mat[k][p_2_n_index(vol.p2)] = 1
+        v[k] = vol.volts
+
+
+    # ground is voltage 0
+    mat[0][0] = 1
+    v[0] = 0
+
+    for i in range(1, nnodes):
         node = nodes[i]
         I = 0
         GG = 0
@@ -235,16 +279,26 @@ def analyze(net):
                     I = I - comp.amp
                 else:
                     I = I + comp.amp
-            if isinstance(comp, Resistor):
+            elif isinstance(comp, Resistor):
                 o = comp.ohm
                 GG = GG + 1/o
                 if port == comp.p1:
                     op = comp.p2
                 else:
                     op = comp.p1
-                if not op in ground.ports:
-                    oi = p_2_n_index(op)
-                    mat[i][oi] = - 1/o
+
+                oi = p_2_n_index(op)
+                mat[i][oi] = - 1/o
+            elif isinstance(comp, Voltage):
+                if port == comp.p1:
+                    ss = -1
+                else:
+                    ss = 1
+                k = voltage_index(comp)
+                mat[i][k] = ss
+
+            else:
+                raise Exception("unknown component type of {0}".format(comp))
             mat[i][i] = GG
             v[i] = I
     pp.pprint(mat)
