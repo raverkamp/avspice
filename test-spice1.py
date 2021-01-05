@@ -116,7 +116,7 @@ def test5():
     ana = Analysis(net)
     pp.pprint(ana.analyze())
 
-def test5():
+def test5a():
     net = Network()
     v1 = net.addV("v1", 10)
     r1 = net.addR("r1", 100)
@@ -128,10 +128,27 @@ def test5():
     connect(v1.p, r1.p)
     connect(r1.n, d1.p)
     connect(d1.n, d2.p)
-    connect(d2.n, net.ground)
+    connect(d2.n, v1.n)
     ana = Analysis(net)
     pp.pprint(ana.analyze())
 
+def test5b():
+    net = Network()
+    c1 = net.addC("c1", 0.1)
+    r1 = net.addR("r1", 100)
+    d1 = net.addD("d1", 1e-8, 25e-3)
+    d2 = net.addD("d2", 1e-8, 25e-3)
+    n1 = net.addN("n1")
+    connect(n1, c1.p)
+    connect(c1.n, net.ground)
+    connect(c1.p, r1.p)
+    connect(r1.n, d1.p)
+    connect(d1.n, d2.p)
+    connect(d2.n, c1.n)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
+
+    
 def test6():
     net = Network()
     n1 = net.addN("n1")
@@ -147,11 +164,27 @@ def test6():
     ana = Analysis(net)
     pp.pprint(ana.analyze())
 
+def test7():
+    net = Network()
+    v1 = net.addV("v1", 10)
+    connect(v1.n, net.ground)
+    port = v1.p
+    for i in range(10):
+        r = net.addR("r" +repr(i),10)
+        connect(r.p, port)
+        d = net.addD("d"+ repr(i), 1e-8, 25e-3)
+        connect(r.n, d.p)
+        port = d.n
+    connect(port, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
 
-
+        
+        
+        
 
 def main():
-    test5()
+    test7()
 
 
 

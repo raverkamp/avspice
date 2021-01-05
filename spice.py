@@ -373,7 +373,7 @@ class Analysis:
                     pp.pprint((comp, dv, curr, conductance))
 
                     I = I - curr * ss # base current
-                    I = I + conductance * dv
+                    I = I + conductance * dv * ss
                     GG = GG + conductance
                     oi = self.port_index(op)
                     mat[k][oi] = - conductance
@@ -397,7 +397,7 @@ class Analysis:
 
         solution_vec = None
 
-        for i in range(4000):
+        for i in range(100):
             (mat,r) = self.compute_mat_and_r(solution_vec)
             solution_vec_n = np.linalg.solve(mat, r)
             if solution_vec is not None:
@@ -406,6 +406,9 @@ class Analysis:
                     solution_vec = solution_vec_n
                     break
                 pp.pprint(("diff", i, diff))
+                pp.pprint(solution_vec)
+                pp.pprint(solution_vec_n)
+
             solution_vec = solution_vec_n
 
         self.mat = mat
@@ -425,13 +428,14 @@ class Analysis:
                 ipp = self.port_index(comp.p)
                 inp = self.port_index(comp.n)
                 dv = self.solution_vec[ipp] - self.solution_vec[inp]
-                current = dv / comp.ohm
-                resistors[comp] = (dv,current)
+                curr = dv / comp.ohm
+                resistors[comp] = (dv,curr)
             if isinstance(comp, Diode):
                 ipp = self.port_index(comp.p)
                 inp = self.port_index(comp.n)
                 dv = self.solution_vec[ipp] - self.solution_vec[inp]
-                diodes[comp] = dv
+                curr = comp.current(dv)
+                diodes[comp] = (dv, curr)
 
         return (voltages, resistors, diodes)
 
