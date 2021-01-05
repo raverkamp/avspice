@@ -86,7 +86,7 @@ def test5():
 
     
 def main():
-    test5()
+    test3()
     
     
 

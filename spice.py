@@ -321,11 +321,20 @@ def symadd(l):
 
 def sym_analyze(net):
     nodes = compute_nodes(net)
-    ground = nodes[0]
-    nodes.pop(0)
-    n = len(nodes)
+    nnodes = len(nodes)
+
+
+    voltages = []
+    for comp in net.components.values():
+        if isinstance(comp, Voltage):
+            voltages.append(comp)
+
+    def voltage_index(voltage):
+        return voltages.index(voltage) + nnodes
+
+
     def p_2_n_index(port):
-        for i in range(n):
+        for i in range(nnodes):
             if port in nodes[i].ports:
                 return i
         raise Exception("BUG")
@@ -336,9 +345,24 @@ def sym_analyze(net):
         sy = sp.symbols(node.name)
         volts.append(sy)
 
-    equations = []
+    for voltage in voltages:
+        sy = sp.symbols(voltage.name)
+        volts.append(sy)
 
-    for i in range(n):
+
+    equations = []
+    # ground is zero
+    equations.append(volts[0])
+
+    for vol in voltages:
+        k = voltage_index(vol)
+        p1 = vol.p1
+        p2 = vol.p2
+        n1 = p_2_n_index(p1)
+        n2 = p_2_n_index(p2)
+        equations.append(volts[n1] - volts[n2] - vol.volts)
+
+    for i in range(1,nnodes):
         node = nodes[i]
         summand_list = []
         for port in node.ports:
@@ -349,18 +373,26 @@ def sym_analyze(net):
                 else:
                     I = comp.amp
                 summand_list.append(sp.sympify(I))
-            if isinstance(comp, Resistor):
+            elif isinstance(comp, Resistor):
                 o = comp.ohm
                 if port == comp.p1:
                     op = comp.p2
                 else:
                     op = comp.p1
-                if not op in ground.ports:
-                    oi = p_2_n_index(op)
-                    summand_list.append((volts[i] - volts[oi]) / sp.sympify(o))
+
+                oi = p_2_n_index(op)
+                summand_list.append((volts[i] - volts[oi]) / sp.sympify(o))
+            elif isinstance(comp, Voltage):
+                if port == comp.p1:
+                    ss = -1
                 else:
-                    summand_list.append(volts[i]/ sp.sympify(o))
+                    ss = 1
+                k = voltage_index(comp)
+
+                summand_list.append(sp.Mul(volts[k],ss))
+            else:
+                raise Exception("unknown component type of {0}".format(comp))
         equations.append(symadd(summand_list))
     print(equations)
-    a = sp.solvers.nsolve(equations, volts, [0]* n)
+    a = sp.solvers.nsolve(equations, volts, [0]* nnodes)
     print(a)
