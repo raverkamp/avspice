@@ -1,92 +1,108 @@
 import spice
-from spice import Network, connect, compute_nodes, analyze
+from spice import Network, connect, compute_nodes, Analysis
 import argparse
 import pprint as pp
 
 
 
+def simple_current():
+    net = Network()
+    r1 = net.addR("r1",100)
+    c1 = net.addC("c1", 1)
+    connect(c1.p, r1.p)
+    connect(r1.n, c1.n)
+    connect(r1.n, net.ground)
+    return net
+
+
+
 def test1():
-    net = Network()
-    r1 = net.addR("r1",100)
-    c1 = net.addC("c1", 1)
-    connect(c1.p2, r1.p1)
-    connect(r1.p2, c1.p1)
-    nodes = compute_nodes(net)
-    pp.pprint(nodes)
+    net = simple_current()
+    analy = Analysis(net)
+    r = analy.analyze()
+    pp.pprint(analy.solution_vec)
+    pp.pprint(r)
 
-def test2():
+def test2c():
+    
     net = Network()
     r1 = net.addR("r1",100)
     c1 = net.addC("c1", 1)
     r2 = net.addR("r2", 200)
-    connect(c1.p2, r1.p1)
-    connect(r1.p2, c1.p1)
-    connect(r2.p1, c1.p1)
-    connect(r2.p2, c1.p2)
-    nodes = compute_nodes(net)
-    pp.pprint(nodes)
-    n2 = analyze(net)
-    pp.pprint(n2)
+    connect(c1.p, r1.p)
+    connect(r1.n, c1.n)
+    connect(r2.p, c1.p)
+    connect(r2.n, c1.n)
+    connect(c1.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
 
-def test2():
+def test2v():
+    net = Network()
+    r1 = net.addR("r1",100)
+    v1 = net.addV("c1", 1)
+    r2 = net.addR("r2", 200)
+
+    connect(v1.n, net.ground)
+    
+    connect(v1.p, r1.p)
+    connect(r1.n, v1.n)
+    connect(r2.p, v1.p)
+    connect(r2.n, v1.n)
+    connect(v1.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
+
+def test2b():
     net = Network()
     r1 = net.addR("r1",100)
     c1 = net.addC("c1", 1)
     r2 = net.addR("r2", 200)
-    connect(c1.p2, r1.p1)
-    connect(r1.p2, c1.p1)
-    connect(r2.p1, c1.p1)
-    connect(r2.p2, c1.p2)
+    connect(c1.n, r1.p)
+    connect(r1.n, c1.p)
+    connect(r2.p, c1.p)
+    connect(r2.n, c1.n)
     n1 = net.addN("N1")
-    connect(n1, c1.p1)
+    connect(n1, c1.p)
     n2 = net.addN("N2")
-    connect(n2, c1.p2)
+    connect(n2, c1.n)
     connect(n1, net.ground)
-    nodes = compute_nodes(net)
-    pp.pprint(nodes)
-    n2 = analyze(net)
-    pp.pprint(n2)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
 
 def test3():
     net = Network()
     c1 = net.addC("c1", 1)
-    connect(c1.p1, net.ground)
+    n1 = net.addN("n1")
+    connect(c1.n, net.ground)
+    connect(c1.p, n1)
     r1 = net.addR("r1",10)
     r2 = net.addR("r2",20)
     r3 = net.addR("r3", 5)
-    connect(c1.p2, r1.p1)
-    connect(r1.p2, r2.p1)
-    connect(r2.p2, r3.p1)
-    connect(r3.p2, net.ground)
-    n2 = analyze(net)
-    pp.pprint(n2)
+    connect(c1.p, r1.p)
+    connect(r1.n, r2.p)
+    connect(r2.n, r3.p)
+    connect(r3.n, net.ground)
+
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
     xx = spice.sym_analyze(net)
 
 def test4():
     net = Network()
-    c1 = net.addV("v1", 1)
-    r1 = net.addR("r1",10)
-    connect(c1.p2, r1.p1)
-    connect(c1.p1, net.ground)
-    connect(r1.p2, net.ground)
-    n2 = analyze(net)
-    pp.pprint(n2)
-
-def test5():
-    net = Network()
     v1 = net.addV("v1", 1)
     v2 = net.addV("v2", 2)
     r1 = net.addR("r1",10)
-    connect(v1.p2, v2.p1)
-    connect(v2.p2, r1.p1)
-    connect(v1.p1, net.ground)
-    connect(r1.p2, net.ground)
-    n2 = analyze(net)
-    pp.pprint(n2)
-
+    connect(v1.n, v2.p)
+    connect(v2.n, r1.p)
+    connect(v1.p, net.ground)
+    connect(r1.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
+    
     
 def main():
-    test3()
+    test4()
     
     
 

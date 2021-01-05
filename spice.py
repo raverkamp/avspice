@@ -11,7 +11,7 @@ class Component:
         self.parent = parent
 
     def ports(self):
-        """retur the ports of this component"""
+        """return the ports of this component"""
         raise NotImplementedError("ports method not implemented")
 
 class Port:
@@ -34,11 +34,11 @@ class Node2(Component):
 
     def __init__(self, parent, name):
         super().__init__(parent, name)
-        self.p1 = Port(self, "p1")
-        self.p2 = Port(self, "p2")
+        self.p = Port(self, "p")
+        self.n = Port(self, "n")
 
     def ports(self):
-        return [self.p1, self.p2]
+        return [self.p, self.n]
 
 
 class Node(Component):
@@ -188,8 +188,15 @@ def mk_xnode(nodes):
 
 def compute_nodes(nw):
     """ compute the nodes for a network, i.e. connected ports"""
+
+    allports = set()
+    for comp in nw.components.values():
+        for port in comp.ports():
+            allports.add(port)
+
     ## adjancency
     adj = dict()
+    adj[nw.ground.port] = []
     def add(p1, p2):
         if p1 in adj:
             l = adj[p1]
@@ -205,7 +212,6 @@ def compute_nodes(nw):
     nodes = []
     todo = [nw.ground.port]
     while todo:
-        pp.pprint(("todo", todo))
         port = todo.pop()
         if port in done:
             continue
@@ -213,7 +219,7 @@ def compute_nodes(nw):
         stack = [port]
         node = set()
         done.add(port)
-
+        allports.remove(port)
         while stack:
             x = stack.pop()
             for p in x.component.ports():
@@ -224,87 +230,126 @@ def compute_nodes(nw):
                 if p1 in done:
                     continue
                 stack.append(p1)
+                allports.remove(p1)
                 done.add(p1)
         # per algorithm ground is the first node
         nodes.append(mk_xnode(node))
-
+    if allports:
+        pp.pprint(allports)
+        raise Exception("some ports are not connected to ground: {0}".format(allports))
     return nodes
 
+class Analysis:
+    """captures all data for analysis"""
+
+    def __init__(self, netw):
+        self.netw = netw
+        self._port_to_node = dict()
+        self.node_list = []
+        self.voltage_list = []
+        self.ground = None
+        self.mat = None
+        self.r = None
+        self.solution_vec = None
 
 
-def analyze(net):
-    """do nodal analysis for a network of current sources and resistors"""
-    nodes = compute_nodes(net)
-    nnodes = len(nodes)
+    def node_ports(self, node):
+        return node.ports
 
-    voltages = []
-    for comp in net.components.values():
-        if isinstance(comp, Voltage):
-            voltages.append(comp)
+    def port_node(self, port):
+        return self._port_to_node[port]
 
-    nvoltages = len(voltages)
+    def node_index(self, node):
+        return self.node_list.index(node)
 
-    def voltage_index(voltage):
-        return voltages.index(voltage) + nnodes
+    def port_index(self, port):
+        return self.node_index(self.port_node(port))
 
-    def p_2_n_index(port):
-        for i in range(nnodes):
-            if port in nodes[i].ports:
-                return i
-        raise Exception("BUG")
-
-    mat = np.zeros((nnodes + nvoltages,nnodes + nvoltages))
-    v = np.zeros(nnodes + nvoltages)
-
-    # equations for voltage sources
-    for vol in voltages:
-        k = voltage_index(vol)
-        mat[k][p_2_n_index(vol.p1)] = -1
-        mat[k][p_2_n_index(vol.p2)] = 1
-        v[k] = vol.volts
+    def voltage_index(self, voltage):
+        return self.voltage_list.index(voltage) + len(self.node_list)
 
 
-    # ground is voltage 0
-    mat[0][0] = 1
-    v[0] = 0
+    def analyze(self):
+        self.node_list = compute_nodes(self.netw)
+        self.ground = self.node_list[0]
 
-    for i in range(1, nnodes):
-        node = nodes[i]
-        I = 0
-        GG = 0
-        for port in node.ports:
-            comp = port.component
-            if isinstance(comp, Current):
-                if comp.p1 == port:
-                    I = I - comp.amp
+        for node in self.node_list:
+            for port in node.ports:
+                self._port_to_node[port] = node
+
+        for comp in self.netw.components.values():
+            if isinstance(comp, Voltage):
+                self.voltage_list.append(comp)
+
+        n = len(self.node_list) + len(self.voltage_list)
+
+        mat =   mat = np.zeros((n,n))
+        r = np.zeros(n)
+
+        # ground voltage is fixed to 0
+        k  = self.node_index(self.ground)
+        mat[k][k] = 1
+        r[k] = 0
+
+         # equations for voltage sources
+        for vol in self.voltage_list:
+            k = self.voltage_index(vol)
+            mat[k][self.port_index(vol.p)] = -1
+            mat[k][self.port_index(vol.n)] = 1
+            r[k] = vol.volts
+
+        for node in self.node_list:
+            if node == self.ground:
+                continue
+            k = self.node_index(node)
+            I = 0
+            GG = 0
+            for port in self.node_ports(node):
+                comp = port.component
+                if isinstance(comp, Node):
+                    None
+                elif isinstance(comp, Current):
+                    if comp.p == port:
+                        I = I + comp.amp
+                    else:
+                        I = I - comp.amp
+                elif isinstance(comp, Resistor):
+                    o = comp.ohm
+                    GG = GG + 1/o
+                    if port == comp.p:
+                        op = comp.n
+                    else:
+                        op = comp.p
+                    oi = self.port_index(op)
+                    mat[k][oi] = - 1/o
+                elif isinstance(comp, Voltage):
+                    if port == comp.p:
+                        ss = -1
+                    else:
+                        ss = 1
+                    kv = self.voltage_index(comp)
+                    mat[k][kv] = ss
                 else:
-                    I = I + comp.amp
-            elif isinstance(comp, Resistor):
-                o = comp.ohm
-                GG = GG + 1/o
-                if port == comp.p1:
-                    op = comp.p2
-                else:
-                    op = comp.p1
+                    raise Exception("unknown component type of {0}".format(comp))
+            mat[k][k] = GG
+            r[k] = I
+        self.mat = mat
+        self.r = r
+        self.solution_vec = np.linalg.solve(self.mat, self.r)
 
-                oi = p_2_n_index(op)
-                mat[i][oi] = - 1/o
-            elif isinstance(comp, Voltage):
-                if port == comp.p1:
-                    ss = -1
-                else:
-                    ss = 1
-                k = voltage_index(comp)
-                mat[i][k] = ss
+        voltages = dict()
+        resistors = {}
+        for comp in self.netw.components.values():
+            if isinstance(comp, Node):
+                voltages[comp] = self.solution_vec[self.port_index(comp.port)]
+            if isinstance(comp, Resistor):
+                ipp = self.port_index(comp.p)
+                inp = self.port_index(comp.n)
+                dv = self.solution_vec[ipp] - self.solution_vec[inp]
+                current = dv / comp.ohm
+                resistors[comp] = (dv,current)
+        return (voltages, resistors)
 
-            else:
-                raise Exception("unknown component type of {0}".format(comp))
-            mat[i][i] = GG
-            v[i] = I
-    pp.pprint(mat)
-    pp.pprint(v)
-    voltages = np.linalg.solve(mat, v)
-    pp.pprint(voltages)
 
 
 def symadd(l):
@@ -356,8 +401,8 @@ def sym_analyze(net):
 
     for vol in voltages:
         k = voltage_index(vol)
-        p1 = vol.p1
-        p2 = vol.p2
+        p1 = vol.p
+        p2 = vol.n
         n1 = p_2_n_index(p1)
         n2 = p_2_n_index(p2)
         equations.append(volts[n1] - volts[n2] - vol.volts)
@@ -367,23 +412,25 @@ def sym_analyze(net):
         summand_list = []
         for port in node.ports:
             comp = port.component
-            if isinstance(comp, Current):
-                if comp.p1 == port:
+            if isinstance(comp, Node):
+                pass
+            elif isinstance(comp, Current):
+                if comp.p == port:
                     I = - comp.amp
                 else:
                     I = comp.amp
                 summand_list.append(sp.sympify(I))
             elif isinstance(comp, Resistor):
                 o = comp.ohm
-                if port == comp.p1:
-                    op = comp.p2
+                if port == comp.p:
+                    op = comp.n
                 else:
-                    op = comp.p1
+                    op = comp.p
 
                 oi = p_2_n_index(op)
                 summand_list.append((volts[i] - volts[oi]) / sp.sympify(o))
             elif isinstance(comp, Voltage):
-                if port == comp.p1:
+                if port == comp.p:
                     ss = -1
                 else:
                     ss = 1
