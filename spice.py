@@ -1,9 +1,9 @@
 """ simple routines for experimenting with nodal analysis """
 
+import math
 import pprint as pp
 import numpy as np
 import sympy as sp
-import math
 
 class Component:
     """Componet in a electrical network, e.g. resistor, current source, node"""
@@ -86,15 +86,24 @@ class Voltage(Node2):
 
 class Diode(Node2):
     """solid state diode"""
-    def __init__(self, parent, name, Is, Nut):
+    def __init__(self, parent, name, Is, Nut, max_current= 10):
         super().__init__(parent, name)
         self.Is = Is
         self.Nut = Nut
+        self.max_current = max_current
+        self.max_volt = self.volt_amp(max_current)
 
     def current(self, v):
         if v<0:
             return 0
         return self.Is * (math.exp(v/self.Nut)-1)
+
+    def volt_amp(self, cur):
+        if cur > 10:
+            cur = 10
+        if cur < 0:
+            return 0
+        return (math.log(cur/self.Is )+1)* self.Nut
 
     def diff_conductance(self, v):
         if v<0:
@@ -296,11 +305,10 @@ class Analysis:
     def voltage_index(self, voltage):
         return self.voltage_list.index(voltage) + len(self.node_list)
 
-    def compute_mat_and_r(solution_vec):
+    def compute_mat_and_r(self, solution_vec):
         n = len(self.node_list) + len(self.voltage_list)
-                mat =   mat = np.zeros((n,n))
+        mat = np.zeros((n,n))
         r = np.zeros(n)
-        solution_vec = None
         # ground voltage is fixed to 0
         k  = self.node_index(self.ground)
         mat[k][k] = 1
@@ -321,8 +329,9 @@ class Analysis:
             GG = 0
             for port in self.node_ports(node):
                 comp = port.component
+                pp.pprint(("comp", comp))
                 if isinstance(comp, Node):
-                    None
+                    pass
                 elif isinstance(comp, Current):
                     if comp.p == port:
                         I = I + comp.amp
@@ -350,14 +359,20 @@ class Analysis:
                         op = comp.n
                     else:
                         ss = -1
-                        op = comp.p   
+                        op = comp.p
                     if solution_vec is None:
-                        dv = 0.1
+                        dv = comp.volt_amp(1)
                     else:
-                        dv = solution_vec[self.port_index(comp.p)] - solution_vec[self.port_index(comp.n)]
-
+                        dv = (solution_vec[self.port_index(comp.p)]
+                              - solution_vec[self.port_index(comp.n)])
+                    if dv > comp.max_volt:
+                        dv = comp.max_volt
+                    curr = comp.current(dv)
                     conductance = comp.diff_conductance(dv)
-                    I = I - comp.current(dv) * ss # base current
+
+                    pp.pprint((comp, dv, curr, conductance))
+
+                    I = I - curr * ss # base current
                     I = I + conductance * dv
                     GG = GG + conductance
                     oi = self.port_index(op)
@@ -380,85 +395,29 @@ class Analysis:
             if isinstance(comp, Voltage):
                 self.voltage_list.append(comp)
 
-        n = len(self.node_list) + len(self.voltage_list)
-
-        mat =   mat = np.zeros((n,n))
-        r = np.zeros(n)
         solution_vec = None
-        # ground voltage is fixed to 0
-        k  = self.node_index(self.ground)
-        mat[k][k] = 1
-        r[k] = 0
 
-         # equations for voltage sources
-        for vol in self.voltage_list:
-            k = self.voltage_index(vol)
-            mat[k][self.port_index(vol.p)] = 1
-            mat[k][self.port_index(vol.n)] = -1
-            r[k] = vol.volts
+        for i in range(4000):
+            (mat,r) = self.compute_mat_and_r(solution_vec)
+            solution_vec_n = np.linalg.solve(mat, r)
+            if solution_vec is not None:
+                diff = np.linalg.norm(solution_vec-solution_vec_n)
+                if diff < 1e-6:
+                    solution_vec = solution_vec_n
+                    break
+                pp.pprint(("diff", i, diff))
+            solution_vec = solution_vec_n
 
-        for node in self.node_list:
-            if node == self.ground:
-                continue
-            k = self.node_index(node)
-            I = 0
-            GG = 0
-            for port in self.node_ports(node):
-                comp = port.component
-                if isinstance(comp, Node):
-                    None
-                elif isinstance(comp, Current):
-                    if comp.p == port:
-                        I = I + comp.amp
-                    else:
-                        I = I - comp.amp
-                elif isinstance(comp, Resistor):
-                    o = comp.ohm
-                    GG = GG + 1/o
-                    if port == comp.p:
-                        op = comp.n
-                    else:
-                        op = comp.p
-                    oi = self.port_index(op)
-                    mat[k][oi] = - 1/o
-                elif isinstance(comp, Voltage):
-                    if port == comp.p:
-                        ss = -1
-                    else:
-                        ss = 1
-                    kv = self.voltage_index(comp)
-                    mat[k][kv] = ss
-                elif isinstance(comp, Diode):
-                    if port == comp.p:
-                        ss = 1
-                        op = comp.n
-                    else:
-                        ss = -1
-                        op = comp.p   
-                    if solution_vec is None:
-                        dv = 0.1
-                    else:
-                        dv = solution_vec[self.port_index(comp.p)] - solution_vec[self.port_index(comp.n)]
-
-                    conductance = comp.diff_conductance(dv)
-                    I = I - comp.current(dv) * ss # base current
-                    I = I + conductance * dv
-                    GG = GG + conductance
-                    oi = self.port_index(op)
-                    mat[k][oi] = - conductance
-                else:
-                    raise Exception("unknown component type of {0}".format(comp))
-            mat[k][k] = GG
-            r[k] = I
         self.mat = mat
         self.r = r
-        self.solution_vec = np.linalg.solve(self.mat, self.r)
+        self.solution_vec = solution_vec
         return self.extract_result()
 
-        
+
     def extract_result(self):
         voltages = dict()
         resistors = {}
+        diodes = {}
         for comp in self.netw.components.values():
             if isinstance(comp, Node):
                 voltages[comp] = self.solution_vec[self.port_index(comp.port)]
@@ -468,9 +427,16 @@ class Analysis:
                 dv = self.solution_vec[ipp] - self.solution_vec[inp]
                 current = dv / comp.ohm
                 resistors[comp] = (dv,current)
-        return (voltages, resistors)
+            if isinstance(comp, Diode):
+                ipp = self.port_index(comp.p)
+                inp = self.port_index(comp.n)
+                dv = self.solution_vec[ipp] - self.solution_vec[inp]
+                diodes[comp] = dv
 
-        
+        return (voltages, resistors, diodes)
+
+
+
 
 
 
