@@ -402,6 +402,32 @@ class Analysis:
     def voltage_index(self, voltage):
         return self.voltage_list.index(voltage) + len(self.node_list)
 
+
+    def process_diode(self, k, comp, port, mat, r, solution_vec):
+        if port == comp.p:
+            ss = 1
+            op = comp.n
+        else:
+            ss = -1
+            op = comp.p
+        if solution_vec is None:
+            dv = comp.volt_amp(1)
+        else:
+            dv = (solution_vec[self.port_index(comp.p)]
+                  - solution_vec[self.port_index(comp.n)])
+        if dv > comp.max_volt:
+            dv = comp.max_volt
+        curr = comp.current(dv)
+        conductance = comp.diff_conductance(dv)
+
+        pp.pprint((comp, dv, curr, conductance))
+
+        r[k] -= curr * ss # base current
+        r[k] +=  conductance * dv * ss
+        oi = self.port_index(op)
+        mat[k][oi] -= conductance
+        mat[k][k] += conductance
+
     def compute_mat_and_r(self, solution_vec):
         n = len(self.node_list) + len(self.voltage_list)
         mat = np.zeros((n,n))
@@ -442,7 +468,7 @@ class Analysis:
                     else:
                         op = comp.p
                     oi = self.port_index(op)
-                    mat[k][oi] = - 1/o
+                    mat[k][oi] -= 1/o
                 elif isinstance(comp, Voltage):
                     if port == comp.p:
                         ss = -1
@@ -451,33 +477,11 @@ class Analysis:
                     kv = self.voltage_index(comp)
                     mat[k][kv] = ss
                 elif isinstance(comp, Diode):
-                    if port == comp.p:
-                        ss = 1
-                        op = comp.n
-                    else:
-                        ss = -1
-                        op = comp.p
-                    if solution_vec is None:
-                        dv = comp.volt_amp(1)
-                    else:
-                        dv = (solution_vec[self.port_index(comp.p)]
-                              - solution_vec[self.port_index(comp.n)])
-                    if dv > comp.max_volt:
-                        dv = comp.max_volt
-                    curr = comp.current(dv)
-                    conductance = comp.diff_conductance(dv)
-
-                    pp.pprint((comp, dv, curr, conductance))
-
-                    I = I - curr * ss # base current
-                    I = I + conductance * dv * ss
-                    GG = GG + conductance
-                    oi = self.port_index(op)
-                    mat[k][oi] = - conductance
+                    self.process_diode(k, comp, port, mat, r, solution_vec)
                 else:
                     raise Exception("unknown component type of {0}".format(comp))
-            mat[k][k] = GG
-            r[k] = I
+            mat[k][k] += GG
+            r[k] += I
         return (mat,r)
 
     def analyze(self):

@@ -14,7 +14,22 @@ def simple_current():
     connect(r1.n, net.ground)
     return net
 
-
+def simple_current2():
+    net = Network()
+    r1 = net.addR("r1",100)
+    r2 = net.addR("r2",100)
+    r3 = net.addR("r3",100)
+    c1 = net.addC("c1", 1)
+    connect(c1.p, r1.p)
+    connect(r1.n, c1.n)
+    connect(r1.n, net.ground)
+    connect(r1.n, r2.n)
+    connect(r1.p, r2.p)
+    connect(r1.n, r3.n)
+    connect(r1.p, r3.p)
+    analy = Analysis(net)
+    r = analy.analyze()
+    pp.pprint(r)
 
 def test1():
     net = simple_current()
@@ -204,10 +219,8 @@ def test9():
     net.addComp("T1", tt)
 
 
+
 def main():
-    test9()
-
-
-
+    test7()
 
 main()
