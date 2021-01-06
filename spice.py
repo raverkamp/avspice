@@ -6,7 +6,7 @@ import numpy as np
 import sympy as sp
 
 class Component:
-    """Componet in a electrical network, e.g. resistor, current source, node"""
+    """Component in a electrical network, e.g. resistor, current source, node"""
     def __init__(self, parent, name):
         self.name = name
         self.parent = parent
@@ -113,6 +113,89 @@ class Diode(Node2):
     def __repr__(self):
         return "<Diode {0}>".format(self.name)
 
+class NPNTransistor(Component):
+    """npn transistor
+
+    model Ebers Moll, according to wikipedia
+
+    IS: the reverse saturation current (on the order of 10−15 to 10−12 amperes)
+    VT: the thermal voltage (approximately 26 mV at 300 K ≈ room temperature).
+    beta_F: the forward common emitter current gain (20 to 500)
+    beta_R: the reverse common emitter current gain (0 to 20)
+
+    t1 = exp(V_BE/VT) - exp(V_BC/VT)
+    t2 = 1/beta_R (exp(V_BC/VT) -1)
+    t3 = 1/beta_F (exp(V_BE/VT) -1)
+
+    I_C = IS(t1 - t2)
+    I_B = IS(t2 + t3)
+    I_E = IS(t1 + t3)
+
+    """
+
+    def __init__(self, parent, name, IS, VT, beta_F, beta_R):
+        super().__init__(parent, name)
+        self.IS = IS
+        self.VT = VT
+        self.beta_F = beta_F
+        self.beta_R = beta_R
+        self.B = Port(self,"B")
+        self.C = Port(self,"C")
+        self.E = Port(self,"E")
+
+    def ports(self):
+        return [self.B, self.C, self.E]
+
+    def t1(self, vbe, vbc):
+        return math.exp(vbe/self.VT) - math.exp(vbc/self.VT)
+
+    def d_t1_vbe(self, vbe):
+        return math.exp(vbe/self.VT) / self.VT
+
+    def d_t1_vbc(self, vbc):
+        return -math.exp(vbc/self.VT) / self.VT
+
+    def t2(self, vbc):
+        return 1/self.beta_R *(math.exp(vbc/self.VT)-1)
+
+    def d_t2_vbc(self, vbc):
+        return 1/self.beta_R * math.exp(vbc/self.VT) /self.VT
+
+    def t3(self, vbe):
+        return 1/self.beta_F *(math.exp(vbe/self.VT)-1)
+
+    def d_t3_vbe(self, vbe):
+        return 1/self.beta_F * math.exp(vbe/self.VT) / self.VT
+
+    def I_C(self, vbe, vbc):
+        return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
+
+    def d_IC_vbe(self, vbe):
+        return self.IS * self.d_t1_vbe(vbe)
+
+    def d_IC_vbc(self, vbc):
+        return self.IS * (self.d_t1_vbc(vbc) - self.d_t2_vbc(vbc))
+
+    def I_B(self, vbe, vbc):
+        return self.IS * (self.t2(vbc) + self.t3(vbe))
+
+    def d_IB_vbe(self, vbe):
+        return self.IS * self.d_t3_vbe(vbe)
+
+    def d_IB_vbc(self, vbc):
+        return self.IS * self.d_t2_vbc(vbc)
+
+
+    def I_E(self, vbe, vbc):
+        self.IS(self.t1(vbe, vbc) + self.t3(vbe))
+
+    def d_IE_vbe(self, vbe):
+        return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
+
+    def d_IE_vbc(self, vbc):
+        return self.IS * self.d_t1_vbc(vbc)
+
+
 class Network:
     """ this class describes the toplogy of an electrical network
         It only contains the topology"""
@@ -160,6 +243,20 @@ class Network:
         d = Diode(self, name, Is, Nut)
         self.components[name] = d
         return d
+
+    def addComp(self, name, comp):
+        if name in self.components:
+            raise Exception("Name {0} already exists".format(name))
+        if isinstance(comp, Diode):
+            d = Diode(self, comp.name, comp.Is, comp.Nut, max_current = comp.max_current)
+            self.components[name] = d
+            return d
+        if isinstance(comp, NPNTransistor):
+            t = NPNTransistor(self, comp.name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
+            self.components[name] = t
+            return t
+        raise Exception("addComp not supported for {0}".format(comp))
+
 
     def addConnection(self, p1, p2):
         """connect two ports"""

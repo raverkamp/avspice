@@ -1,5 +1,5 @@
 import spice
-from spice import Network, connect, compute_nodes, Analysis
+from spice import Network, connect, compute_nodes, Analysis, Diode, NPNTransistor
 import argparse
 import pprint as pp
 
@@ -148,7 +148,7 @@ def test5b():
     ana = Analysis(net)
     pp.pprint(ana.analyze())
 
-    
+
 def test6():
     net = Network()
     n1 = net.addN("n1")
@@ -179,12 +179,33 @@ def test7():
     ana = Analysis(net)
     pp.pprint(ana.analyze())
 
-        
-        
-        
+
+def test8():
+    net = Network()
+    dt = Diode(None, "", 1e-8, 25e-3, 10)
+    v1 = net.addV("v1", 2)
+    r1 = net.addR("r1", 100)
+    d1 = net.addComp("d1",dt)
+    n1 = net.addN("n1")
+    connect(v1.n, net.ground)
+    connect(v1.p, r1.p)
+    connect(r1.n, d1.p)
+    connect(n1, d1.p)
+    connect(d1.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
+
+
+def test9():
+    net = Network()
+    v1 = net.addV("v1", 2)
+    r1 = net.addR("r1", 100)
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net.addComp("T1", tt)
+
 
 def main():
-    test7()
+    test9()
 
 
 
