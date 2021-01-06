@@ -214,13 +214,24 @@ def test8():
 def test9():
     net = Network()
     v1 = net.addV("v1", 2)
-    r1 = net.addR("r1", 100)
+    re = net.addR("re", 100)
+    rb = net.addR("rb", 10000)
+    
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-    net.addComp("T1", tt)
+    t1 = net.addComp("T1", tt)
+    connect(v1.p, t1.C)
+    connect(v1.p, rb.p)
+    connect(rb.n, t1.B)
+    connect(t1.E, re.p)
+    connect(re.n, v1.n)
+    connect(v1.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
 
+    
 
 
 def main():
-    test7()
+    test9()
 
 main()

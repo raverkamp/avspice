@@ -5,6 +5,17 @@ import pprint as pp
 import numpy as np
 import sympy as sp
 
+def explin(x, cutoff):
+    if x < cutoff:
+        return math.exp(x)
+    return math.exp(cutoff) +  (x-cutoff) * math.exp(cutoff)
+
+def dexplin(x, cutoff):
+    if x < cutoff:
+        return math.exp(x)
+    else:
+        return math.exp(cutoff)
+
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
     def __init__(self, parent, name):
@@ -167,7 +178,7 @@ class NPNTransistor(Component):
     def d_t3_vbe(self, vbe):
         return 1/self.beta_F * math.exp(vbe/self.VT) / self.VT
 
-    def I_C(self, vbe, vbc):
+    def IC(self, vbe, vbc):
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
 
     def d_IC_vbe(self, vbe):
@@ -176,7 +187,7 @@ class NPNTransistor(Component):
     def d_IC_vbc(self, vbc):
         return self.IS * (self.d_t1_vbc(vbc) - self.d_t2_vbc(vbc))
 
-    def I_B(self, vbe, vbc):
+    def IB(self, vbe, vbc):
         return self.IS * (self.t2(vbc) + self.t3(vbe))
 
     def d_IB_vbe(self, vbe):
@@ -186,8 +197,8 @@ class NPNTransistor(Component):
         return self.IS * self.d_t2_vbc(vbc)
 
 
-    def I_E(self, vbe, vbc):
-        self.IS(self.t1(vbe, vbc) + self.t3(vbe))
+    def IE(self, vbe, vbc):
+        return self.IS * (self.t1(vbe, vbc) + self.t3(vbe))
 
     def d_IE_vbe(self, vbe):
         return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
@@ -402,6 +413,10 @@ class Analysis:
     def voltage_index(self, voltage):
         return self.voltage_list.index(voltage) + len(self.node_list)
 
+    def voltage(self, solution_vec, port):
+        k = self.port_index(port)
+        return solution_vec[k]
+
 
     def process_diode(self, k, comp, port, mat, r, solution_vec):
         if port == comp.p:
@@ -427,6 +442,51 @@ class Analysis:
         oi = self.port_index(op)
         mat[k][oi] -= conductance
         mat[k][k] += conductance
+
+    def process_npn_transistor(self, k, tra, port, mat, r, solution_vec):
+        if solution_vec is None:
+            vbe0 = 0
+            vbc0 = 0
+        else:
+            vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
+            vbc0 = self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C)
+
+        if port == tra.B:
+            # IB(vbe, vbc) = IB(vbe0, vbc0) + d_IB_vbe(vbe0, vbc0) * (vbe -vbe0)
+            #                               + d_IB_vbc(vbe0, vbc0) * (vbc- vbc0)
+            # basis current leaves node
+
+            r[k] += tra.IB(vbe0, vbc0)
+            r[k] -= tra.d_IB_vbe(vbe0) * vbe0 + tra.d_IB_vbc(vbc0) * vbc0
+            mat[k][k] += -tra.d_IB_vbe(vbe0)
+            mat[k][k] += -tra.d_IB_vbc(vbc0)
+            mat[k][self.port_index(tra.E)] += tra.d_IB_vbe(vbe0)
+            mat[k][self.port_index(tra.C)] += tra.d_IB_vbc(vbc0)
+        elif port == tra.C:
+            # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
+            #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
+            # Collector current leaves nodes
+            r[k] += tra.IC(vbe0, vbc0)
+            r[k] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
+            mat[k][k] -= tra.d_IC_vbe(vbe0)
+            mat[k][k] -= tra.d_IC_vbc(vbc0)
+            mat[k][self.port_index(tra.E)] += tra.d_IC_vbe(vbe0)
+            mat[k][self.port_index(tra.B)] += tra.d_IC_vbc(vbc0)
+        elif port == tra.E:
+            # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
+            #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
+            # emitter curren enters node
+            r[k] -= tra.IE(vbe0, vbc0)
+            r[k] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
+            mat[k][k] += tra.d_IE_vbe(vbe0)
+            mat[k][k] += tra.d_IE_vbc(vbc0)
+            mat[k][self.port_index(tra.B)] -= tra.d_IE_vbe(vbe0)
+            mat[k][self.port_index(tra.C)] -= tra.d_IE_vbc(vbc0)
+        else:
+            raise Exception("BUG")
+
+
+
 
     def compute_mat_and_r(self, solution_vec):
         n = len(self.node_list) + len(self.voltage_list)
@@ -478,6 +538,8 @@ class Analysis:
                     mat[k][kv] = ss
                 elif isinstance(comp, Diode):
                     self.process_diode(k, comp, port, mat, r, solution_vec)
+                elif isinstance(comp, NPNTransistor):
+                    self.process_npn_transistor(k, comp, port, mat, r, solution_vec)
                 else:
                     raise Exception("unknown component type of {0}".format(comp))
             mat[k][k] += GG
