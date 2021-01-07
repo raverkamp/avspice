@@ -35,7 +35,7 @@ class Test1(unittest.TestCase):
          self.assertAlmostEqual(r[r1][1], 1/20)
 
     # diode and resistor in serial
-    def test_diode_simple(self):
+    def test_diode_simple1(self):
          net = Network()
          d1 = net.addComp("d1", DIODE)
          r1 = net.addR("r1", 500)
@@ -49,7 +49,6 @@ class Test1(unittest.TestCase):
          pp.pprint((v,r,d))
          # check current is the same
          self.assertAlmostEqual(r[r1][1], d[d1][1])
-
 
    # diode - diode - resistor
     def test_diode_simple2(self):

@@ -13,8 +13,7 @@ def explin(x, cutoff):
 def dexplin(x, cutoff):
     if x < cutoff:
         return math.exp(x)
-    else:
-        return math.exp(cutoff)
+    return math.exp(cutoff)
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
@@ -259,7 +258,7 @@ class Network:
         if name in self.components:
             raise Exception("Name {0} already exists".format(name))
         if isinstance(comp, Diode):
-            d = Diode(self, comp.name, comp.Is, comp.Nut, max_current = comp.max_current)
+            d = Diode(self, name, comp.Is, comp.Nut, max_current = comp.max_current)
             self.components[name] = d
             return d
         if isinstance(comp, NPNTransistor):
@@ -419,29 +418,32 @@ class Analysis:
 
 
     def process_diode(self, k, comp, port, mat, r, solution_vec):
-        if port == comp.p:
-            ss = 1
-            op = comp.n
-        else:
-            ss = -1
-            op = comp.p
         if solution_vec is None:
-            dv = comp.volt_amp(1)
+            dv0 = comp.volt_amp(1)
         else:
-            dv = (solution_vec[self.port_index(comp.p)]
-                  - solution_vec[self.port_index(comp.n)])
-        if dv > comp.max_volt:
-            dv = comp.max_volt
-        curr = comp.current(dv)
-        conductance = comp.diff_conductance(dv)
+            dv0 = self.voltage(solution_vec,comp.p) - self.voltage(solution_vec, comp.n)
 
-        pp.pprint((comp, dv, curr, conductance))
+        if dv0 > comp.max_volt:
+            dv0 = comp.max_volt
 
-        r[k] -= curr * ss # base current
-        r[k] +=  conductance * dv * ss
-        oi = self.port_index(op)
-        mat[k][oi] -= conductance
-        mat[k][k] += conductance
+        pp.pprint(("d diode", dv0))
+
+        Id = comp.current(dv0)
+        dId = comp.diff_conductance(dv0)
+
+        #I(dv) = I(v0) + dI(v0) * (dv- dv0)
+        if port == comp.p:
+            # current leaves node
+            r[k] += Id
+            r[k] -=  dId * dv0
+            mat[k][self.port_index(comp.n)] += dId
+            mat[k][k] -= dId
+        elif port == comp.n:
+            # current enters node
+            r[k] -= Id
+            r[k] +=  dId * dv0
+            mat[k][self.port_index(comp.p)] += dId
+            mat[k][k] -= dId
 
     def process_npn_transistor(self, k, tra, port, mat, r, solution_vec):
         if solution_vec is None:
@@ -516,26 +518,31 @@ class Analysis:
                 if isinstance(comp, Node):
                     pass
                 elif isinstance(comp, Current):
+
                     if comp.p == port:
-                        I = I + comp.amp
-                    else:
+                        # current enters node
                         I = I - comp.amp
+                    else:
+                        # current leaves node
+                        I = I + comp.amp
                 elif isinstance(comp, Resistor):
-                    o = comp.ohm
-                    GG = GG + 1/o
+                    # I = (Vp - Vn) * G
+                    G = 1/ comp.ohm
+
                     if port == comp.p:
                         op = comp.n
                     else:
                         op = comp.p
                     oi = self.port_index(op)
-                    mat[k][oi] -= 1/o
+                    mat[k][oi] += G
+                    mat[k][k] -= G
                 elif isinstance(comp, Voltage):
-                    if port == comp.p:
-                        ss = -1
-                    else:
-                        ss = 1
                     kv = self.voltage_index(comp)
-                    mat[k][kv] = ss
+                    if port == comp.p:
+                        # current enters node
+                        mat[k][kv] = 1
+                    else:
+                        mat[k][kv] = -1
                 elif isinstance(comp, Diode):
                     self.process_diode(k, comp, port, mat, r, solution_vec)
                 elif isinstance(comp, NPNTransistor):
@@ -560,8 +567,14 @@ class Analysis:
 
         solution_vec = None
 
-        for i in range(100):
+        for i in range(10000):
+            if i >=20:
+                raise Exception("no convergence")
             (mat,r) = self.compute_mat_and_r(solution_vec)
+            print(self.node_list)
+            print(mat)
+            print(r)
+
             solution_vec_n = np.linalg.solve(mat, r)
             if solution_vec is not None:
                 diff = np.linalg.norm(solution_vec-solution_vec_n)

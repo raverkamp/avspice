@@ -195,7 +195,7 @@ def test7():
     pp.pprint(ana.analyze())
 
 
-def test8():
+def test8a():
     net = Network()
     dt = Diode(None, "", 1e-8, 25e-3, 10)
     v1 = net.addV("v1", 2)
@@ -209,6 +209,35 @@ def test8():
     connect(d1.n, net.ground)
     ana = Analysis(net)
     pp.pprint(ana.analyze())
+
+def test8b():
+    net = Network()
+    dt = Diode(None, "", 1e-8, 25e-3, 10)
+    c1 = net.addC("c1", 2)
+    r1 = net.addR("r1", 100)
+    d1 = net.addComp("d1",dt)
+    n1 = net.addN("n1")
+    connect(c1.n, net.ground)
+    connect(c1.p, d1.p)
+    connect(d1.n, r1.p)
+    connect(n1, d1.p)
+    connect(r1.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
+
+def test8c():
+    net = Network()
+    dt = Diode(None, "", 1e-8, 25e-3, 10)
+    c1 = net.addC("c1", 1)
+    d1 = net.addComp("d1",dt)
+    n1 = net.addN("n1")
+    connect(c1.n, net.ground)
+    connect(c1.p, d1.p)
+    connect(d1.n, c1.n)
+    connect(n1, c1.p)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
+
 
 
 def test9():
@@ -232,6 +261,6 @@ def test9():
 
 
 def main():
-    test9()
+    test8b()
 
 main()
