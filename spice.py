@@ -455,38 +455,42 @@ class Analysis:
             vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
             vbc0 = (self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C))
 
+        kB = self.port_index(tra.B)
+        kE = self.port_index(tra.E)
+        kC = self.port_index(tra.C)
+
         if port == tra.B:
             # IB(vbe, vbc) = IB(vbe0, vbc0) + d_IB_vbe(vbe0, vbc0) * (vbe -vbe0)
             #                               + d_IB_vbc(vbe0, vbc0) * (vbc- vbc0)
             # basis current leaves node
 
-            r[k] += tra.IB(vbe0, vbc0)
-            r[k] -= tra.d_IB_vbe(vbe0) * vbe0 + tra.d_IB_vbc(vbc0) * vbc0
-            mat[k][k] += -tra.d_IB_vbe(vbe0)
-            mat[k][k] += -tra.d_IB_vbc(vbc0)
-            mat[k][self.port_index(tra.E)] += tra.d_IB_vbe(vbe0)
-            mat[k][self.port_index(tra.C)] += tra.d_IB_vbc(vbc0)
+            r[kB] += tra.IB(vbe0, vbc0)
+            r[kB] -= tra.d_IB_vbe(vbe0) * vbe0 + tra.d_IB_vbc(vbc0) * vbc0
+            mat[kB][kB] += -tra.d_IB_vbe(vbe0)
+            mat[kB][kB] += -tra.d_IB_vbc(vbc0)
+            mat[kB][kE] += tra.d_IB_vbe(vbe0)
+            mat[kB][kC] += tra.d_IB_vbc(vbc0)
         elif port == tra.C:
             # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
             #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
             # Collector current leaves nodes
-            r[k] += tra.IC(vbe0, vbc0)
-            r[k] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
-            mat[k][k] -= tra.d_IC_vbe(vbe0)
-            mat[k][k] -= tra.d_IC_vbc(vbc0)
-            mat[k][self.port_index(tra.E)] += tra.d_IC_vbe(vbe0)
-            mat[k][self.port_index(tra.B)] += tra.d_IC_vbc(vbc0)
+            r[kC] += tra.IC(vbe0, vbc0)
+            r[kC] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
+            mat[kC][kC] -= tra.d_IC_vbe(vbe0)
+            mat[kC][kC] -= tra.d_IC_vbc(vbc0)
+            mat[kC][kE] += tra.d_IC_vbe(vbe0)
+            mat[kC][kB] += tra.d_IC_vbc(vbc0)
             pp.pprint(("XX", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
         elif port == tra.E:
             # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
             #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
             # emitter curren enters node
-            r[k] -= tra.IE(vbe0, vbc0)
-            r[k] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
-            mat[k][k] += tra.d_IE_vbe(vbe0)
-            mat[k][k] += tra.d_IE_vbc(vbc0)
-            mat[k][self.port_index(tra.B)] -= tra.d_IE_vbe(vbe0)
-            mat[k][self.port_index(tra.C)] -= tra.d_IE_vbc(vbc0)
+            r[kE] -= tra.IE(vbe0, vbc0)
+            r[kE] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
+            mat[kE][kE] += tra.d_IE_vbe(vbe0)
+            mat[kE][kE] += tra.d_IE_vbc(vbc0)
+            mat[kE][kB] -= tra.d_IE_vbe(vbe0)
+            mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         else:
             raise Exception("BUG")
 
