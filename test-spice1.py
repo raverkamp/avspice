@@ -243,24 +243,64 @@ def test8c():
 def test9():
     net = Network()
     v1 = net.addV("v1", 2)
+    vb = net.addV("vb",0.5)
     re = net.addR("re", 100)
-    rb = net.addR("rb", 10000)
+    rb = net.addR("rb", 100)
     
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     t1 = net.addComp("T1", tt)
+
+    
+    
     connect(v1.p, t1.C)
-    connect(v1.p, rb.p)
+    connect(vb.p, rb.p)
     connect(rb.n, t1.B)
+    connect(vb.n, net.ground)
     connect(t1.E, re.p)
     connect(re.n, v1.n)
     connect(v1.n, net.ground)
     ana = Analysis(net)
     pp.pprint(ana.analyze())
 
-    
+def test10():
+      tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+      vbe = 0.65
+      vbc = -0.1
+      ie = tt.IE(vbe, vbc)
+      ic = tt.IC(vbe, vbc)
+      ib = tt.IB(vbe, vbc)
+      pp.pprint((("ie", tt.IE(vbe, vbc)),
+                 ("ic", tt.IC(vbe, vbc)),
+                 ("ib", tt.IB(vbe, vbc)),
+                 ("d_ib_vbe", tt.d_IB_vbe(vbe)),
+                 ("d_ib_vbc", tt.d_IB_vbc(vbc)),
+                 ("d_ie_vbe", tt.d_IE_vbe(vbe)),
+                 ("d_ie_vbc", tt.d_IE_vbc(vbc)),
+                 ("d_ic_vbe", tt.d_IC_vbe(vbe)),
+                 ("d_ic_vbc", tt.d_IC_vbc(vbc)),
+                 
+                 
+                 ))
+                
+def test11():
+    net = Network()
+    cc = net.addC("cc", 0.2)
+    cb = net.addC("cb", 0.02)
+    re = net.addR("re", 1)    
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    t1 = net.addComp("T1", tt)
+
+    connect(cc.p, t1.C)
+    connect(cb.p, t1.B)
+    connect(cb.n, cc.n)
+    connect(t1.E, re.p)
+    connect(re.n, cc.n)
+    connect(cc.n, net.ground)
+    ana = Analysis(net)
+    pp.pprint(ana.analyze())
 
 
 def main():
-    test8b()
+    test11()
 
 main()

@@ -153,29 +153,31 @@ class NPNTransistor(Component):
         self.C = Port(self,"C")
         self.E = Port(self,"E")
 
+        self.cutoff = 200
+
     def ports(self):
         return [self.B, self.C, self.E]
 
     def t1(self, vbe, vbc):
-        return math.exp(vbe/self.VT) - math.exp(vbc/self.VT)
+        return explin(vbe/self.VT, self.cutoff) - explin(vbc/self.VT, self.cutoff)
 
     def d_t1_vbe(self, vbe):
-        return math.exp(vbe/self.VT) / self.VT
+        return explin(vbe/self.VT, self.cutoff) / self.VT
 
     def d_t1_vbc(self, vbc):
-        return -math.exp(vbc/self.VT) / self.VT
+        return -explin(vbc/self.VT, self.cutoff) / self.VT
 
     def t2(self, vbc):
-        return 1/self.beta_R *(math.exp(vbc/self.VT)-1)
+        return 1/self.beta_R *(explin(vbc/self.VT, self.cutoff)-1)
 
     def d_t2_vbc(self, vbc):
-        return 1/self.beta_R * math.exp(vbc/self.VT) /self.VT
+        return 1/self.beta_R * explin(vbc/self.VT, self.cutoff) /self.VT
 
     def t3(self, vbe):
-        return 1/self.beta_F *(math.exp(vbe/self.VT)-1)
+        return 1/self.beta_F *(explin(vbe/self.VT, self.cutoff)-1)
 
     def d_t3_vbe(self, vbe):
-        return 1/self.beta_F * math.exp(vbe/self.VT) / self.VT
+        return 1/self.beta_F * explin(vbe/self.VT, self.cutoff) / self.VT
 
     def IC(self, vbe, vbc):
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
@@ -262,7 +264,7 @@ class Network:
             self.components[name] = d
             return d
         if isinstance(comp, NPNTransistor):
-            t = NPNTransistor(self, comp.name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
+            t = NPNTransistor(self, name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
             self.components[name] = t
             return t
         raise Exception("addComp not supported for {0}".format(comp))
@@ -447,11 +449,11 @@ class Analysis:
 
     def process_npn_transistor(self, k, tra, port, mat, r, solution_vec):
         if solution_vec is None:
-            vbe0 = 0
-            vbc0 = 0
+            vbe0 = 0.65
+            vbc0 = -0.1
         else:
             vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
-            vbc0 = self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C)
+            vbc0 = (self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C))
 
         if port == tra.B:
             # IB(vbe, vbc) = IB(vbe0, vbc0) + d_IB_vbe(vbe0, vbc0) * (vbe -vbe0)
@@ -474,6 +476,7 @@ class Analysis:
             mat[k][k] -= tra.d_IC_vbc(vbc0)
             mat[k][self.port_index(tra.E)] += tra.d_IC_vbe(vbe0)
             mat[k][self.port_index(tra.B)] += tra.d_IC_vbc(vbc0)
+            pp.pprint(("XX", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
         elif port == tra.E:
             # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
             #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
@@ -487,6 +490,7 @@ class Analysis:
         else:
             raise Exception("BUG")
 
+        pp.pprint((("VBE", vbe0), ("VBC", vbc0),("B", tra.IB(vbe0, vbc0)),("E", tra.IE(vbe0, vbc0)), ("C", tra.IC(vbe0, vbc0))))
 
 
 
@@ -514,7 +518,6 @@ class Analysis:
             GG = 0
             for port in self.node_ports(node):
                 comp = port.component
-                pp.pprint(("comp", comp))
                 if isinstance(comp, Node):
                     pass
                 elif isinstance(comp, Current):
@@ -569,7 +572,13 @@ class Analysis:
 
         for i in range(10000):
             if i >=20:
+                for node in self.node_list:
+                    i = self.node_index(node)
+                    pp.pprint((i, node))#, self.solution_vec[i]))
+                print(mat)
+                print(r)
                 raise Exception("no convergence")
+
             (mat,r) = self.compute_mat_and_r(solution_vec)
             print(self.node_list)
             print(mat)
@@ -597,6 +606,10 @@ class Analysis:
         voltages = dict()
         resistors = {}
         diodes = {}
+        for node in self.node_list:
+            i = self.node_index(node)
+            pp.pprint((i, node, self.solution_vec[i]))
+
         for comp in self.netw.components.values():
             if isinstance(comp, Node):
                 voltages[comp] = self.solution_vec[self.port_index(comp.port)]
