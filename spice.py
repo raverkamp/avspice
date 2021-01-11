@@ -448,6 +448,8 @@ class Analysis:
             mat[k][k] -= dId
 
     def process_npn_transistor(self, k, tra, port, mat, r, solution_vec):
+        if port != tra.B:
+            return
         if solution_vec is None:
             vbe0 = 0.65
             vbc0 = -0.1
@@ -459,40 +461,40 @@ class Analysis:
         kE = self.port_index(tra.E)
         kC = self.port_index(tra.C)
 
-        if port == tra.B:
-            # IB(vbe, vbc) = IB(vbe0, vbc0) + d_IB_vbe(vbe0, vbc0) * (vbe -vbe0)
-            #                               + d_IB_vbc(vbe0, vbc0) * (vbc- vbc0)
-            # basis current leaves node
 
-            r[kB] += tra.IB(vbe0, vbc0)
-            r[kB] -= tra.d_IB_vbe(vbe0) * vbe0 + tra.d_IB_vbc(vbc0) * vbc0
-            mat[kB][kB] += -tra.d_IB_vbe(vbe0)
-            mat[kB][kB] += -tra.d_IB_vbc(vbc0)
-            mat[kB][kE] += tra.d_IB_vbe(vbe0)
-            mat[kB][kC] += tra.d_IB_vbc(vbc0)
-        elif port == tra.C:
-            # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
-            #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
-            # Collector current leaves nodes
-            r[kC] += tra.IC(vbe0, vbc0)
-            r[kC] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
-            mat[kC][kC] -= tra.d_IC_vbe(vbe0)
-            mat[kC][kC] -= tra.d_IC_vbc(vbc0)
-            mat[kC][kE] += tra.d_IC_vbe(vbe0)
-            mat[kC][kB] += tra.d_IC_vbc(vbc0)
-            pp.pprint(("XX", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
-        elif port == tra.E:
-            # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
-            #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
-            # emitter curren enters node
-            r[kE] -= tra.IE(vbe0, vbc0)
-            r[kE] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
-            mat[kE][kE] += tra.d_IE_vbe(vbe0)
-            mat[kE][kE] += tra.d_IE_vbc(vbc0)
-            mat[kE][kB] -= tra.d_IE_vbe(vbe0)
-            mat[kE][kC] -= tra.d_IE_vbc(vbc0)
-        else:
-            raise Exception("BUG")
+        # IB(vbe, vbc) = IB(vbe0, vbc0) + d_IB_vbe(vbe0, vbc0) * (vbe -vbe0)
+        #                               + d_IB_vbc(vbe0, vbc0) * (vbc- vbc0)
+        # basis current leaves node
+
+        r[kB] += tra.IB(vbe0, vbc0)
+        r[kB] -= tra.d_IB_vbe(vbe0) * vbe0 + tra.d_IB_vbc(vbc0) * vbc0
+        mat[kB][kB] += -tra.d_IB_vbe(vbe0)
+        mat[kB][kB] += -tra.d_IB_vbc(vbc0)
+        mat[kB][kE] += tra.d_IB_vbe(vbe0)
+        mat[kB][kC] += tra.d_IB_vbc(vbc0)
+        
+        # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
+        #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
+        # Collector current leaves nodes
+        r[kC] += tra.IC(vbe0, vbc0)
+        r[kC] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
+        mat[kC][kC] -= tra.d_IC_vbe(vbe0)
+        mat[kC][kC] -= tra.d_IC_vbc(vbc0)
+        mat[kC][kE] += tra.d_IC_vbe(vbe0)
+        mat[kC][kB] += tra.d_IC_vbc(vbc0)
+        pp.pprint(("CC", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
+        
+        # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
+        #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
+        # emitter curren enters node
+        r[kE] -= tra.IE(vbe0, vbc0)
+        r[kE] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
+        mat[kE][kE] += tra.d_IE_vbe(vbe0)
+        mat[kE][kE] += tra.d_IE_vbc(vbc0)
+        mat[kE][kB] -= tra.d_IE_vbe(vbe0)
+        mat[kE][kC] -= tra.d_IE_vbc(vbc0)
+        pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
+
 
         pp.pprint((("VBE", vbe0), ("VBC", vbc0),("B", tra.IB(vbe0, vbc0)),("E", tra.IE(vbe0, vbc0)), ("C", tra.IC(vbe0, vbc0))))
 
