@@ -153,7 +153,7 @@ class NPNTransistor(Component):
         self.C = Port(self,"C")
         self.E = Port(self,"E")
 
-        self.cutoff = 200
+        self.cutoff = 40
 
     def ports(self):
         return [self.B, self.C, self.E]
@@ -162,22 +162,22 @@ class NPNTransistor(Component):
         return explin(vbe/self.VT, self.cutoff) - explin(vbc/self.VT, self.cutoff)
 
     def d_t1_vbe(self, vbe):
-        return explin(vbe/self.VT, self.cutoff) / self.VT
+        return dexplin(vbe/self.VT, self.cutoff) / self.VT
 
     def d_t1_vbc(self, vbc):
-        return -explin(vbc/self.VT, self.cutoff) / self.VT
+        return -dexplin(vbc/self.VT, self.cutoff) / self.VT
 
     def t2(self, vbc):
         return 1/self.beta_R *(explin(vbc/self.VT, self.cutoff)-1)
 
     def d_t2_vbc(self, vbc):
-        return 1/self.beta_R * explin(vbc/self.VT, self.cutoff) /self.VT
+        return 1/self.beta_R * dexplin(vbc/self.VT, self.cutoff) /self.VT
 
     def t3(self, vbe):
         return 1/self.beta_F *(explin(vbe/self.VT, self.cutoff)-1)
 
     def d_t3_vbe(self, vbe):
-        return 1/self.beta_F * explin(vbe/self.VT, self.cutoff) / self.VT
+        return 1/self.beta_F * dexplin(vbe/self.VT, self.cutoff) / self.VT
 
     def IC(self, vbe, vbc):
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
@@ -450,9 +450,10 @@ class Analysis:
     def process_npn_transistor(self, k, tra, port, mat, r, solution_vec):
         if port != tra.B:
             return
+        print("-------------------------------------------------------")
         if solution_vec is None:
             vbe0 = 0.65
-            vbc0 = -0.1
+            vbc0 = -0.01
         else:
             vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
             vbc0 = (self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C))
@@ -478,10 +479,10 @@ class Analysis:
         # Collector current leaves nodes
         r[kC] += tra.IC(vbe0, vbc0)
         r[kC] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
-        mat[kC][kC] -= tra.d_IC_vbe(vbe0)
-        mat[kC][kC] -= tra.d_IC_vbc(vbc0)
+        mat[kC][kB] -= tra.d_IC_vbe(vbe0)
+        mat[kC][kB] -= tra.d_IC_vbc(vbc0)
         mat[kC][kE] += tra.d_IC_vbe(vbe0)
-        mat[kC][kB] += tra.d_IC_vbc(vbc0)
+        mat[kC][kC] += tra.d_IC_vbc(vbc0)
         pp.pprint(("CC", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
         
         # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
@@ -489,9 +490,9 @@ class Analysis:
         # emitter curren enters node
         r[kE] -= tra.IE(vbe0, vbc0)
         r[kE] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
-        mat[kE][kE] += tra.d_IE_vbe(vbe0)
-        mat[kE][kE] += tra.d_IE_vbc(vbc0)
-        mat[kE][kB] -= tra.d_IE_vbe(vbe0)
+        mat[kE][kB] += tra.d_IE_vbe(vbe0)
+        mat[kE][kB] += tra.d_IE_vbc(vbc0)
+        mat[kE][kE] -= tra.d_IE_vbe(vbe0)
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
