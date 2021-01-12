@@ -452,8 +452,8 @@ class Analysis:
             return
         print("-------------------------------------------------------")
         if solution_vec is None:
-            vbe0 = 0.65
-            vbc0 = -0.01
+            vbe0 = 0.2
+            vbc0 = -0.001
         else:
             vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
             vbc0 = (self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C))
@@ -473,6 +473,8 @@ class Analysis:
         mat[kB][kB] += -tra.d_IB_vbc(vbc0)
         mat[kB][kE] += tra.d_IB_vbe(vbe0)
         mat[kB][kC] += tra.d_IB_vbc(vbc0)
+        pp.pprint((("VBE", vbe0), ("VBC", vbc0),("B", tra.IB(vbe0, vbc0)),("E", tra.IE(vbe0, vbc0)), ("C", tra.IC(vbe0, vbc0))))
+
         
         # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
         #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
@@ -497,7 +499,6 @@ class Analysis:
         pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
 
-        pp.pprint((("VBE", vbe0), ("VBC", vbc0),("B", tra.IB(vbe0, vbc0)),("E", tra.IE(vbe0, vbc0)), ("C", tra.IC(vbe0, vbc0))))
 
 
 
@@ -592,6 +593,7 @@ class Analysis:
             print(r)
 
             solution_vec_n = np.linalg.solve(mat, r)
+            pp.pprint(("Solution", solution_vec_n))
             if solution_vec is not None:
                 diff = np.linalg.norm(solution_vec-solution_vec_n)
                 if diff < 1e-6:
