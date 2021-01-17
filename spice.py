@@ -452,8 +452,8 @@ class Analysis:
             return
         print("-------------------------------------------------------")
         if solution_vec is None:
-            vbe0 = 0.2
-            vbc0 = -0.001
+            vbe0 = 0 #   0.2
+            vbc0 = 0
         else:
             vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
             vbc0 = (self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C))
@@ -497,10 +497,6 @@ class Analysis:
         mat[kE][kE] -= tra.d_IE_vbe(vbe0)
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
-
-
-
-
 
     def compute_mat_and_r(self, solution_vec):
         n = len(self.node_list) + len(self.voltage_list)
