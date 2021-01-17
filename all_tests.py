@@ -107,12 +107,13 @@ class TestTransistor(unittest.TestCase):
 
     def test_transistor_formulas(self):
         tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-        ie = tt.IE(0.15, -3)
-        ic = tt.IC(0.15, -3)
-        ib = tt.IB(0.15, 0)
-        pp.pprint((ib,ic, ie))
-        self.assertAlmostEqual(ic+ib-ie,0)
-        
+        # this worked: vbe = 0.15, vbc = -3
+        for vbe in [x/10 -3.0 for x in range(0,60)]:
+            for vbc in [x/10 -3.0 for x in range(0,60)]:
+                ie = tt.IE(vbe, vbc)
+                ic = tt.IC(vbe, vbc)
+                ib = tt.IB(vbe, vbc)
+                self.assertAlmostEqual(ic+ib-ie,0)
         
         
 
