@@ -49,7 +49,7 @@ class Test1(unittest.TestCase):
          connect(r1.n, c1.n)
          connect(r1.n, net.ground)
          analy = Analysis(net)
-         (v,r,d) = analy.analyze()
+         (v,r,d, t) = analy.analyze()
          self.assertAlmostEqual(r[r1][0], 20)
          self.assertAlmostEqual(r[r1][1], 1)
 
@@ -62,7 +62,7 @@ class Test1(unittest.TestCase):
          connect(r1.n, v1.n)
          connect(r1.n, net.ground)
          analy = Analysis(net)
-         (v,r,d) = analy.analyze()
+         (v,r,d, t) = analy.analyze()
          self.assertAlmostEqual(r[r1][0], 1)
          self.assertAlmostEqual(r[r1][1], 1/20)
 
@@ -77,7 +77,7 @@ class Test1(unittest.TestCase):
          connect(d1.n, r1.p)
          connect(r1.n, v1.n)
          analy = Analysis(net)
-         (v,r,d) = analy.analyze()
+         (v,r,d, t) = analy.analyze()
          pp.pprint((v,r,d))
          # check current is the same
          self.assertAlmostEqual(r[r1][1], d[d1][1])
@@ -95,7 +95,7 @@ class Test1(unittest.TestCase):
          connect(d2.n, r1.p)
          connect(r1.n, v1.n)
          analy = Analysis(net)
-         (v,r,d) = analy.analyze()
+         (v,r,d, t) = analy.analyze()
          pp.pprint((v,r,d))
          # check current is the same
          self.assertAlmostEqual(r[r1][1], d[d1][1])
@@ -115,8 +115,23 @@ class TestTransistor(unittest.TestCase):
                 ib = tt.IB(vbe, vbc)
                 self.assertAlmostEqual(ic+ib-ie,0)
         
+    def test_trans1(self):
+        net = Network()
+        cc = net.addC("cc", 0.2)
+        cb = net.addC("cb", 0.02)
+        re = net.addR("re", 1)    
+        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        t1 = net.addComp("T1", tt)
         
-
+        connect(cc.p, t1.C)
+        connect(cb.p, t1.B)
+        connect(cb.n, cc.n)
+        connect(t1.E, re.p)
+        connect(re.n, cc.n)
+        connect(cc.n, net.ground)
+        ana = Analysis(net)
+        (v, r, d, t) = ana.analyze()
+        self.assertAlmostEqual(t[t1][0],0.02)
 
 if __name__ == '__main__':
     unittest.main()

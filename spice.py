@@ -606,11 +606,13 @@ class Analysis:
         self.solution_vec = solution_vec
         return self.extract_result()
 
+    
 
     def extract_result(self):
         voltages = dict()
         resistors = {}
         diodes = {}
+        transistors = {}
         for node in self.node_list:
             i = self.node_index(node)
             pp.pprint((i, node, self.solution_vec[i]))
@@ -630,8 +632,27 @@ class Analysis:
                 dv = self.solution_vec[ipp] - self.solution_vec[inp]
                 curr = comp.current(dv)
                 diodes[comp] = (dv, curr)
+            if isinstance(comp, Diode):
+                ipp = self.port_index(comp.p)
+                inp = self.port_index(comp.n)
+                dv = self.solution_vec[ipp] - self.solution_vec[inp]
+                curr = comp.current(dv)
+                diodes[comp] = (dv, curr)
+            if isinstance(comp, NPNTransistor):
+                pb = self.port_index(comp.B)
+                pe = self.port_index(comp.E)
+                pc = self.port_index(comp.C)
+                vb = self.solution_vec[pb]
+                ve = self.solution_vec[pe]
+                vc = self.solution_vec[pc]
+                vbe = vb - ve
+                vbc = vb - vc
+                ib = comp.IB(vbe, vbc)
+                ie = comp.IE(vbe, vbc)
+                ic = comp.IC(vbe, vbc)                
+                transistors[comp] = (ib, ie, ic)
 
-        return (voltages, resistors, diodes)
+        return (voltages, resistors, diodes, transistors)
 
 
 
