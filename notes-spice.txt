@@ -23,3 +23,8 @@ Symbolisch funktioniert es auch.
 
 2021-01-04_13:03
 Ich benutze jetzt pylint. 
+
+2021-01-17_10:23
+jetzt finktioneiren auch NPN Transistoren.
+Problem: Konvergenz.
+
