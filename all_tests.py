@@ -40,6 +40,14 @@ class TestMath(unittest.TestCase):
         
 class Test1(unittest.TestCase):
 
+    def test_get_object(self):
+        net = Network()
+        r1 = net.addR("r1", 20)
+        r1_= net.get_object("r1")
+        self.assertEqual(r1, r1_)
+        r1_p= net.get_object("r1.p")
+        self.assertEqual(r1.p, r1_p)
+
     # current and resistor
     def test_current_simple(self):
          net = Network()
@@ -49,9 +57,9 @@ class Test1(unittest.TestCase):
          connect(r1.n, c1.n)
          connect(r1.n, net.ground)
          analy = Analysis(net)
-         (v,r,d, t) = analy.analyze()
-         self.assertAlmostEqual(r[r1][0], 20)
-         self.assertAlmostEqual(r[r1][1], 1)
+         res = analy.analyze()
+         self.assertAlmostEqual(res.get_current("r1.p"), 1)
+         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
 
     # voltage and resistor
     def test_voltage_simple(self):
@@ -62,9 +70,9 @@ class Test1(unittest.TestCase):
          connect(r1.n, v1.n)
          connect(r1.n, net.ground)
          analy = Analysis(net)
-         (v,r,d, t) = analy.analyze()
-         self.assertAlmostEqual(r[r1][0], 1)
-         self.assertAlmostEqual(r[r1][1], 1/20)
+         res = analy.analyze()
+         self.assertAlmostEqual(res.get_voltage("r1.p"), 1)
+         self.assertAlmostEqual(res.get_current("r1.p"), 1/20)
 
     # diode and resistor in serial
     def test_diode_simple1(self):
@@ -77,10 +85,9 @@ class Test1(unittest.TestCase):
          connect(d1.n, r1.p)
          connect(r1.n, v1.n)
          analy = Analysis(net)
-         (v,r,d, t) = analy.analyze()
-         pp.pprint((v,r,d))
+         res = analy.analyze()
          # check current is the same
-         self.assertAlmostEqual(r[r1][1], d[d1][1])
+         self.assertAlmostEqual(res.get_current(d1.n), - res.get_current(r1.p))
 
    # diode - diode - resistor
     def test_diode_simple2(self):
@@ -95,13 +102,14 @@ class Test1(unittest.TestCase):
          connect(d2.n, r1.p)
          connect(r1.n, v1.n)
          analy = Analysis(net)
-         (v,r,d, t) = analy.analyze()
-         pp.pprint((v,r,d))
+         res = analy.analyze()
          # check current is the same
-         self.assertAlmostEqual(r[r1][1], d[d1][1])
-         self.assertAlmostEqual(r[r1][1], d[d2][1])
+         self.assertAlmostEqual(res.get_current(r1.p), res.get_current(d1.p))
+         self.assertAlmostEqual(res.get_current(r1.p), res.get_current(d2.p))
+         
          # check voltage diff over both diodes is equal
-         self.assertAlmostEqual(d[d1][0], d[d2][0])
+         self.assertAlmostEqual(res.get_voltage(d1.p) - res.get_voltage(d1.n),
+                                res.get_voltage(d2.p) - res.get_voltage(d2.n))
 
 class TestTransistor(unittest.TestCase):
 
@@ -114,7 +122,16 @@ class TestTransistor(unittest.TestCase):
                 ic = tt.IC(vbe, vbc)
                 ib = tt.IB(vbe, vbc)
                 self.assertAlmostEqual(ic+ib-ie,0)
-        
+
+    def test_transistor_formulas_2(self):
+        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        # this worked: vbe = 0.15, vbc = -3
+        for v in [x/10 -3.0 for x in range(0,60)]:
+            ie = tt.IE(v, -v)
+            ic = tt.IC(v, -v)
+            ib = tt.IB(v, -v)
+            self.assertAlmostEqual(ic+ib-ie,0)
+                
     def test_trans1(self):
         net = Network()
         cc = net.addC("cc", 0.2)
@@ -130,8 +147,8 @@ class TestTransistor(unittest.TestCase):
         connect(re.n, cc.n)
         connect(cc.n, net.ground)
         ana = Analysis(net)
-        (v, r, d, t) = ana.analyze()
-        self.assertAlmostEqual(t[t1][0],0.02)
+        res = ana.analyze()
+        self.assertAlmostEqual(res.get_current(t1.B),0.02)
 
 if __name__ == '__main__':
     unittest.main()

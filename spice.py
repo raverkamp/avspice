@@ -25,6 +25,16 @@ class Component:
         """return the ports of this component"""
         raise NotImplementedError("ports method not implemented")
 
+    def get_port(self, name):
+        for p in self.ports():
+            if p.name == name:
+                return p
+        raise Exception("Component {0} does not have port {1}".format(self.name, name))
+
+    def get_currents(self, v):
+        raise NotImplementedError("ports method not implemented")
+
+
 class Port:
     """ components are connected via their ports"""
 
@@ -51,6 +61,10 @@ class Node2(Component):
     def ports(self):
         return [self.p, self.n]
 
+    def get_currents(self, v):
+        raise NotImplementedError("ports method not implemented")
+
+
 
 class Node(Component):
     """a node, just a port in the network"""
@@ -64,6 +78,9 @@ class Node(Component):
     def __repr__(self):
         return "<Node {0}>".format(self.name)
 
+    def get_currents(self, v):
+        return {}
+
 
 class Resistor(Node2):
     """resistor"""
@@ -73,6 +90,13 @@ class Resistor(Node2):
 
     def __repr__(self):
         return "<Resistor {0}>".format(self.name)
+
+    def get_currents(self, v):
+        vd = v[self.p] - v[self.n]
+        i = vd / self.ohm
+        return { self.p: i, self.n : -i}
+
+
 
 
 class Current(Node2):
@@ -84,6 +108,10 @@ class Current(Node2):
     def __repr__(self):
         return "<Current {0}>".format(self.name)
 
+    def get_currents(self, v):
+        return {self.p: -self.amp, self.n: self.amp}
+
+
 
 class Voltage(Node2):
     """current source"""
@@ -93,6 +121,9 @@ class Voltage(Node2):
 
     def __repr__(self):
         return "<Voltage {0}>".format(self.name)
+
+    def get_currents(self, v):
+        return {}
 
 class Diode(Node2):
     """solid state diode"""
@@ -123,6 +154,11 @@ class Diode(Node2):
     def __repr__(self):
         return "<Diode {0}>".format(self.name)
 
+    def get_currents(self, v):
+        vd = v[self.p] - v[self.n]
+        i = self.current(vd)
+        return { self.p: i, self.n : -i}
+
 class NPNTransistor(Component):
     """npn transistor
 
@@ -143,7 +179,7 @@ class NPNTransistor(Component):
 
     """
 
-    def __init__(self, parent, name, IS, VT, beta_F, beta_R):
+    def __init__(self, parent, name, IS, VT, beta_F, beta_R, cutoff=40):
         super().__init__(parent, name)
         self.IS = IS
         self.VT = VT
@@ -153,7 +189,7 @@ class NPNTransistor(Component):
         self.C = Port(self,"C")
         self.E = Port(self,"E")
 
-        self.cutoff = 40
+        self.cutoff = cutoff
 
     def ports(self):
         return [self.B, self.C, self.E]
@@ -206,6 +242,12 @@ class NPNTransistor(Component):
 
     def d_IE_vbc(self, vbc):
         return self.IS * self.d_t1_vbc(vbc)
+
+    def get_currents(self, v):
+        vbc = v[self.B] - v[self.C]
+        vbe = v[self.B] - v[self.E]
+        return { self.B: self.IB(vbe, vbc),  self.E: -self.IE(vbe, vbc), self.C: self.IC(vbe, vbc)}
+
 
 
 class Network:
@@ -283,6 +325,20 @@ class Network:
             raise Exception("wrong network for addConnection")
 
         self.connections.append((p1, p2))
+
+    def get_object(self, name):
+        l = name.split(".")
+        name = l[0]
+        if not name in self.components:
+            raise Exception("unknown component: {0}".format(name))
+        c = self.components[name]
+        if len(l) == 1:
+            return c
+        if len(l) == 2:
+            return c.get_port(l[1])
+        raise Exception("too many components in name {0}".format(name))
+
+
 
 
 def connect(p1,p2):
@@ -385,6 +441,41 @@ def compute_nodes(nw):
         raise Exception("some ports are not connected to ground: {0}".format(allports))
     return nodes
 
+class Result:
+    """result of an analysis run"""
+    def __init__(self, network, analysis, solution_vec):
+        self.analysis = analysis
+        self.network = network
+        self.solution_vec = solution_vec
+        self.voltages = dict()
+        self.currents = dict()
+        for c in network.components.values():
+            for port in c.ports():
+                k = self.analysis.port_index(port)
+                self.voltages[port] = solution_vec[k]
+            d = c.get_currents(self.voltages)
+            self.currents.update(d)
+
+    def get_voltage(self, name_or_object):
+        c = self._port(name_or_object)
+        return self.voltages[c]
+
+    def _port(self, name_or_comp):
+        c = None
+        if isinstance(name_or_comp, str):
+            c = self.network.get_object(name_or_comp)
+        else:
+            c = name_or_comp
+        if not isinstance(c, Port):
+            raise Exception("not a port or node or name thereof: {0}".format(name_or_comp))
+        return c
+
+
+    def get_current(self, name_or_comp):
+        c = self._port(name_or_comp)
+        return self.currents[c]
+
+
 class Analysis:
     """captures all data for analysis"""
 
@@ -447,7 +538,7 @@ class Analysis:
             mat[k][self.port_index(comp.p)] += dId
             mat[k][k] -= dId
 
-    def process_npn_transistor(self, k, tra, port, mat, r, solution_vec):
+    def process_npn_transistor(self, tra, port, mat, r, solution_vec):
         if port != tra.B:
             return
         print("-------------------------------------------------------")
@@ -473,9 +564,12 @@ class Analysis:
         mat[kB][kB] += -tra.d_IB_vbc(vbc0)
         mat[kB][kE] += tra.d_IB_vbe(vbe0)
         mat[kB][kC] += tra.d_IB_vbc(vbc0)
-        pp.pprint((("VBE", vbe0), ("VBC", vbc0),("B", tra.IB(vbe0, vbc0)),("E", tra.IE(vbe0, vbc0)), ("C", tra.IC(vbe0, vbc0))))
+        pp.pprint((("VBE", vbe0), ("VBC", vbc0),
+                   ("B", tra.IB(vbe0, vbc0)),
+                   ("E", tra.IE(vbe0, vbc0)),
+                   ("C", tra.IC(vbe0, vbc0))))
 
-        
+
         # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
         #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
         # Collector current leaves nodes
@@ -486,7 +580,7 @@ class Analysis:
         mat[kC][kE] += tra.d_IC_vbe(vbe0)
         mat[kC][kC] += tra.d_IC_vbc(vbc0)
         pp.pprint(("CC", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
-        
+
         # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
         #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
         # emitter curren enters node
@@ -553,7 +647,7 @@ class Analysis:
                 elif isinstance(comp, Diode):
                     self.process_diode(k, comp, port, mat, r, solution_vec)
                 elif isinstance(comp, NPNTransistor):
-                    self.process_npn_transistor(k, comp, port, mat, r, solution_vec)
+                    self.process_npn_transistor(comp, port, mat, r, solution_vec)
                 else:
                     raise Exception("unknown component type of {0}".format(comp))
             mat[k][k] += GG
@@ -604,59 +698,7 @@ class Analysis:
         self.mat = mat
         self.r = r
         self.solution_vec = solution_vec
-        return self.extract_result()
-
-    
-
-    def extract_result(self):
-        voltages = dict()
-        resistors = {}
-        diodes = {}
-        transistors = {}
-        for node in self.node_list:
-            i = self.node_index(node)
-            pp.pprint((i, node, self.solution_vec[i]))
-
-        for comp in self.netw.components.values():
-            if isinstance(comp, Node):
-                voltages[comp] = self.solution_vec[self.port_index(comp.port)]
-            if isinstance(comp, Resistor):
-                ipp = self.port_index(comp.p)
-                inp = self.port_index(comp.n)
-                dv = self.solution_vec[ipp] - self.solution_vec[inp]
-                curr = dv / comp.ohm
-                resistors[comp] = (dv,curr)
-            if isinstance(comp, Diode):
-                ipp = self.port_index(comp.p)
-                inp = self.port_index(comp.n)
-                dv = self.solution_vec[ipp] - self.solution_vec[inp]
-                curr = comp.current(dv)
-                diodes[comp] = (dv, curr)
-            if isinstance(comp, Diode):
-                ipp = self.port_index(comp.p)
-                inp = self.port_index(comp.n)
-                dv = self.solution_vec[ipp] - self.solution_vec[inp]
-                curr = comp.current(dv)
-                diodes[comp] = (dv, curr)
-            if isinstance(comp, NPNTransistor):
-                pb = self.port_index(comp.B)
-                pe = self.port_index(comp.E)
-                pc = self.port_index(comp.C)
-                vb = self.solution_vec[pb]
-                ve = self.solution_vec[pe]
-                vc = self.solution_vec[pc]
-                vbe = vb - ve
-                vbc = vb - vc
-                ib = comp.IB(vbe, vbc)
-                ie = comp.IE(vbe, vbc)
-                ic = comp.IC(vbe, vbc)                
-                transistors[comp] = (ib, ie, ic)
-
-        return (voltages, resistors, diodes, transistors)
-
-
-
-
+        return Result(self.netw, self, self.solution_vec)
 
 
 def symadd(l):
