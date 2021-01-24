@@ -15,6 +15,9 @@ def dexplin(x, cutoff):
         return math.exp(x)
     return math.exp(cutoff)
 
+def reldiff(x,y):
+    return abs(x-y) /  max(abs(x), abs(y))
+
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
     def __init__(self, parent, name):
@@ -443,12 +446,13 @@ def compute_nodes(nw):
 
 class Result:
     """result of an analysis run"""
-    def __init__(self, network, analysis, solution_vec):
+    def __init__(self, network, analysis, iterations, solution_vec):
         self.analysis = analysis
         self.network = network
         self.solution_vec = solution_vec
         self.voltages = dict()
         self.currents = dict()
+        self.iterations = iterations
         for c in network.components.values():
             for port in c.ports():
                 k = self.analysis.port_index(port)
@@ -519,7 +523,7 @@ class Analysis:
         if dv0 > comp.max_volt:
             dv0 = comp.max_volt
 
-        pp.pprint(("d diode", dv0))
+        #pp.pprint(("d diode", dv0))
 
         Id = comp.current(dv0)
         dId = comp.diff_conductance(dv0)
@@ -541,7 +545,7 @@ class Analysis:
     def process_npn_transistor(self, tra, port, mat, r, solution_vec):
         if port != tra.B:
             return
-        print("-------------------------------------------------------")
+        #        print("-------------------------------------------------------")
         if solution_vec is None:
             vbe0 = 0 #   0.2
             vbc0 = 0
@@ -564,10 +568,10 @@ class Analysis:
         mat[kB][kB] += -tra.d_IB_vbc(vbc0)
         mat[kB][kE] += tra.d_IB_vbe(vbe0)
         mat[kB][kC] += tra.d_IB_vbc(vbc0)
-        pp.pprint((("VBE", vbe0), ("VBC", vbc0),
-                   ("B", tra.IB(vbe0, vbc0)),
-                   ("E", tra.IE(vbe0, vbc0)),
-                   ("C", tra.IC(vbe0, vbc0))))
+        #pp.pprint((("VBE", vbe0), ("VBC", vbc0),
+        #           ("B", tra.IB(vbe0, vbc0)),
+        #           ("E", tra.IE(vbe0, vbc0)),
+        #           ("C", tra.IC(vbe0, vbc0))))
 
 
         # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
@@ -579,7 +583,7 @@ class Analysis:
         mat[kC][kB] -= tra.d_IC_vbc(vbc0)
         mat[kC][kE] += tra.d_IC_vbe(vbe0)
         mat[kC][kC] += tra.d_IC_vbc(vbc0)
-        pp.pprint(("CC", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
+        #        pp.pprint(("CC", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
 
         # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
         #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
@@ -590,7 +594,7 @@ class Analysis:
         mat[kE][kB] += tra.d_IE_vbc(vbc0)
         mat[kE][kE] -= tra.d_IE_vbe(vbe0)
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
-        pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
+        #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
     def compute_mat_and_r(self, solution_vec):
         n = len(self.node_list) + len(self.voltage_list)
@@ -654,7 +658,7 @@ class Analysis:
             r[k] += I
         return (mat,r)
 
-    def analyze(self):
+    def analyze(self, maxit=20, start_solution_vec=None, abstol= 1e-8, reltol= 1e-6):
         self.node_list = compute_nodes(self.netw)
         self.ground = self.node_list[0]
 
@@ -666,39 +670,40 @@ class Analysis:
             if isinstance(comp, Voltage):
                 self.voltage_list.append(comp)
 
-        solution_vec = None
+        solution_vec = start_solution_vec
 
         for i in range(10000):
-            if i >=20:
+            if i >=maxit:
                 for node in self.node_list:
                     i = self.node_index(node)
                     pp.pprint((i, node))#, self.solution_vec[i]))
                 print(mat)
                 print(r)
-                raise Exception("no convergence")
+                return "no_convergence"
 
             (mat,r) = self.compute_mat_and_r(solution_vec)
-            print(self.node_list)
-            print(mat)
-            print(r)
+            #print(self.node_list)
+            #print(mat)
+            #print(r)
 
             solution_vec_n = np.linalg.solve(mat, r)
-            pp.pprint(("Solution", solution_vec_n))
+#            pp.pprint(("Solution", solution_vec_n))
             if solution_vec is not None:
-                diff = np.linalg.norm(solution_vec-solution_vec_n)
-                if diff < 1e-6:
-                    solution_vec = solution_vec_n
+                close_enough = True
+                for j in range(len(solution_vec)):
+                    x = solution_vec[j]
+                    y = solution_vec_n[j]
+                    if abs(x-y) > abstol and reldiff(x,y) > reltol:
+                        close_enough = False
+                if close_enough:
+                    iterations = i
                     break
-                pp.pprint(("diff", i, diff))
-                pp.pprint(solution_vec)
-                pp.pprint(solution_vec_n)
-
             solution_vec = solution_vec_n
 
         self.mat = mat
         self.r = r
         self.solution_vec = solution_vec
-        return Result(self.netw, self, self.solution_vec)
+        return Result(self.netw, self, iterations, self.solution_vec)
 
 
 def symadd(l):

@@ -7,7 +7,7 @@ erstmal pipenv
 pipenv check
 
 und es ist da.
-
+x3
 pipenv install sympy
 
 pipenv shell
@@ -27,4 +27,17 @@ Ich benutze jetzt pylint.
 2021-01-17_10:23
 jetzt finktioneiren auch NPN Transistoren.
 Problem: Konvergenz.
+
+2021-01-24_12:51
+
+20 iterationen reichte nicht, aber 30
+
+2021-01-24_13:15
+Man kann jetzt eine Lösung als start angeben.
+
+Damit ist es möglich sich an Lösungen heran zu tasten.
+
+Also zum Beispiel langsam die Spannung steigern.
+
+Die initiale Lösung zu finden ist am schwierigsten.
 
