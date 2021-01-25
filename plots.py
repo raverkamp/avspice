@@ -11,7 +11,7 @@ def getargs():
         raise Exception("Expecting at least one argument")
     return (args[1], args[2:])
 
-    
+
 def drange(start, end, step=None):
     x = float(start)
     if step is None:
@@ -20,13 +20,13 @@ def drange(start, end, step=None):
         s = step
     s = float(s)
     if s <=0:
-        raise Exception("step <=0")        
+        raise Exception("step <=0")
     while x < end:
         yield x
         x += s
     if x < end + s/2.0:
         yield end
-        
+
 def plot1(args):
     t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     vb = 0.5
@@ -44,7 +44,7 @@ def plot1(args):
 
 def plot2(args):
     t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-       
+
     vc = 2
     ve = 0
     x = list(drange(-0.5,3.5, 0.01)    )
@@ -60,7 +60,7 @@ def plot3(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('cpot', type=float)
     parser.add_argument('cutoff', type=float)
-    
+
     args = parser.parse_args(args)
     t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     x = list(drange(-0.5, 3.5, 0.01))
@@ -82,24 +82,25 @@ def plot4(args):
     z = []
     sol = None
     iy = []
+
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    nw = Network()
+    net = Network()
+    vc = net.addV("vc", 2)
+    vb = net.addV("vb", Variable("vb"))
+    re = net.addR("re", 100)
+    rb = net.addR("rb", 10e3)
+    t1 = net.addComp("T1", tt)
+    connect(vc.p, t1.C)
+    connect(vc.n, net.ground)
+    connect(vb.p, rb.p)
+    connect(rb.n, t1.B)
+    connect(vb.n, net.ground)
+    connect(t1.E, re.p)
+    connect(re.n, net.ground)
+    ana = Analysis(net)
     for v in x:
-        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-        nw = Network()
-        net = Network()
-        vc = net.addV("vc", 2)
-        vb = net.addV("vb", v)
-        re = net.addR("re", 100)    
-        rb = net.addR("rb", 10e3)    
-        t1 = net.addComp("T1", tt)
-        connect(vc.p, t1.C)
-        connect(vc.n, net.ground)
-        connect(vb.p, rb.p)
-        connect(rb.n, t1.B)
-        connect(vb.n, net.ground)
-        connect(t1.E, re.p)
-        connect(re.n, net.ground)
-        ana = Analysis(net)
-        res = ana.analyze(maxit=30, start_solution_vec=sol)
+        res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vb": v})
         if isinstance(res, str):
             print("no covergence at: {0}".format(v))
             y.append(None)
@@ -119,7 +120,7 @@ def plot4(args):
     ax.plot(x, iy)
     plt.show()
     #input()
-    
+
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
