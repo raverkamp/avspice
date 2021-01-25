@@ -130,6 +130,32 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_current(r1.p)/2, res.get_current(d1.p))
         self.assertAlmostEqual(res.get_current(r1.p)/2, res.get_current(d2.p))
 
+    def test_voltage(self):
+        net = Network()
+        v1 = net.addV("v1", 3)
+        v2 = net.addV("v2", 5)
+        v3 = net.addV("v3", 7)
+        r1 = net.addR("r1", 1000)
+        r2 = net.addR("r2", 100)
+
+        connect(r2.p, v1.p)
+        connect(r2.n, v2.n)
+
+        connect(v1.p,r1.p)
+        connect(v1.n,v2.p)
+        connect(v2.n,v3.p)
+        connect(v3.n,r1.n)
+        connect(r1.n, net.ground)
+        analy = Analysis(net)
+        res = analy.analyze()
+        self.assertAlmostEqual(res.get_current(r1.p),(3+5+7)/1000)
+        self.assertAlmostEqual(res.get_current(r2.p),(3+5)/100)
+
+        
+        
+        
+        
+        
 
 class TestTransistor(unittest.TestCase):
 
