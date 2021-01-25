@@ -2,6 +2,7 @@
 
 import math
 import pprint as pp
+import numbers
 import numpy as np
 import sympy as sp
 
@@ -16,7 +17,13 @@ def dexplin(x, cutoff):
     return math.exp(cutoff)
 
 def reldiff(x,y):
-    return abs(x-y) /  max(abs(x), abs(y))
+    return abs(x-y) /  min(abs(x), abs(y))
+
+class Variable:
+    """a variable"""
+    def __init__(self, name, default=None):
+        self.name = name
+        self.default = default
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
@@ -99,9 +106,6 @@ class Resistor(Node2):
         i = vd / self.ohm
         return { self.p: i, self.n : -i}
 
-
-
-
 class Current(Node2):
     """current source"""
     def __init__(self, parent, name, amp):
@@ -120,7 +124,18 @@ class Voltage(Node2):
     """current source"""
     def __init__(self, parent, name, volts):
         super().__init__(parent, name)
+        assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self.volts = volts
+
+    def voltage(self, variables):
+        if isinstance(self.volts, numbers.Number):
+            return self.volts
+        if isinstance(self.volts, Variable):
+            v = variables.get(self.volts.name, None)
+            if v is None:
+                raise Exception("did not find value for var {0}".format(self.volts.name))
+            return v
+        raise Exception("bug")
 
     def __repr__(self):
         return "<Voltage {0}>".format(self.name)
@@ -492,6 +507,17 @@ class Analysis:
         self.mat = None
         self.r = None
         self.solution_vec = None
+        self.node_list = compute_nodes(self.netw)
+        self.ground = self.node_list[0]
+
+        for node in self.node_list:
+            for port in node.ports:
+                self._port_to_node[port] = node
+
+        for comp in self.netw.components.values():
+            if isinstance(comp, Voltage):
+                self.voltage_list.append(comp)
+
 
 
     def node_ports(self, node):
@@ -596,7 +622,7 @@ class Analysis:
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
-    def compute_mat_and_r(self, solution_vec):
+    def compute_mat_and_r(self, solution_vec, variables):
         n = len(self.node_list) + len(self.voltage_list)
         mat = np.zeros((n,n))
         r = np.zeros(n)
@@ -610,7 +636,7 @@ class Analysis:
             k = self.voltage_index(vol)
             mat[k][self.port_index(vol.p)] = 1
             mat[k][self.port_index(vol.n)] = -1
-            r[k] = vol.volts
+            r[k] = vol.voltage(variables)
 
         for node in self.node_list:
             if node == self.ground:
@@ -658,17 +684,14 @@ class Analysis:
             r[k] += I
         return (mat,r)
 
-    def analyze(self, maxit=20, start_solution_vec=None, abstol= 1e-8, reltol= 1e-6):
-        self.node_list = compute_nodes(self.netw)
-        self.ground = self.node_list[0]
-
-        for node in self.node_list:
-            for port in node.ports:
-                self._port_to_node[port] = node
-
-        for comp in self.netw.components.values():
-            if isinstance(comp, Voltage):
-                self.voltage_list.append(comp)
+    def analyze(self,
+                maxit=20,
+                start_solution_vec=None,
+                abstol= 1e-8,
+                reltol= 1e-6,
+                variables=None):
+        if variables is None:
+            variables = dict()
 
         solution_vec = start_solution_vec
 
@@ -681,10 +704,11 @@ class Analysis:
                 print(r)
                 return "no_convergence"
 
-            (mat,r) = self.compute_mat_and_r(solution_vec)
+            (mat,r) = self.compute_mat_and_r(solution_vec, variables)
             #print(self.node_list)
+            #            print("--------- mat ----------")
             #print(mat)
-            #print(r)
+             #print(r)
 
             solution_vec_n = np.linalg.solve(mat, r)
 #            pp.pprint(("Solution", solution_vec_n))

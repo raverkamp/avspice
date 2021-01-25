@@ -3,7 +3,7 @@ import pprint as pp
 from math import exp
 
 
-from spice import Network, connect, compute_nodes, Analysis, Diode, NPNTransistor, explin, dexplin
+from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable
 
 DIODE = Diode(None, "", 1e-8, 25e-3, 10)
 
@@ -151,11 +151,28 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_current(r1.p),(3+5+7)/1000)
         self.assertAlmostEqual(res.get_current(r2.p),(3+5)/100)
 
-        
-        
-        
-        
-        
+
+
+
+
+    def test_var(self):
+        net = Network()
+        volt_var = Variable("v")
+        v = net.addV("v1", volt_var)
+        r = net.addR("r2", 100)
+
+        connect(v.p, r.p)
+        connect(v.n, r.n)
+
+        connect(r.n, net.ground)
+        analy = Analysis(net)
+        res = analy.analyze(variables={"v":5})
+        self.assertAlmostEqual(res.get_current(r.p),5/100)
+        res = analy.analyze(variables={"v":6})
+        self.assertAlmostEqual(res.get_current(r.p), 6/100)
+
+
+
 
 class TestTransistor(unittest.TestCase):
 
