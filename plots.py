@@ -121,6 +121,55 @@ def plot4(args):
     plt.show()
     #input()
 
+def emitter(args):
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    nw = Network()
+    net = Network()
+    vc = net.addV("vc", 5)
+    r1 = net.addR("r1", 2000)
+    r2 = net.addR("r2", 2000)
+
+    
+    vb = net.addV("vb", Variable("vb"))
+    rc = net.addR("rc", 1e3)
+    rb = net.addR("rb", 1e5)
+
+    t1 = net.addComp("T1", tt)
+
+    connect(vc.p, rc.p)
+    connect(vc.n, net.ground)
+    connect(rc.n, t1.C)
+    connect(t1.E, net.ground)
+    connect(r1.p, vc.p)
+    connect(r1.n, r2.p)
+    connect(r2.n, net.ground)
+    connect(r1.n, t1.B)
+
+    connect(vb.p, rb.p)
+    connect(vb.n, net.ground)
+    connect(rb.n, t1.B)
+
+    
+    y = []
+    z = []
+    ana = Analysis(net)
+    sol = None
+    x = list(drange(0,0.1,0.001))
+    for v in x:
+        res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vb": v})
+        if isinstance(res, str):
+            print("no covergence at: {0}".format(v))
+            y.append(None)
+            sol = None
+        else:
+            y.append(res.get_voltage(t1.C))
+            z.append(res.get_voltage(t1.B))
+            sol = res.solution_vec
+    fig, (a1,a2) = plt.subplots(2)
+    a1.plot(x,y, color="blue")
+    a2.plot(x,z, color="blue")
+    print(z)
+    plt.show()
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
@@ -131,6 +180,8 @@ def main():
         plot3(args)
     elif cmd == "4":
         plot4(args)
+    elif cmd == "e":
+        emitter(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
