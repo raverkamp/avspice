@@ -246,7 +246,7 @@ def test9():
     vb = net.addV("vb",0.5)
     re = net.addR("re", 100)
     rb = net.addR("rb", 10000)
-    
+
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     t1 = net.addComp("T1", tt)
 
@@ -275,14 +275,14 @@ def test10():
                  ("d_ie_vbe", tt.d_IE_vbe(vbe)),
                  ("d_ie_vbc", tt.d_IE_vbc(vbc)),
                  ("d_ic_vbe", tt.d_IC_vbe(vbe)),
-                 ("d_ic_vbc", tt.d_IC_vbc(vbc)),                 
+                 ("d_ic_vbc", tt.d_IC_vbc(vbc)),
                  ))
-                
+
 def test11():
     net = Network()
     cc = net.addC("cc", 0.2)
     cb = net.addC("cb", 0.02)
-    re = net.addR("re", 1)    
+    re = net.addR("re", 1)
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     t1 = net.addComp("T1", tt)
 
@@ -299,7 +299,7 @@ def test12():
     net = Network()
     vc = net.addV("cc", 1.2)
     cb = net.addC("cb", 0.02)
-    re = net.addR("re", 100)    
+    re = net.addR("re", 100)
     tt = NPNTransistor(None, "", 1e-16, 20e-3, 50, 0.1)
     t1 = net.addComp("T1", tt)
 
@@ -316,7 +316,7 @@ def test13():
     net = Network()
     vc = net.addV("vc", 5)
     vb = net.addV("vb", 2)
-    
+
     rb = net.addR("rb", 1e3)
     re = net.addR("re", 100)
     tt = NPNTransistor(None, "", 1e-16, 20e-3, 50, 0.1)
@@ -340,8 +340,8 @@ def test14():
     net = Network()
     vc = net.addV("vc", 2)
     vb = net.addV("vb", v)
-    re = net.addR("re", 100)    
-    rb = net.addR("rb", 10e3)    
+    re = net.addR("re", 100)
+    rb = net.addR("rb", 10e3)
     t1 = net.addComp("T1", tt)
     connect(vc.p, t1.C)
     connect(vc.n, net.ground)
@@ -354,7 +354,25 @@ def test14():
     res = ana.analyze(maxit=30)
     pp.pprint(res)
 
+def test15():
+    net = Network()
+    vc = net.addV("vc", 2)
+    r = net.addR("r", 1e2)
+    c = net.addCapa("ca", 100e-6)
+    connect(vc.p, c.p)
+    connect(c.n, r.p)
+    connect(r.n, vc.n)
+    connect(vc.n, net.ground)
+    ana = Analysis(net)
+    res = ana.analyze(maxit=30)
+    print(res)
+    res = ana.analyze(maxit=30, charges={"ca": 100e-6 })
+    print(res)
+
+
+
 def main():
-    test14()
+
+    test15()
 
 main()

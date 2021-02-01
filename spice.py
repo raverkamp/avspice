@@ -4,7 +4,6 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-import sympy as sp
 
 def explin(x, cutoff):
     if x < cutoff:
@@ -177,6 +176,17 @@ class Diode(Node2):
         i = self.current(vd)
         return { self.p: i, self.n : -i}
 
+class Capacitor(Node2):
+    """ a capacitor"""
+
+    def __init__(self, parent, name, capa):
+        super().__init__(parent, name)
+        self.capa = capa
+
+    def get_currents(self, v):
+        return {}
+
+
 class NPNTransistor(Component):
     """npn transistor
 
@@ -329,6 +339,12 @@ class Network:
             return t
         raise Exception("addComp not supported for {0}".format(comp))
 
+    def addCapa(self, name, capa):
+        if name in self.components:
+            raise Exception("Name {0} already exists".format(name))
+        c = Capacitor(self, name, capa)
+        self.components[name] = c
+        return c
 
     def addConnection(self, p1, p2):
         """connect two ports"""
@@ -469,11 +485,19 @@ class Result:
         self.currents = dict()
         self.iterations = iterations
         for c in network.components.values():
+            if isinstance(c, Capacitor):
+                k = self.analysis.capa_index(c)
+                cu = solution_vec[k]
+                self.currents[c.p] = -cu
+                self.currents[c.n] = cu
             for port in c.ports():
                 k = self.analysis.port_index(port)
                 self.voltages[port] = solution_vec[k]
             d = c.get_currents(self.voltages)
             self.currents.update(d)
+
+    def __repr__(self):
+        return repr({"voltages": self.voltages, "currents": self.currents})
 
     def get_voltage(self, name_or_object):
         c = self._port(name_or_object)
@@ -503,6 +527,7 @@ class Analysis:
         self._port_to_node = dict()
         self.node_list = []
         self.voltage_list = []
+        self.capa_list = []
         self.ground = None
         self.mat = None
         self.r = None
@@ -517,6 +542,8 @@ class Analysis:
         for comp in self.netw.components.values():
             if isinstance(comp, Voltage):
                 self.voltage_list.append(comp)
+            if isinstance(comp, Capacitor):
+                self.capa_list.append(comp)
 
 
 
@@ -534,6 +561,9 @@ class Analysis:
 
     def voltage_index(self, voltage):
         return self.voltage_list.index(voltage) + len(self.node_list)
+
+    def capa_index(self, capa):
+        return self.capa_list.index(capa) + len(self.node_list) + len(self.voltage_list)
 
     def voltage(self, solution_vec, port):
         k = self.port_index(port)
@@ -622,8 +652,9 @@ class Analysis:
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
-    def compute_mat_and_r(self, solution_vec, variables):
-        n = len(self.node_list) + len(self.voltage_list)
+    def compute_mat_and_r(self, solution_vec, charges, variables):
+        charges = charges or {}
+        n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         mat = np.zeros((n,n))
         r = np.zeros(n)
         # ground voltage is fixed to 0
@@ -637,6 +668,20 @@ class Analysis:
             mat[k][self.port_index(vol.p)] = 1
             mat[k][self.port_index(vol.n)] = -1
             r[k] = vol.voltage(variables)
+
+        for c in self.capa_list:
+            k = self.capa_index(c)
+            mat[self.port_index(c.p)][k] = 1
+            mat[self.port_index(c.n)] [k] = -1
+            if c.name in charges:
+                charge = charges[c.name]
+                v = charge/c.capa
+                mat[k][self.port_index(c.p)] = 1
+                mat[k][self.port_index(c.n)] = -1
+                r[k] = v
+            else:
+                mat[k][k] = 1
+                r[k] = 0
 
         for node in self.node_list:
             if node == self.ground:
@@ -674,6 +719,8 @@ class Analysis:
                         mat[k][kv] = 1
                     else:
                         mat[k][kv] = -1
+                elif isinstance(comp, Capacitor):
+                    pass
                 elif isinstance(comp, Diode):
                     self.process_diode(k, comp, port, mat, r, solution_vec)
                 elif isinstance(comp, NPNTransistor):
@@ -689,7 +736,8 @@ class Analysis:
                 start_solution_vec=None,
                 abstol= 1e-8,
                 reltol= 1e-6,
-                variables=None):
+                variables=None,
+                charges=None):
         if variables is None:
             variables = dict()
 
@@ -704,12 +752,11 @@ class Analysis:
                 print(r)
                 return "no_convergence"
 
-            (mat,r) = self.compute_mat_and_r(solution_vec, variables)
-            #print(self.node_list)
+            (mat,r) = self.compute_mat_and_r(solution_vec, charges, variables)
             #            print("--------- mat ----------")
+            #print(self.node_list)
             #print(mat)
-             #print(r)
-
+            #print(r)
             solution_vec_n = np.linalg.solve(mat, r)
 #            pp.pprint(("Solution", solution_vec_n))
             if solution_vec is not None:
@@ -728,96 +775,3 @@ class Analysis:
         self.r = r
         self.solution_vec = solution_vec
         return Result(self.netw, self, iterations, self.solution_vec)
-
-
-def symadd(l):
-    """convert a list of sympy expressions into a sympy sum"""
-    if not l:
-        return sp.sympify(0)
-    res = None
-    for x in l:
-        if res :
-            res = sp.Add(res, x)
-        else:
-            res = x
-    return res
-
-def sym_analyze(net):
-    nodes = compute_nodes(net)
-    nnodes = len(nodes)
-
-
-    voltages = []
-    for comp in net.components.values():
-        if isinstance(comp, Voltage):
-            voltages.append(comp)
-
-    def voltage_index(voltage):
-        return voltages.index(voltage) + nnodes
-
-
-    def p_2_n_index(port):
-        for i in range(nnodes):
-            if port in nodes[i].ports:
-                return i
-        raise Exception("BUG")
-
-    # kirchhoff for all nodes
-    volts = []
-    for node in nodes:
-        sy = sp.symbols(node.name)
-        volts.append(sy)
-
-    for voltage in voltages:
-        sy = sp.symbols(voltage.name)
-        volts.append(sy)
-
-
-    equations = []
-    # ground is zero
-    equations.append(volts[0])
-
-    for vol in voltages:
-        k = voltage_index(vol)
-        p1 = vol.p
-        p2 = vol.n
-        n1 = p_2_n_index(p1)
-        n2 = p_2_n_index(p2)
-        equations.append(volts[n1] - volts[n2] - vol.volts)
-
-    for i in range(1,nnodes):
-        node = nodes[i]
-        summand_list = []
-        for port in node.ports:
-            comp = port.component
-            if isinstance(comp, Node):
-                pass
-            elif isinstance(comp, Current):
-                if comp.p == port:
-                    I = - comp.amp
-                else:
-                    I = comp.amp
-                summand_list.append(sp.sympify(I))
-            elif isinstance(comp, Resistor):
-                o = comp.ohm
-                if port == comp.p:
-                    op = comp.n
-                else:
-                    op = comp.p
-
-                oi = p_2_n_index(op)
-                summand_list.append((volts[i] - volts[oi]) / sp.sympify(o))
-            elif isinstance(comp, Voltage):
-                if port == comp.p:
-                    ss = -1
-                else:
-                    ss = 1
-                k = voltage_index(comp)
-
-                summand_list.append(sp.Mul(volts[k],ss))
-            else:
-                raise Exception("unknown component type of {0}".format(comp))
-        equations.append(symadd(summand_list))
-    print(equations)
-    a = sp.solvers.nsolve(equations, volts, [0]* nnodes)
-    print(a)

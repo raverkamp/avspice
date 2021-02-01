@@ -170,6 +170,35 @@ def emitter(args):
     a2.plot(x,z, color="blue")
     print(z)
     plt.show()
+
+def capa(args):
+    net = Network()
+    vc = net.addV("vc", 2)
+    r = net.addR("r", 1e4)
+    c = net.addCapa("ca", 100e-6)
+    connect(vc.p, c.p)
+    connect(c.n, r.p)
+    connect(r.n, vc.n)
+    connect(vc.n, net.ground)
+    ana = Analysis(net)
+    ch = 0
+
+    xs = []
+    ys = []
+    s = 0.2
+    x = 0
+    while x < 10:
+        res = ana.analyze(maxit=30, charges={"ca": ch })
+        ica = res.get_current(c.p)
+        ch += s * ica
+        x += s
+        xs.append(x)
+        ys.append(ch)
+    fig, (a1,a2) = plt.subplots(2)
+    a1.plot(xs,ys, color="blue")
+    plt.show()
+
+
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
@@ -182,6 +211,8 @@ def main():
         plot4(args)
     elif cmd == "e":
         emitter(args)
+    elif cmd == "c":
+        capa(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
