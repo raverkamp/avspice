@@ -61,6 +61,22 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_current("r1.p"), 1)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
 
+    def test_current_simple2(self):
+        #parallel current source
+        net = Network()
+        r1 = net.addR("r1", 20)
+        c1 = net.addC("c1", 1)
+        c2 = net.addC("c2", 2)
+        connect(c1.p, c2.p)
+        connect(c1.n, c2.n)
+        connect(c1.p, r1.p)
+        connect(r1.n, c1.n)
+        connect(r1.n, net.ground)
+        analy = Analysis(net)
+        res = analy.analyze()
+        self.assertAlmostEqual(res.get_current("r1.p"), 3)
+        self.assertAlmostEqual(res.get_voltage("r1.p"), 60)
+
     # voltage and resistor
     def test_voltage_simple(self):
         net = Network()
@@ -212,6 +228,31 @@ class TestTransistor(unittest.TestCase):
         ana = Analysis(net)
         res = ana.analyze()
         self.assertAlmostEqual(res.get_current(t1.B),0.02)
+
+    def test_trans2(self):
+        net = Network()
+        vc = net.addV("vc",Variable("vc"))
+        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        t1 = net.addComp("T1", tt)
+        rc = net.addR("rc", 10)
+        rb = net.addR("rb", 10e3)
+        connect(vc.p, rc.p)
+        connect(vc.p, rb.p)
+        connect(vc.n, net.ground)
+        connect(rc.n, t1.C)
+        connect(rb.n, t1.B)
+        connect(t1.E, net.ground)
+        ana = Analysis(net)
+        sol = None
+        for x in [0.01, 0.1, 0.2, 0.3, 0.5,1,2,3,5]:
+            res = ana.analyze(start_solution_vec = sol, variables={"vc":x})
+            sol = res.solution_vec
+        # die Konstante habe ich mir ausgeben lassen
+        self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
+        self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
+        
+        
+        
 
 if __name__ == '__main__':
     unittest.main()
