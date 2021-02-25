@@ -5,18 +5,18 @@ import pprint as pp
 import numbers
 import numpy as np
 
-def explin(x, cutoff):
+def explin(x: float, cutoff: float):
     if x < cutoff:
         return math.exp(x)
     return math.exp(cutoff) +  (x-cutoff) * math.exp(cutoff)
 
-def dexplin(x, cutoff):
+def dexplin(x:float, cutoff:float):
     if x < cutoff:
         return math.exp(x)
     return math.exp(cutoff)
 
 def reldiff(x,y):
-    return abs(x-y) /  min(abs(x), abs(y))
+    return abs(x-y) /  max(abs(x), abs(y))
 
 class Variable:
     """a variable"""
@@ -40,14 +40,14 @@ class Component:
                 return p
         raise Exception("Component {0} does not have port {1}".format(self.name, name))
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         raise NotImplementedError("ports method not implemented")
 
 
 class Port:
     """ components are connected via their ports"""
 
-    def __init__(self, component, name):
+    def __init__(self, component:Component, name:str):
         self.component = component
         self.name = name
 
@@ -62,7 +62,7 @@ class Port:
 class Node2(Component):
     """a component with just two ports"""
 
-    def __init__(self, parent, name):
+    def __init__(self, parent: 'Network', name:str):
         super().__init__(parent, name)
         self.p = Port(self, "p")
         self.n = Port(self, "n")
@@ -70,8 +70,8 @@ class Node2(Component):
     def ports(self):
         return [self.p, self.n]
 
-    def get_currents(self, v):
-        raise NotImplementedError("ports method not implemented")
+    def get_currents(self, v, variables):
+        raise NotImplementedError("get_currents method not implemented")
 
 
 
@@ -87,7 +87,7 @@ class Node(Component):
     def __repr__(self):
         return "<Node {0}>".format(self.name)
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         return {}
 
 
@@ -95,14 +95,24 @@ class Resistor(Node2):
     """resistor"""
     def __init__(self, parent, name, ohm):
         super().__init__(parent, name)
-        self.ohm = ohm
+        self._ohm = ohm
+
+    def get_ohm(self, variables):
+        if isinstance(self._ohm, numbers.Number):
+            return self._ohm
+        if isinstance(self._ohm, Variable):
+            v = variables.get(self._ohm.name, None)
+            if v is None:
+                raise Exception("did not find value for var {0}".format(self._ohm.name))
+            return v
+        raise Exception("bug")
 
     def __repr__(self):
         return "<Resistor {0}>".format(self.name)
 
-    def get_currents(self, v):
+    def get_currents(self, v,variables):
         vd = v[self.p] - v[self.n]
-        i = vd / self.ohm
+        i = vd / self.get_ohm(variables)
         return { self.p: i, self.n : -i}
 
 class Current(Node2):
@@ -114,14 +124,14 @@ class Current(Node2):
     def __repr__(self):
         return "<Current {0}>".format(self.name)
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         return {self.p: -self.amp, self.n: self.amp}
 
 
 
 class Voltage(Node2):
     """current source"""
-    def __init__(self, parent, name, volts):
+    def __init__(self, parent, name:str, volts:float):
         super().__init__(parent, name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self.volts = volts
@@ -139,7 +149,7 @@ class Voltage(Node2):
     def __repr__(self):
         return "<Voltage {0}>".format(self.name)
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         return {}
 
 class Diode(Node2):
@@ -171,7 +181,7 @@ class Diode(Node2):
     def __repr__(self):
         return "<Diode {0}>".format(self.name)
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         vd = v[self.p] - v[self.n]
         i = self.current(vd)
         return { self.p: i, self.n : -i}
@@ -183,7 +193,7 @@ class Capacitor(Node2):
         super().__init__(parent, name)
         self.capa = capa
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         return {}
 
 
@@ -207,7 +217,8 @@ class NPNTransistor(Component):
 
     """
 
-    def __init__(self, parent, name, IS, VT, beta_F, beta_R, cutoff=40):
+    def __init__(self, parent: 'Network', name:str, IS:float, VT:float, beta_F:float, beta_R:float,
+                 cutoff:float =40):
         super().__init__(parent, name)
         self.IS = IS
         self.VT = VT
@@ -271,7 +282,7 @@ class NPNTransistor(Component):
     def d_IE_vbc(self, vbc):
         return self.IS * self.d_t1_vbc(vbc)
 
-    def get_currents(self, v):
+    def get_currents(self, v, variables):
         vbc = v[self.B] - v[self.C]
         vbe = v[self.B] - v[self.E]
         return { self.B: self.IB(vbe, vbc),  self.E: -self.IE(vbe, vbc), self.C: self.IC(vbe, vbc)}
@@ -287,7 +298,7 @@ class Network:
         self.ground = Node(self, "ground")
         self.components = { self.ground.name : self.ground}
 
-    def addR(self, name, ohm):
+    def addR(self, name:str, ohm:float):
         """ add a resistor """
         if name in self.components:
             raise Exception("Name {0} already exists".format(name))
@@ -431,18 +442,18 @@ def compute_nodes(nw):
             allports.add(port)
 
     ## adjancency
-    adj = dict()
+    adj:str = dict()
     adj[nw.ground.port] = []
+
     def add(p1, p2):
         if p1 in adj:
-            l = adj[p1]
-            l.append(p2)
+            adj[p1].append(p2)
         else:
             adj[p1] = [p2]
 
-    for (p1, p2) in nw.connections:
-        add(p1, p2)
-        add(p2, p1)
+    for (x, y) in nw.connections:
+        add(x, y)
+        add(y, x)
 
     done = set()
     nodes = []
@@ -477,7 +488,7 @@ def compute_nodes(nw):
 
 class Result:
     """result of an analysis run"""
-    def __init__(self, network, analysis, iterations, solution_vec):
+    def __init__(self, network, analysis, iterations, solution_vec, variables):
         self.analysis = analysis
         self.network = network
         self.solution_vec = solution_vec
@@ -493,7 +504,7 @@ class Result:
             for port in c.ports():
                 k = self.analysis.port_index(port)
                 self.voltages[port] = solution_vec[k]
-            d = c.get_currents(self.voltages)
+            d = c.get_currents(self.voltages, variables)
             self.currents.update(d)
 
     def __repr__(self):
@@ -502,6 +513,14 @@ class Result:
     def get_voltage(self, name_or_object):
         c = self._port(name_or_object)
         return self.voltages[c]
+
+    def get_avoltage(self, name_or_object):
+        c = None
+        if isinstance(name_or_object, str):
+            c = self.network.get_object(name_or_object)
+        if not isinstance(c, Node2):
+            raise Exception("{0} is not a Node2 or name for one".format(name_or_object))
+        return self.voltages[c.p] - self.voltages[c.n]
 
     def _port(self, name_or_comp):
         c = None
@@ -570,7 +589,7 @@ class Analysis:
         return solution_vec[k]
 
 
-    def process_diode(self, k, comp, port, mat, r, solution_vec):
+    def process_diode(self, comp, mat, r, solution_vec):
         if solution_vec is None:
             dv0 = comp.volt_amp(1)
         else:
@@ -585,22 +604,22 @@ class Analysis:
         dId = comp.diff_conductance(dv0)
 
         #I(dv) = I(v0) + dI(v0) * (dv- dv0)
-        if port == comp.p:
-            # current leaves node
-            r[k] += Id
-            r[k] -=  dId * dv0
-            mat[k][self.port_index(comp.n)] += dId
-            mat[k][k] -= dId
-        elif port == comp.n:
-            # current enters node
-            r[k] -= Id
-            r[k] +=  dId * dv0
-            mat[k][self.port_index(comp.p)] += dId
-            mat[k][k] -= dId
+        k = self.port_index(comp.p) #if port == comp.p:
+        # current leaves node
+        r[k] += Id
+        r[k] -=  dId * dv0
+        mat[k][self.port_index(comp.n)] += dId
+        mat[k][k] -= dId
+        k = self.port_index(comp.n)
+        # current enters node
+        r[k] -= Id
+        r[k] +=  dId * dv0
+        mat[k][self.port_index(comp.p)] += dId
+        mat[k][k] -= dId
 
-    def process_npn_transistor(self, tra, port, mat, r, solution_vec):
-        if port != tra.B:
-            return
+    def process_npn_transistor(self, tra, mat, r, solution_vec):
+        #if port != tra.B:
+        #    return
         #        print("-------------------------------------------------------")
         if solution_vec is None:
             vbe0 = 0 #   0.2
@@ -652,30 +671,58 @@ class Analysis:
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
-    def compute_mat_and_r(self, solution_vec, charges, variables):
-        charges = charges or {}
+    def process_voltage(self, vol, mat, r, solution_vec, variables):
+        k = self.voltage_index(vol)
+        mat[k][self.port_index(vol.p)] = 1
+        mat[k][self.port_index(vol.n)] = -1
+        mat[self.port_index(vol.p)][k] = 1
+        mat[self.port_index(vol.n)][k] = -1
+        
+        r[k] = vol.voltage(variables)
+
+    def process_current_source(self, cs, mat, r, solution_vec, variables):
+        r[self.port_index(cs.p)] -= cs.amp
+        r[self.port_index(cs.n)] += cs.amp
+
+    def process_resistor(self, resi, mat, r, soution_vec, variables):
+          # I = (Vp - Vn) * G
+        G = 1/ resi.get_ohm(variables)
+        pk = self.port_index(resi.p)
+        nk = self.port_index(resi.n)
+        mat[pk][pk] -= G
+        mat[pk][nk] += G
+        mat[nk][pk] += G
+        mat[nk][nk] -= G
+        
+    def compute_mat_and_r(self, solution_vec, capa_voltages, variables):
+        capa_voltages = capa_voltages or {}
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         mat = np.zeros((n,n))
         r = np.zeros(n)
-        # ground voltage is fixed to 0
-        k  = self.node_index(self.ground)
-        mat[k][k] = 1
-        r[k] = 0
 
-         # equations for voltage sources
-        for vol in self.voltage_list:
-            k = self.voltage_index(vol)
-            mat[k][self.port_index(vol.p)] = 1
-            mat[k][self.port_index(vol.n)] = -1
-            r[k] = vol.voltage(variables)
-
+        for comp in self.netw.components.values():
+            print(("comp", comp))
+            if isinstance(comp, Node):
+                pass
+            elif isinstance(comp, Voltage):
+                self.process_voltage(comp, mat, r, solution_vec, variables)
+            elif isinstance(comp, Current):
+                self.process_current_source(comp, mat, r, solution_vec, variables)
+            elif isinstance(comp, Resistor):
+                self.process_resistor(comp, mat, r, solution_vec, variables)
+            elif isinstance(comp, Diode):
+                self.process_diode(comp, mat, r, solution_vec)
+            elif isinstance(comp, NPNTransistor):
+                self.process_npn_transistor(comp, mat, r, solution_vec)
+            else:
+                raise Exception("unknown component type of {0}".format(comp))
+            
         for c in self.capa_list:
             k = self.capa_index(c)
             mat[self.port_index(c.p)][k] = 1
             mat[self.port_index(c.n)] [k] = -1
-            if c.name in charges:
-                charge = charges[c.name]
-                v = charge/c.capa
+            if c.name in capa_voltages:
+                v = capa_voltages[c.name]
                 mat[k][self.port_index(c.p)] = 1
                 mat[k][self.port_index(c.n)] = -1
                 r[k] = v
@@ -683,52 +730,53 @@ class Analysis:
                 mat[k][k] = 1
                 r[k] = 0
 
-        for node in self.node_list:
+        # for each node we create a row with a equation
+        """for node in self.node_list:
             if node == self.ground:
                 continue
             k = self.node_index(node)
             I = 0
-            GG = 0
             for port in self.node_ports(node):
                 comp = port.component
                 if isinstance(comp, Node):
                     pass
                 elif isinstance(comp, Current):
-
-                    if comp.p == port:
-                        # current enters node
-                        I = I - comp.amp
-                    else:
-                        # current leaves node
-                        I = I + comp.amp
+                    pass
                 elif isinstance(comp, Resistor):
+                    pass
                     # I = (Vp - Vn) * G
-                    G = 1/ comp.ohm
+                    #G = 1/ comp.get_ohm(variables)
 
-                    if port == comp.p:
-                        op = comp.n
-                    else:
-                        op = comp.p
-                    oi = self.port_index(op)
-                    mat[k][oi] += G
-                    mat[k][k] -= G
+                    #if port == comp.p:
+                    #    op = comp.n
+                    #else:
+                    #    op = comp.p
+                    #oi = self.port_index(op)
+                    #mat[k][oi] += G
+                    #mat[k][k] -= G
                 elif isinstance(comp, Voltage):
-                    kv = self.voltage_index(comp)
-                    if port == comp.p:
+                    pass
+                    #kv = self.voltage_index(comp)
+                    #if port == comp.p:
                         # current enters node
-                        mat[k][kv] = 1
-                    else:
-                        mat[k][kv] = -1
+                    #    mat[k][kv] = 1
+                    #else:
+                     #   mat[k][kv] = -1
                 elif isinstance(comp, Capacitor):
                     pass
                 elif isinstance(comp, Diode):
-                    self.process_diode(k, comp, port, mat, r, solution_vec)
+                    pass #self.process_diode(k, comp, port, mat, r, solution_vec)
                 elif isinstance(comp, NPNTransistor):
-                    self.process_npn_transistor(comp, port, mat, r, solution_vec)
+                    pass #self.process_npn_transistor(comp, port, mat, r, solution_vec)
                 else:
                     raise Exception("unknown component type of {0}".format(comp))
-            mat[k][k] += GG
-            r[k] += I
+            r[k] += I"""
+        # we do not need the equation for ground, use this equation to fix voltage
+        # ground voltage is fixed to 0
+        k  = self.node_index(self.ground)
+        mat[k] = np.zeros(n)
+        mat[k][k] = 1
+        r[k] = 0
         return (mat,r)
 
     def analyze(self,
@@ -737,41 +785,47 @@ class Analysis:
                 abstol= 1e-8,
                 reltol= 1e-6,
                 variables=None,
-                charges=None):
+                capa_voltages=None,
+                alpha = 1):
         if variables is None:
             variables = dict()
 
         solution_vec = start_solution_vec
 
-        for i in range(10000):
+        i = 0
+        while True:
             if i >=maxit:
                 for node in self.node_list:
                     i = self.node_index(node)
                     pp.pprint((i, node))#, self.solution_vec[i]))
-                print(mat)
-                print(r)
+                #print(mat)
+                #print(r)
+                print("no convergence {0} {1}".format(maxit, alpha))
                 return "no_convergence"
-
-            (mat,r) = self.compute_mat_and_r(solution_vec, charges, variables)
-            #            print("--------- mat ----------")
-            #print(self.node_list)
-            #print(mat)
-            #print(r)
+            i += 1
+            (mat,r) = self.compute_mat_and_r(solution_vec, capa_voltages, variables)
+            print("--------- mat ----------")
+            print(self.node_list)
+            print(mat)
+            print(r)
             solution_vec_n = np.linalg.solve(mat, r)
 #            pp.pprint(("Solution", solution_vec_n))
             if solution_vec is not None:
                 close_enough = True
-                for j in range(len(solution_vec)):
+                for j in range(solution_vec.size):
                     x = solution_vec[j]
                     y = solution_vec_n[j]
-                    if abs(x-y) > abstol and reldiff(x,y) > reltol:
+                    if not (abs(x-y) < abstol  or reldiff(x,y) < reltol ):
                         close_enough = False
                 if close_enough:
                     iterations = i
                     break
-            solution_vec = solution_vec_n
+            if solution_vec is None:
+                solution_vec = solution_vec_n
+            else:
+                solution_vec = solution_vec_n * alpha + (1- alpha) * solution_vec
 
         self.mat = mat
         self.r = r
         self.solution_vec = solution_vec
-        return Result(self.netw, self, iterations, self.solution_vec)
+        return Result(self.netw, self, iterations, self.solution_vec, variables)
