@@ -693,6 +693,20 @@ class Analysis:
         mat[pk][nk] += G
         mat[nk][pk] += G
         mat[nk][nk] -= G
+
+    def process_capacitor(self, c, mat, r, capa_voltages):
+        k = self.capa_index(c)
+        mat[self.port_index(c.p)][k] = 1
+        mat[self.port_index(c.n)] [k] = -1
+        if c.name in capa_voltages:
+            v = capa_voltages[c.name]
+            mat[k][self.port_index(c.p)] = 1
+            mat[k][self.port_index(c.n)] = -1
+            r[k] = v
+        else:
+            mat[k][k] = 1
+            r[k] = 0
+
         
     def compute_mat_and_r(self, solution_vec, capa_voltages, variables):
         capa_voltages = capa_voltages or {}
@@ -701,7 +715,7 @@ class Analysis:
         r = np.zeros(n)
 
         for comp in self.netw.components.values():
-            print(("comp", comp))
+
             if isinstance(comp, Node):
                 pass
             elif isinstance(comp, Voltage):
@@ -714,63 +728,11 @@ class Analysis:
                 self.process_diode(comp, mat, r, solution_vec)
             elif isinstance(comp, NPNTransistor):
                 self.process_npn_transistor(comp, mat, r, solution_vec)
+            elif isinstance(comp, Capacitor):
+                self.process_capacitor(comp, mat, r, capa_voltages)
             else:
                 raise Exception("unknown component type of {0}".format(comp))
-            
-        for c in self.capa_list:
-            k = self.capa_index(c)
-            mat[self.port_index(c.p)][k] = 1
-            mat[self.port_index(c.n)] [k] = -1
-            if c.name in capa_voltages:
-                v = capa_voltages[c.name]
-                mat[k][self.port_index(c.p)] = 1
-                mat[k][self.port_index(c.n)] = -1
-                r[k] = v
-            else:
-                mat[k][k] = 1
-                r[k] = 0
-
-        # for each node we create a row with a equation
-        """for node in self.node_list:
-            if node == self.ground:
-                continue
-            k = self.node_index(node)
-            I = 0
-            for port in self.node_ports(node):
-                comp = port.component
-                if isinstance(comp, Node):
-                    pass
-                elif isinstance(comp, Current):
-                    pass
-                elif isinstance(comp, Resistor):
-                    pass
-                    # I = (Vp - Vn) * G
-                    #G = 1/ comp.get_ohm(variables)
-
-                    #if port == comp.p:
-                    #    op = comp.n
-                    #else:
-                    #    op = comp.p
-                    #oi = self.port_index(op)
-                    #mat[k][oi] += G
-                    #mat[k][k] -= G
-                elif isinstance(comp, Voltage):
-                    pass
-                    #kv = self.voltage_index(comp)
-                    #if port == comp.p:
-                        # current enters node
-                    #    mat[k][kv] = 1
-                    #else:
-                     #   mat[k][kv] = -1
-                elif isinstance(comp, Capacitor):
-                    pass
-                elif isinstance(comp, Diode):
-                    pass #self.process_diode(k, comp, port, mat, r, solution_vec)
-                elif isinstance(comp, NPNTransistor):
-                    pass #self.process_npn_transistor(comp, port, mat, r, solution_vec)
-                else:
-                    raise Exception("unknown component type of {0}".format(comp))
-            r[k] += I"""
+       
         # we do not need the equation for ground, use this equation to fix voltage
         # ground voltage is fixed to 0
         k  = self.node_index(self.ground)
@@ -804,10 +766,10 @@ class Analysis:
                 return "no_convergence"
             i += 1
             (mat,r) = self.compute_mat_and_r(solution_vec, capa_voltages, variables)
-            print("--------- mat ----------")
-            print(self.node_list)
-            print(mat)
-            print(r)
+            #print("--------- mat ----------")
+            #print(self.node_list)
+            #print(mat)
+            #print(r)
             solution_vec_n = np.linalg.solve(mat, r)
 #            pp.pprint(("Solution", solution_vec_n))
             if solution_vec is not None:
