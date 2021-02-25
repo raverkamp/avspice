@@ -3,42 +3,34 @@ import matplotlib.pyplot as plt
 from spice import *
 import argparse
 import sys
+from util import *
 
+import math
 
-def getargs():
-    args = sys.argv
-    if len(args) < 2:
-        raise Exception("Expecting at least one argument")
-    return (args[1], args[2:])
-
-
-def drange(start, end, step=None):
-    x = float(start)
-    if step is None:
-        s = 1.0
-    else:
-        s = step
-    s = float(s)
-    if s <=0:
-        raise Exception("step <=0")
-    while x < end:
-        yield x
-        x += s
-    if x < end + s/2.0:
-        yield end
 
 def plot1(args):
+    # das passt alles nicht
     t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-    vb = 0.5
-    ve = 0.02
-    x = list(drange(-3, 3, 0.1))
-    ie = [t.IE(vb-ve, vb-vc) for vc in x]
-    ib = [t.IB(vb-ve, vb-vc) for vc in x]
+    vbl = [0, 0.1, 0.2, 0.3,0.4]
+    k = math.ceil(math.sqrt(len(vbl)))
+    (f,plts) = plt.subplots(k,k)
+    ve = 0
+    x = list(drange(0, 3, 0.1))
+    i = 0
+    for vb in vbl:
+        ax = plts[i//k][i%k]
+        ie = [t.IE(vb-ve, vb-vc) for vc in x]
+        ib = [t.IB(vb-ve, vb-vc) for vc in x]
+        te = "npn transistor, vb={0}, ve={1}".format(vb, ve)
+        ax.set_title(te)
+        ax.set_ylabel("current")
+        ax.set_xlabel("vc")
+        ax.plot(x,ie, label="ie")
+        ax.plot(x,ib, label="ib")
+        ax.legend()
+        i+=1
 
-    fig, ax = plt.subplots()  # Create a figure containing a single axes.
     plt.ion()
-    plt.plot(x,ie)
-    plt.plot(x,ib)
     plt.show()
     input()
 
@@ -121,6 +113,49 @@ def plot4(args):
     plt.show()
     #input()
 
+def plot5(args):
+    x = list(drange(-2, 10, 0.01))
+    y = []
+    z = []
+    sol = None
+    iy = []
+
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net = Network()
+    vc = net.addV("vc", 5)
+    rc = net.addR("rc", 1e9)
+    rb = net.addR("rb", Variable("rb"))
+    t1 = net.addComp("T1", tt)
+    connect(vc.p, rc.p)
+    connect(rc.n, t1.C)
+    connect(vc.p, rb.p)
+    connect(rb.n, t1.B)
+    connect(vc.n, net.ground)
+    connect(t1.E, net.ground)
+
+    ana = Analysis(net)
+    sol = None
+    lrb = []
+    lvb = []
+    for vrb in drange(1e3,1e6,1000):
+        res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"rb": vrb})
+        if isinstance(res, str):
+            print("no covergence at: {0}".format(v))
+            y.append(None)
+            z.append(None)
+            iy.append(None)
+            sol = None
+        else:
+            lrb.append(vrb)
+            lvb.append(res.get_voltage (t1.B))
+            sol = res.solution_vec
+    fig, (ax1,ax2) = plt.subplots(2)
+    ax1.plot(lrb,lvb,color="black")
+    fig.tight_layout()
+    plt.show()
+    #input()
+
+
 def emitter(args):
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     nw = Network()
@@ -129,7 +164,7 @@ def emitter(args):
     r1 = net.addR("r1", 2000)
     r2 = net.addR("r2", 2000)
 
-    
+
     vb = net.addV("vb", Variable("vb"))
     rc = net.addR("rc", 1e3)
     rb = net.addR("rb", 1e5)
@@ -149,7 +184,7 @@ def emitter(args):
     connect(vb.n, net.ground)
     connect(rb.n, t1.B)
 
-    
+
     y = []
     z = []
     ana = Analysis(net)
@@ -185,6 +220,8 @@ def capa(args):
 
     xs = []
     ys = []
+    vcp = []
+    vcn = []
     s = 0.2
     x = 0
     while x < 10:
@@ -194,9 +231,154 @@ def capa(args):
         x += s
         xs.append(x)
         ys.append(ch)
+        vcp.append(res.get_voltage("ca.p"))
+        vcn.append(res.get_voltage("ca.n"))
     fig, (a1,a2) = plt.subplots(2)
+    a1.set_title("charge")
     a1.plot(xs,ys, color="blue")
+    a2.set_title("voltage1 ,vcp blue, vcn red")
+    a2.plot(xs, vcp, color="blue")
+    a2.plot(xs, vcn, color="red")
     plt.show()
+
+def create_blinker():
+    # https://www.elektronik-labor.de/Lernpakete/Blinker.html
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net = Network()
+    vc = net.addV("vc",  Variable("vc")) #?
+    d1 = net.addD("d1", 1e-8, 25e-3)
+    r1 = net.addR("r1", 2.7e3)
+    r2 = net.addR("r2", 27e3)
+    r3 = net.addR("r3", 1e3)
+
+    rt2e = net.addR("rt2e", Variable("rt2e"))
+    ca = net.addCapa("ca", 10e-6)
+  #  ca = net.addR("ca", 1e-1)
+    t1 = net.addComp("t1",tt)
+    t2 = net.addComp("t2",tt)
+    connect(vc.p, r2.p)
+    connect(vc.p, d1.p)
+
+    connect(r2.n, t1.C)
+    connect(r2.n, r1.p)
+    connect(r2.n, t2.B)
+
+    connect(r1.n, ca.p)
+    connect(r1.n, t1.B)
+
+    connect(d1.n, r3.p)
+    connect(r3.n, ca.n)
+    connect(r3.n, t2.C)
+
+    connect(t1.E, vc.n)
+    connect(t2.E, rt2e.p)
+    connect(rt2e.n,vc.n)
+
+    connect(vc.n, net.ground)
+    return net
+
+def blinker(args):
+    net = create_blinker()
+    ana = Analysis(net)
+
+    base_vca = -5 # -8.20
+
+    sol = None
+    for x in [0.001, 0.01, 0.1,0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1,2,4,9]:
+        #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
+        res = ana.analyze(maxit=50, start_solution_vec=sol,
+                          capa_voltages={"ca": base_vca},
+                          variables={"vc": x, "rt2e": 0.001})
+        print(x,res)
+        sol = res.solution_vec
+    print("---------------------------------------------------")
+    ch = 0
+
+    xs = []
+    ca_v = []
+
+    t1b_v = []
+    t2c = []
+    t1c = []
+    t1b = []
+    it1b = []
+    t2e = []
+    it1c = []
+    it2c = []
+    it2b = []
+    itd  = []
+    iters = []
+    s = 0.001
+    x = 0
+    v_ca = base_vca
+    switched = False
+    while x < 1:
+        ok = False
+        try:
+            res = ana.analyze(maxit=100, start_solution_vec=sol,
+                              capa_voltages={"ca": v_ca },
+                              variables={"vc": 9, "rt2e": 0.001})
+        except e:
+            print(e)
+            break
+        if isinstance(res,str):
+            print(x, res)
+            break
+        ca_cu = res.get_current("ca.p")
+
+        capa = net.get_object("ca").capa
+        vca_new = v_ca + s*ca_cu/capa
+        print(("OK", x, ca_cu,v_ca, vca_new))
+        v_ca = vca_new
+        if not switched and x > 0.0604:
+            s= s/100
+            switched = True
+        xs.append(x)
+
+        ca_v.append(v_ca)
+        t1b_v.append(res.get_voltage("t1.B"))
+        t2c.append(res.get_voltage("t2.C"))
+        t1c.append(res.get_voltage("t1.C"))
+        t1b.append(res.get_voltage("t1.B"))
+        t2e.append(res.get_voltage("t2.E"))
+        it2c.append(res.get_current("t2.C"))
+        it2b.append(res.get_current("t2.B"))
+        it1b.append(res.get_current("t1.B"))
+        iters.append(res.iterations)
+        itd.append(res.get_current("d1.p"))
+        #   print((x, res.iterations, ch, ica))
+        sol = res.solution_vec
+
+        x += s
+    fig, ((a1,a2, a3), (a4, a5, a6)) = plt.subplots(2,3)
+
+    a1.set_title("current d1, current t1b")
+    a1.plot(xs, itd)
+    a1.plot(xs, it1b)
+
+    a2.set_title("capa voltage=blue and t1.B voltage=red")
+    a2.plot(xs, ca_v, color="blue")
+    a2.plot(xs, t1b_v, color ="red")
+
+    a3.plot(xs, t2c, color ="blue")
+    a3.plot(xs, t1c, color ="green")
+    a3.plot(xs, t1b, color ="red")
+    a3.plot(xs, t2e, color ="pink")
+    a3.set_title("T2 C voltage blue T1 C voltage green, t1b red, t1e pink")
+
+    a4.plot(xs, it2c)
+    a4.set_title("it2c")
+
+    a5.plot(xs, it2b)
+    a5.set_title("it2b")
+
+    a6.set_title("iterations")
+    a6.plot(xs, iters)
+
+
+    plt.show()
+
+
 
 
 def main():
@@ -209,10 +391,14 @@ def main():
         plot3(args)
     elif cmd == "4":
         plot4(args)
+    elif cmd == "5":
+        plot5(args)
     elif cmd == "e":
         emitter(args)
     elif cmd == "c":
         capa(args)
+    elif cmd == "b":
+        blinker(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
