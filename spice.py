@@ -40,6 +40,19 @@ class Component:
                 return p
         raise Exception("Component {0} does not have port {1}".format(self.name, name))
 
+    def get_val(self, var_or_num, variables):
+        if isinstance(var_or_num, numbers.Number):
+            return var_or_num
+        if isinstance(var_or_num, Variable):
+            val = variables.get(var_or_num.name, None)
+            if val is None:
+                if var_or_num.default is None:
+                    raise Exception("did not find value for var {0} in {1}"
+                                    .format(var_or_num.name, self.name))
+                return var_or_num.default
+            return val
+        raise Exception("bug")
+
     def get_currents(self, v, variables):
         raise NotImplementedError("ports method not implemented")
 
@@ -98,14 +111,7 @@ class Resistor(Node2):
         self._ohm = ohm
 
     def get_ohm(self, variables):
-        if isinstance(self._ohm, numbers.Number):
-            return self._ohm
-        if isinstance(self._ohm, Variable):
-            v = variables.get(self._ohm.name, None)
-            if v is None:
-                raise Exception("did not find value for var {0}".format(self._ohm.name))
-            return v
-        raise Exception("bug")
+        return self.get_val(self._ohm, variables)
 
     def __repr__(self):
         return "<Resistor {0}>".format(self.name)
@@ -127,7 +133,8 @@ class Current(Node2):
     def get_currents(self, v, variables):
         return {self.p: -self.amp, self.n: self.amp}
 
-
+    def get_amp(self, variables):
+        return self.get_val(self.amp, variables)
 
 class Voltage(Node2):
     """current source"""
@@ -137,14 +144,7 @@ class Voltage(Node2):
         self.volts = volts
 
     def voltage(self, variables):
-        if isinstance(self.volts, numbers.Number):
-            return self.volts
-        if isinstance(self.volts, Variable):
-            v = variables.get(self.volts.name, None)
-            if v is None:
-                raise Exception("did not find value for var {0}".format(self.volts.name))
-            return v
-        raise Exception("bug")
+        return self.get_val(self.volts, variables)
 
     def __repr__(self):
         return "<Voltage {0}>".format(self.name)
@@ -671,20 +671,21 @@ class Analysis:
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
-    def process_voltage(self, vol, mat, r, solution_vec, variables):
+    def process_voltage(self, vol: Voltage, mat, r, variables):
         k = self.voltage_index(vol)
         mat[k][self.port_index(vol.p)] = 1
         mat[k][self.port_index(vol.n)] = -1
         mat[self.port_index(vol.p)][k] = 1
         mat[self.port_index(vol.n)][k] = -1
-        
+
         r[k] = vol.voltage(variables)
 
-    def process_current_source(self, cs, mat, r, solution_vec, variables):
-        r[self.port_index(cs.p)] -= cs.amp
-        r[self.port_index(cs.n)] += cs.amp
+    def process_current_source(self, cs:  Current, mat, r, variables):
+        amp = cs.get_amp(variables)
+        r[self.port_index(cs.p)] -= amp
+        r[self.port_index(cs.n)] += amp
 
-    def process_resistor(self, resi, mat, r, soution_vec, variables):
+    def process_resistor(self, resi: Resistor, mat, r, variables):
           # I = (Vp - Vn) * G
         G = 1/ resi.get_ohm(variables)
         pk = self.port_index(resi.p)
@@ -707,7 +708,7 @@ class Analysis:
             mat[k][k] = 1
             r[k] = 0
 
-        
+
     def compute_mat_and_r(self, solution_vec, capa_voltages, variables):
         capa_voltages = capa_voltages or {}
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
@@ -719,11 +720,11 @@ class Analysis:
             if isinstance(comp, Node):
                 pass
             elif isinstance(comp, Voltage):
-                self.process_voltage(comp, mat, r, solution_vec, variables)
+                self.process_voltage(comp, mat, r, variables)
             elif isinstance(comp, Current):
-                self.process_current_source(comp, mat, r, solution_vec, variables)
+                self.process_current_source(comp, mat, r, variables)
             elif isinstance(comp, Resistor):
-                self.process_resistor(comp, mat, r, solution_vec, variables)
+                self.process_resistor(comp, mat, r, variables)
             elif isinstance(comp, Diode):
                 self.process_diode(comp, mat, r, solution_vec)
             elif isinstance(comp, NPNTransistor):
@@ -732,7 +733,7 @@ class Analysis:
                 self.process_capacitor(comp, mat, r, capa_voltages)
             else:
                 raise Exception("unknown component type of {0}".format(comp))
-       
+
         # we do not need the equation for ground, use this equation to fix voltage
         # ground voltage is fixed to 0
         k  = self.node_index(self.ground)

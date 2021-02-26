@@ -1,13 +1,13 @@
+"""simple unit tests"""
 import unittest
 import pprint as pp
 from math import exp
-
-
 from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable
 
 DIODE = Diode(None, "", 1e-8, 25e-3, 10)
 
 class TestMath(unittest.TestCase):
+    """test of mathematics functions"""
 
     def test_explin(self):
         x = explin(2,3)
@@ -39,6 +39,7 @@ class TestMath(unittest.TestCase):
 
 
 class Test1(unittest.TestCase):
+    """more tests"""
 
     def test_get_object(self):
         net = Network()
@@ -187,10 +188,27 @@ class Test1(unittest.TestCase):
         res = analy.analyze(variables={"v":6})
         self.assertAlmostEqual(res.get_current(r.p), 6/100)
 
+    def test_var2(self):
+        """test default for variable"""
+        net = Network()
+        volt_var = Variable("v", 5)
+        v = net.addV("v1", volt_var)
+        r = net.addR("r2", 100)
+
+        connect(v.p, r.p)
+        connect(v.n, r.n)
+
+        connect(r.n, net.ground)
+        analy = Analysis(net)
+        res = analy.analyze()
+        self.assertAlmostEqual(res.get_current(r.p),5/100)
+        res = analy.analyze(variables={"v":6})
+        self.assertAlmostEqual(res.get_current(r.p), 6/100)
 
 
 
 class TestTransistor(unittest.TestCase):
+    """test for transistor"""
 
     def test_transistor_formulas(self):
         tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
@@ -250,9 +268,7 @@ class TestTransistor(unittest.TestCase):
         # die Konstante habe ich mir ausgeben lassen
         self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
         self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
-        
-        
-        
+
 
 if __name__ == '__main__':
     unittest.main()
