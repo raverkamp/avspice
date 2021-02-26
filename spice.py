@@ -23,6 +23,9 @@ class Variable:
     def __init__(self, name, default=None):
         self.name = name
         self.default = default
+        
+    def __repr__(self):
+        return "<Variable {0}, {1}>".format(self.name, self.default)
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
@@ -48,7 +51,7 @@ class Component:
             if val is None:
                 if var_or_num.default is None:
                     raise Exception("did not find value for var {0} in {1}"
-                                    .format(var_or_num.name, self.name))
+                                    .format(var_or_num, self.name))
                 return var_or_num.default
             return val
         raise Exception("bug")
@@ -383,7 +386,14 @@ class Network:
             return c.get_port(l[1])
         raise Exception("too many components in name {0}".format(name))
 
-
+    def get_capacitors(self):
+        res = []
+        for c in self.components.values():
+            if isinstance(c,Capacitor):
+                res.append(c)
+        return res
+        
+    
 
 
 def connect(p1,p2):

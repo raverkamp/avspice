@@ -247,6 +247,7 @@ def create_blinker():
     net = Network()
     vc = net.addV("vc",  Variable("vc")) #?
     d1 = net.addD("d1", 1e-8, 25e-3)
+    rd= net.addR("rd", Variable("rd",1e3)) # resistor parallel to diode
     r1 = net.addR("r1", 2.7e3)
     r2 = net.addR("r2", 27e3)
     r3 = net.addR("r3", 1e3)
@@ -275,20 +276,64 @@ def create_blinker():
     connect(rt2e.n,vc.n)
 
     connect(vc.n, net.ground)
+
+    connect(d1.p, rd.p)
+    connect(d1.n, rd.n)
+    
     return net
 
+def create_blinker2():
+    """https://www.elektronik-kompendium.de/sites/praxis/bausatz_led-wechselblinker.htm"""
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net = Network()
+    vc = net.addV("vc",  Variable("vc",7)) #?
+    p1 = net.addR("p1", 50e3)
+    d1 = net.addD("d1", 1e-8, 25e-3)
+    d2 = net.addD("d2", 1e-8, 25e-3)
+    r1 = net.addR("r1", 470 + 100)
+    r2 = net.addR("r2", 470)
+    r3 = net.addR("r3", 3.9e3)
+    r4 = net.addR("r4", 3.9e3)
+    c1 = net.addCapa("c1", 47e-6)
+    c2 = net.addCapa("c2", 47e-6)
+    t1 = net.addComp("t1", tt)
+    t2 = net.addComp("t2", tt)
+
+    connect(vc.n, net.ground)
+    connect(vc.p, p1.p)
+    connect(vc.p, d1.p)
+    connect(vc.p, d2.p)
+    connect(p1.n, r3.p)
+    connect(p1.n, r4.p)
+    connect(d1.n, r1.p)
+    connect(d2.n, r2.p)
+    connect(r1.n, c1.p)
+    connect(r2.n, c2.p)
+    connect(r3.n, c1.n)
+    connect(r4.n, c2.n)
+    connect(c1.n, t2.B)
+    connect(c2.n, t1.B)
+    connect(r1.n, t1.C)
+    connect(r2.n, t2.C)
+    connect(t1.E, net.ground)
+    connect(t2.E, net.ground)
+    
+    return net
+    
+    
 def blinker(args):
     net = create_blinker()
     ana = Analysis(net)
+    voltage = 7
 
-    base_vca = -5 # -8.20
+    base_vca = 0
 
     sol = None
-    for x in [0.001, 0.01, 0.1,0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1,2,4,9]:
+    for x in [0.001, 0.01, 0.02,0.05,0.06,0.07, 0.08,  0.1,0.15, 0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
         #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
         res = ana.analyze(maxit=50, start_solution_vec=sol,
                           capa_voltages={"ca": base_vca},
-                          variables={"vc": x, "rt2e": 0.001})
+                          variables={"vc": voltage, "rt2e": 0.001}, energy_factor=x)
         print(x,res)
         sol = res.solution_vec
     print("---------------------------------------------------")
@@ -308,16 +353,16 @@ def blinker(args):
     it2b = []
     itd  = []
     iters = []
-    s = 0.001
+    s = 0.00001
     x = 0
     v_ca = base_vca
-    switched = False
+  
     while x < 1:
         ok = False
         try:
             res = ana.analyze(maxit=100, start_solution_vec=sol,
                               capa_voltages={"ca": v_ca },
-                              variables={"vc": 9, "rt2e": 0.001})
+                              variables={"vc": voltage, "rt2e": 0.001})
         except e:
             print(e)
             break
@@ -330,9 +375,7 @@ def blinker(args):
         vca_new = v_ca + s*ca_cu/capa
         print(("OK", x, ca_cu,v_ca, vca_new))
         v_ca = vca_new
-        if not switched and x > 0.0604:
-            s= s/100
-            switched = True
+       
         xs.append(x)
 
         ca_v.append(v_ca)
@@ -378,8 +421,70 @@ def blinker(args):
 
     plt.show()
 
+def transient(ana, variables, start_sol, limit, step):
+    capas = ana.netw.get_capacitors()
+    capa_voltages = {}
+    for c in capas:
+        capa_voltages[c.name] = 0
+    t = 0
+    ts = []
+    vals = {}
+    sol = start_sol
+    smaller = False
+    while t <limit:
+        ok = False
+        if not smaller and t > 4.4:
+            step = step / 10000
+            smaller = True
+        res = ana.analyze(maxit=100, start_solution_vec=sol,
+                          capa_voltages=capa_voltages,
+                          variables=variables)
+        if isinstance(res,str):
+            print(t, res)
+            break
+        capa_voltages_new = {}
+        for c in capas:
+            ca_cu = res.get_current(c.p)
+            capa_voltages_new[c.name] =  capa_voltages[c.name] + step*ca_cu/c.capa
+        capa_voltages = capa_voltages_new
+        ts.append(t)
+        for port in res.voltages:
+            v_port = res.get_voltage(port)
+            x = "v." + port.pname()
+            if not x in vals:
+                vals[x] = []
+            vals[x].append(v_port)
+        for port in res.currents:
+            c_port = res.get_current(port)
+            x = "c." + port.pname()
+            if not x in vals:
+                vals[x] = []
+            vals[x].append(c_port)
+        
+        t+=step
+    return (ts, vals)
+    
+    
+    
 
-
+def blinker2(args):
+    net = create_blinker2()
+    ana = Analysis(net)
+    sol = None
+    for x in [0.001, 0.01, 0.02,0.05,0.06,0.07, 0.08,  0.1,0.15, 0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
+        #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
+        res = ana.analyze(maxit=50, start_solution_vec=sol,
+                          capa_voltages={},
+                          variables={}, energy_factor=x)
+        #print(x,res)
+        sol = res.solution_vec
+    print("---------------------------------------------------")
+    (t, x) = transient(ana, {}, sol, 4.5, 0.001)
+    (f,(p1, p2, p3)) = plt.subplots(3)
+    #p1.set_titile("volts!")
+    p1.plot(t, x["v.r1.p"], label="v.r1.p")
+    p1.plot(t, x["v.r2.p"], label="v.r2.p")
+    plt.show()
 
 def main():
     (cmd, args) = getargs()
@@ -399,6 +504,8 @@ def main():
         capa(args)
     elif cmd == "b":
         blinker(args)
+    elif cmd == "b2":
+        blinker2(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
