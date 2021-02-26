@@ -553,6 +553,7 @@ class Analysis:
         self.solution_vec = None
         self.node_list = compute_nodes(self.netw)
         self.ground = self.node_list[0]
+        self.energy_factor = 1
 
         for node in self.node_list:
             for port in node.ports:
@@ -678,12 +679,12 @@ class Analysis:
         mat[self.port_index(vol.p)][k] = 1
         mat[self.port_index(vol.n)][k] = -1
 
-        r[k] = vol.voltage(variables)
+        r[k] = vol.voltage(variables) * self.energy_factor
 
     def process_current_source(self, cs:  Current, mat, r, variables):
         amp = cs.get_amp(variables)
-        r[self.port_index(cs.p)] -= amp
-        r[self.port_index(cs.n)] += amp
+        r[self.port_index(cs.p)] -= amp * self.energy_factor
+        r[self.port_index(cs.n)] += amp * self.energy_factor
 
     def process_resistor(self, resi: Resistor, mat, r, variables):
           # I = (Vp - Vn) * G
@@ -700,7 +701,7 @@ class Analysis:
         mat[self.port_index(c.p)][k] = 1
         mat[self.port_index(c.n)] [k] = -1
         if c.name in capa_voltages:
-            v = capa_voltages[c.name]
+            v = capa_voltages[c.name] * self.energy_factor
             mat[k][self.port_index(c.p)] = 1
             mat[k][self.port_index(c.n)] = -1
             r[k] = v
@@ -749,9 +750,11 @@ class Analysis:
                 reltol= 1e-6,
                 variables=None,
                 capa_voltages=None,
-                alpha = 1):
+                alpha = 1,
+                energy_factor =1):
         if variables is None:
             variables = dict()
+        self.energy_factor = energy_factor
 
         solution_vec = start_solution_vec
 

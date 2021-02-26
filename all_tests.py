@@ -269,6 +269,30 @@ class TestTransistor(unittest.TestCase):
         self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
         self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
 
+    def test_trans3(self):
+        # use neenergy_ levels to find solution
+        net = Network()
+        vc = net.addV("vc",Variable("vc", 5))
+        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        t1 = net.addComp("T1", tt)
+        rc = net.addR("rc", 10)
+        rb = net.addR("rb", 10e3)
+        connect(vc.p, rc.p)
+        connect(vc.p, rb.p)
+        connect(vc.n, net.ground)
+        connect(rc.n, t1.C)
+        connect(rb.n, t1.B)
+        connect(t1.E, net.ground)
+        ana = Analysis(net)
+        sol = None
+        for x in [0.01, 0.1, 0.2, 0.3, 0.5]:
+            res = ana.analyze(start_solution_vec = sol, energy_factor=x)
+            sol = res.solution_vec
+        res = ana.analyze(start_solution_vec = sol)
+        # die Konstante habe ich mir ausgeben lassen
+        self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
+        self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
+
 
 if __name__ == '__main__':
     unittest.main()
