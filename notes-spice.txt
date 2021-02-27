@@ -76,4 +76,6 @@ die problematischen capa_voltages eine Lösung. Die sieht aber anders als das
 wo andere Lösungssuche rumsucht.
 
 2021-02-27_13:06
-Weitere versuch verbinde Basen der Transistoren mit Kondensator gegen Ground
+Weitere versuch verbinde Basen der Transistoren mit Kondensator gegen Ground.
+OverflowError: math range error
+
