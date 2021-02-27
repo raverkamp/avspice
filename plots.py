@@ -299,6 +299,20 @@ def create_blinker2():
     t1 = net.addComp("t1", tt)
     t2 = net.addComp("t2", tt)
 
+   
+    cg1 = net.addCapa("cg1", 1e-6)
+    cg2 = net.addCapa("cg2", 1.5e-6)
+
+    connect(cg1.p, t1.B)
+    connect(cg2.p, t2.B)
+    connect(cg1.n, net.ground)
+    connect(cg2.n, net.ground)
+   
+    
+
+    
+    
+    
     connect(vc.n, net.ground)
     connect(vc.p, p1.p)
     connect(vc.p, d1.p)
@@ -432,15 +446,14 @@ def transient(ana, variables, start_sol, limit, step):
     sol = start_sol
     smaller = False
     while t <limit:
+        print(t)
         ok = False
-        if not smaller and t > 4.4:
-            step = step / 10000
-            smaller = True
         res = ana.analyze(maxit=100, start_solution_vec=sol,
                           capa_voltages=capa_voltages,
-                          variables=variables)
+                          variables=variables, alpha=1)
         if isinstance(res,str):
             print(t, res)
+            print(capa_voltages)
             break
         capa_voltages_new = {}
         for c in capas:
@@ -479,13 +492,28 @@ def blinker2(args):
         #print(x,res)
         sol = res.solution_vec
     print("---------------------------------------------------")
-    (t, x) = transient(ana, {}, sol, 4.5, 0.001)
+    (t, x) = transient(ana, {}, sol, 20, 0.001)
     (f,(p1, p2, p3)) = plt.subplots(3)
     #p1.set_titile("volts!")
     p1.plot(t, x["v.r1.p"], label="v.r1.p")
     p1.plot(t, x["v.r2.p"], label="v.r2.p")
     plt.show()
 
+def blinker2b(args):
+    net = create_blinker2()
+    ana = Analysis(net)
+    sol = None
+    capa_voltages = {'c1': 5.626925210387078, 'c2': -0.4547942615309388}
+    for x in [0.001, 0.01, 0.02,0.05,0.06,0.07, 0.08,  0.1,0.15, 0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
+        #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
+        res = ana.analyze(maxit=50, start_solution_vec=sol,
+                          capa_voltages=capa_voltages,
+                          variables={}, energy_factor=x)
+        #print(x,res)
+        sol = res.solution_vec
+    print(res.solution_vec)
+
+    
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
@@ -506,6 +534,8 @@ def main():
         blinker(args)
     elif cmd == "b2":
         blinker2(args)
+    elif cmd == "b2b":
+        blinker2b(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 

@@ -41,3 +41,39 @@ Also zum Beispiel langsam die Spannung steigern.
 
 Die initiale Lösung zu finden ist am schwierigsten.
 
+* 2021-02-07_17:18
+
+Probleme mit Blinklicht.
+
+Kopnvergenz Probleme für zwei Transistoren?
+
+2021-02-27_10:15
+
+Konvergenz Problme gelöst, langsames hochfahren von Voltage Source und Current Sourcen 
+
+2021-02-27_10:17
+Blinklicht.
+Iterativ über die Zeit simulieren, und dann kommt man am eine Stelle an der
+die Lösungsuche nicht mehr funktioniert.
+Lösungsuche ist eigentlich Multivariate Newton Methode.
+Wir haben auch die Lösung des vorherigen Schrittes als Startwert.
+Aber die Lösungssuche sprint einfach nur noch hin und her.
+
+Wenn man bei der Lösungssuche nicht abbricht, sondern einfach den aktuellen Kandifaten zurückgibt,
+dann bekommt man ein periodisches Verhalten. Mit starken Sprüngen.
+
+Ich habe das Blinklicht auch mit LT Spice auf Windows simuliert,
+Da bekommt man auch ein periodische Verhalten, auch mit Sprüngen.
+
+
+Vieleicht habe ich eine Lösungs Mannigfaltigkeit.
+
+
+
+2021-02-27_12:56
+Wenn man mit 0 startet un die Energie faktor langsam erhöht bekommt man für
+die problematischen capa_voltages eine Lösung. Die sieht aber anders als das
+wo andere Lösungssuche rumsucht.
+
+2021-02-27_13:06
+Weitere versuch verbinde Basen der Transistoren mit Kondensator gegen Ground

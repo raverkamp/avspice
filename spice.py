@@ -779,13 +779,18 @@ class Analysis:
                 print("no convergence {0} {1}".format(maxit, alpha))
                 return "no_convergence"
             i += 1
+            if i >= 200:
+                print("-------------------")
+                print(solution_vec)
+                print(np.linalg.det(mat))
             (mat,r) = self.compute_mat_and_r(solution_vec, capa_voltages, variables)
             #print("--------- mat ----------")
             #print(self.node_list)
             #print(mat)
             #print(r)
+            #print(("det", np.linalg.det(mat)))
             solution_vec_n = np.linalg.solve(mat, r)
-#            pp.pprint(("Solution", solution_vec_n))
+            #pp.pprint(("Solution", solution_vec_n))
             if solution_vec is not None:
                 close_enough = True
                 for j in range(solution_vec.size):
