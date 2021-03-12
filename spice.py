@@ -23,7 +23,7 @@ class Variable:
     def __init__(self, name, default=None):
         self.name = name
         self.default = default
-        
+
     def __repr__(self):
         return "<Variable {0}, {1}>".format(self.name, self.default)
 
@@ -392,8 +392,8 @@ class Network:
             if isinstance(c,Capacitor):
                 res.append(c)
         return res
-        
-    
+
+
 
 
 def connect(p1,p2):
@@ -498,13 +498,15 @@ def compute_nodes(nw):
 
 class Result:
     """result of an analysis run"""
-    def __init__(self, network, analysis, iterations, solution_vec, variables):
+    def __init__(self, network, analysis, iterations, solution_vec, variables, y, y_norm):
         self.analysis = analysis
         self.network = network
         self.solution_vec = solution_vec
         self.voltages = dict()
         self.currents = dict()
         self.iterations = iterations
+        self.y = y
+        self.y_norm = y_norm
         for c in network.components.values():
             if isinstance(c, Capacitor):
                 k = self.analysis.capa_index(c)
@@ -628,6 +630,14 @@ class Analysis:
         mat[k][self.port_index(comp.p)] += dId
         mat[k][k] -= dId
 
+    def process_diode_y(self, comp, sol, y, variables):
+        kp = self.port_index(comp.p)
+        kn = self.port_index(comp.n)
+        dv = sol[kp] - sol[kn]
+        curr = comp.current(dv)
+        y[kp] -= curr
+        y[kn] += curr
+ 
     def process_npn_transistor(self, tra, mat, r, solution_vec):
         #if port != tra.B:
         #    return
@@ -682,6 +692,23 @@ class Analysis:
         mat[kE][kC] -= tra.d_IE_vbc(vbc0)
         #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
+    def process_npn_transistor_y(self, tra, sol, y, variables):
+        kB = self.port_index(tra.B)
+        kE = self.port_index(tra.E)
+        kC = self.port_index(tra.C)
+
+        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
+        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+
+        ie = tra.IE(vbe0, vbc0)
+        ib = tra.IB(vbe0, vbc0)
+        ic = tra.IC(vbe0, vbc0)
+
+        y[kE]+= ie
+        y[kB]-= ib
+        y[kC]-= ic
+
+
     def process_voltage(self, vol: Voltage, mat, r, variables):
         k = self.voltage_index(vol)
         mat[k][self.port_index(vol.p)] = 1
@@ -691,10 +718,24 @@ class Analysis:
 
         r[k] = vol.voltage(variables) * self.energy_factor
 
+    def process_voltage_y(self, vol: Voltage, sol, y, variables):
+        k = self.voltage_index(vol)
+        kp = self.port_index(vol.p)
+        kn = self.port_index(vol.n)
+        y[kp] += sol[k]
+        y[kn] -= sol[k]
+        y[k] = (sol[kp] - sol[kn]) - vol.voltage(variables) * self.energy_factor
+
+
     def process_current_source(self, cs:  Current, mat, r, variables):
         amp = cs.get_amp(variables)
         r[self.port_index(cs.p)] -= amp * self.energy_factor
         r[self.port_index(cs.n)] += amp * self.energy_factor
+
+    def process_current_source_y(self, cs:  Current, sol, y, variables):
+        cur = cs.get_amp(variables) * self.energy_factor
+        y[self.port_index(cs.p)] += cur
+        y[self.port_index(cs.n)] -= cur
 
     def process_resistor(self, resi: Resistor, mat, r, variables):
           # I = (Vp - Vn) * G
@@ -705,6 +746,15 @@ class Analysis:
         mat[pk][nk] += G
         mat[nk][pk] += G
         mat[nk][nk] -= G
+
+    def process_resistor_y(self, resi, sol, y, variables):
+        G = 1/ resi.get_ohm(variables)
+        pk = self.port_index(resi.p)
+        nk = self.port_index(resi.n)
+        current = (sol[pk] - sol[nk]) * G
+        y[pk] -= current
+        y[nk] += current
+
 
     def process_capacitor(self, c, mat, r, capa_voltages):
         k = self.capa_index(c)
@@ -718,6 +768,17 @@ class Analysis:
         else:
             mat[k][k] = 1
             r[k] = 0
+
+
+    def process_capacitor_y(self, c, sol, y, capa_voltages, variables):
+        k = self.capa_index(c)
+        pk = self.port_index(c.p)
+        nk = self.port_index(c.n)
+        if c.name in capa_voltages:
+            v = capa_voltages[c.name] * self.energy_factor
+            y[pk] += sol[k]
+            y[nk] -= sol[k]
+            y[k] = (sol[pk] - sol[nk]) - v
 
 
     def compute_mat_and_r(self, solution_vec, capa_voltages, variables):
@@ -752,6 +813,31 @@ class Analysis:
         mat[k][k] = 1
         r[k] = 0
         return (mat,r)
+
+    def compute_y(self, sol, capa_voltages, variables):
+        capa_voltages = capa_voltages or {}
+        n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
+        y = np.zeros(n)
+        for comp in self.netw.components.values():
+            if isinstance(comp, Node):
+                pass
+            elif isinstance(comp, Voltage):
+                self.process_voltage_y(comp, sol, y, variables)
+            elif isinstance(comp, Current):
+                self.process_current_source_y(comp, sol, y, variables)
+            elif isinstance(comp, Resistor):
+                self.process_resistor_y(comp, sol, y, variables)
+            elif isinstance(comp, Diode):
+                self.process_diode_y(comp, sol, y, variables)
+            elif isinstance(comp, NPNTransistor):
+                self.process_npn_transistor_y(comp, sol, y, variables)
+            elif isinstance(comp, Capacitor):
+                self.process_capacitor(comp, sol, y, capa_voltages, variables)
+            else:
+                raise Exception("unknown component type of {0}".format(comp))
+
+        return y
+
 
     def analyze(self,
                 maxit=20,
@@ -809,4 +895,6 @@ class Analysis:
         self.mat = mat
         self.r = r
         self.solution_vec = solution_vec
-        return Result(self.netw, self, iterations, self.solution_vec, variables)
+        y = self.compute_y(solution_vec, capa_voltages, variables)
+        norm_y =np.linalg.norm(y)
+        return Result(self.netw, self, iterations, self.solution_vec, variables, y, norm_y)

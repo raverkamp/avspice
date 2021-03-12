@@ -61,6 +61,8 @@ class Test1(unittest.TestCase):
         res = analy.analyze()
         self.assertAlmostEqual(res.get_current("r1.p"), 1)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
+        self.assertAlmostEqual(res.y_norm, 0)
+        print(res.y)
 
     def test_current_simple2(self):
         #parallel current source
@@ -77,6 +79,7 @@ class Test1(unittest.TestCase):
         res = analy.analyze()
         self.assertAlmostEqual(res.get_current("r1.p"), 3)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 60)
+        self.assertAlmostEqual(res.y_norm, 0)
 
     # voltage and resistor
     def test_voltage_simple(self):
@@ -90,6 +93,7 @@ class Test1(unittest.TestCase):
         res = analy.analyze()
         self.assertAlmostEqual(res.get_voltage("r1.p"), 1)
         self.assertAlmostEqual(res.get_current("r1.p"), 1/20)
+        self.assertAlmostEqual(res.y_norm, 0)
 
     # diode and resistor in serial
     def test_diode_simple1(self):
@@ -102,9 +106,10 @@ class Test1(unittest.TestCase):
         connect(d1.n, r1.p)
         connect(r1.n, v1.n)
         analy = Analysis(net)
-        res = analy.analyze()
+        res = analy.analyze(abstol=1e-12, reltol= 1e-12)
         # check current is the same
-        self.assertAlmostEqual(res.get_current(d1.n), - res.get_current(r1.p))
+        self.assertAlmostEqual(res.get_current(d1.n), -res.get_current(r1.p))
+        self.assertAlmostEqual(res.y_norm, 0)
 
    # diode - diode - resistor
     def test_diode_simple2(self):
@@ -127,6 +132,7 @@ class Test1(unittest.TestCase):
         # check voltage diff over both diodes is equal
         self.assertAlmostEqual(res.get_voltage(d1.p) - res.get_voltage(d1.n),
                                 res.get_voltage(d2.p) - res.get_voltage(d2.n))
+        self.assertAlmostEqual(res.y_norm, 0)
 
     # diode|diode -> resistor
     def test_diode_simple3(self):
@@ -146,6 +152,7 @@ class Test1(unittest.TestCase):
         # check current is the same over both diodes
         self.assertAlmostEqual(res.get_current(r1.p)/2, res.get_current(d1.p))
         self.assertAlmostEqual(res.get_current(r1.p)/2, res.get_current(d2.p))
+        self.assertAlmostEqual(res.y_norm, 0)
 
     def test_voltage(self):
         net = Network()
@@ -167,7 +174,7 @@ class Test1(unittest.TestCase):
         res = analy.analyze()
         self.assertAlmostEqual(res.get_current(r1.p),(3+5+7)/1000)
         self.assertAlmostEqual(res.get_current(r2.p),(3+5)/100)
-
+        self.assertAlmostEqual(res.y_norm, 0)
 
 
 
@@ -187,6 +194,7 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_current(r.p),5/100)
         res = analy.analyze(variables={"v":6})
         self.assertAlmostEqual(res.get_current(r.p), 6/100)
+        self.assertAlmostEqual(res.y_norm, 0)
 
     def test_var2(self):
         """test default for variable"""
@@ -204,6 +212,7 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_current(r.p),5/100)
         res = analy.analyze(variables={"v":6})
         self.assertAlmostEqual(res.get_current(r.p), 6/100)
+        self.assertAlmostEqual(res.y_norm, 0)
 
 
 
@@ -246,6 +255,7 @@ class TestTransistor(unittest.TestCase):
         ana = Analysis(net)
         res = ana.analyze()
         self.assertAlmostEqual(res.get_current(t1.B),0.02)
+        self.assertAlmostEqual(res.y_norm, 0)
 
     def test_trans2(self):
         net = Network()
@@ -268,6 +278,7 @@ class TestTransistor(unittest.TestCase):
         # die Konstante habe ich mir ausgeben lassen
         self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
         self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
+        self.assertAlmostEqual(res.y_norm, 0)
 
     def test_trans3(self):
         # use neenergy_ levels to find solution
@@ -288,10 +299,11 @@ class TestTransistor(unittest.TestCase):
         for x in [0.01, 0.1, 0.2, 0.3, 0.5]:
             res = ana.analyze(start_solution_vec = sol, energy_factor=x)
             sol = res.solution_vec
-        res = ana.analyze(start_solution_vec = sol)
+        res = ana.analyze(start_solution_vec = sol, abstol=1e-8, reltol = 1e-9)
         # die Konstante habe ich mir ausgeben lassen
         self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
         self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
+        self.assertAlmostEqual(res.y_norm, 0)
 
 
 if __name__ == '__main__':
