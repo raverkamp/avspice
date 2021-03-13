@@ -79,3 +79,7 @@ wo andere Lösungssuche rumsucht.
 Weitere versuch verbinde Basen der Transistoren mit Kondensator gegen Ground.
 OverflowError: math range error
 
+2021-03-12_23:55
+
+Lösungssuche konvergiert nicht weil die Ableitunsgmatrix Singulär wird.
+
