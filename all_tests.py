@@ -2,7 +2,8 @@
 import unittest
 import pprint as pp
 from math import exp
-from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable
+import numpy as np
+from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable, solve
 
 DIODE = Diode(None, "", 1e-8, 25e-3, 10)
 
@@ -36,6 +37,36 @@ class TestMath(unittest.TestCase):
 
         x = dexplin(6,3)
         self.assertAlmostEqual(x, exp(3))
+
+class TestSolve(unittest.TestCase):
+
+    def test_simple_solve1(self):
+
+        def f(x):
+            y = np.array([x[0], x[1]])
+            return y
+        def Df(x):
+            df = np.zeros((2,2))
+            df[0][0] = 1
+            df[1][1] = 1
+            return df
+
+        (sol, y, dfx, iterations) = solve(np.array([1,2]), f, Df, 1e-8, 1e-8)
+        self.assertAlmostEqual(sol[0], 0)
+        self.assertAlmostEqual(sol[1], 0)
+
+    def test_simple_solve2(self):
+
+        def f(x):
+            y = np.array([x[0]*x[0] - 4])
+            return y
+        def Df(x):
+            df = np.zeros((1,1))
+            df[0][0] = 2 * x[0]
+            return df
+
+        (sol, y, dfx, iterations) = solve(np.array([1]), f, Df, 1e-8, 1e-8)
+        self.assertAlmostEqual(sol[0], 2)
 
 
 class Test1(unittest.TestCase):
@@ -106,7 +137,7 @@ class Test1(unittest.TestCase):
         connect(d1.n, r1.p)
         connect(r1.n, v1.n)
         analy = Analysis(net)
-        res = analy.analyze(abstol=1e-12, reltol= 1e-12)
+        res = analy.analyze(abstol=1e-12, reltol= 1e-12, maxit=20)
         # check current is the same
         self.assertAlmostEqual(res.get_current(d1.n), -res.get_current(r1.p))
         self.assertAlmostEqual(res.y_norm, 0)
@@ -124,7 +155,7 @@ class Test1(unittest.TestCase):
         connect(d2.n, r1.p)
         connect(r1.n, v1.n)
         analy = Analysis(net)
-        res = analy.analyze()
+        res = analy.analyze(abstol=1e-10,reltol=1e-8)
         # check current is the same
         self.assertAlmostEqual(res.get_current(r1.p), res.get_current(d1.p))
         self.assertAlmostEqual(res.get_current(r1.p), res.get_current(d2.p))
