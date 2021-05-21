@@ -51,7 +51,7 @@ class TestSolve(unittest.TestCase):
             df[1][1] = 1
             return df
 
-        (sol, y, dfx, iterations) = solve(np.array([1,2]), f, Df, 1e-8, 1e-8)
+        (sol, y, dfx, iterations, norm_y) = solve(np.array([1,2]), f, Df, 1e-8, 1e-8)
         self.assertAlmostEqual(sol[0], 0)
         self.assertAlmostEqual(sol[1], 0)
 
@@ -65,7 +65,7 @@ class TestSolve(unittest.TestCase):
             df[0][0] = 2 * x[0]
             return df
 
-        (sol, y, dfx, iterations) = solve(np.array([1]), f, Df, 1e-8, 1e-8)
+        (sol, y, dfx, iterations, norm_y) = solve(np.array([1]), f, Df, 1e-8, 1e-8)
         self.assertAlmostEqual(sol[0], 2)
 
 

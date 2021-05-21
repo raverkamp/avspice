@@ -83,3 +83,9 @@ OverflowError: math range error
 
 Lösungssuche konvergiert nicht weil die Ableitunsgmatrix Singulär wird.
 
+
+
+2021-03-13_23:53
+Problem ist Schrittweite ich bekomme shr grosse Ströme ins System.
+Und wieso sind da negative Potentiale?
+
