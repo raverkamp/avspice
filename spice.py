@@ -222,6 +222,11 @@ class NPNTransistor(Component):
     I_B = IS(t2 + t3)
     I_E = IS(t1 + t3)
 
+    My interpretation:
+    t3 is the current from base to emitter
+    t2 is the current from base to collector
+    t1 is controlled current
+
     """
 
     def __init__(self, parent: 'Network', name:str, IS:float, VT:float, beta_F:float, beta_R:float,
