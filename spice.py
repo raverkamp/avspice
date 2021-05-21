@@ -853,7 +853,8 @@ class Analysis:
             D[k][pk] +=1
             D[k][nk] -=1
         else:
-            pass
+            D[k][k] = 1
+
 
 
     def compute_mat_and_r(self, solution_vec, capa_voltages, variables):
@@ -1023,7 +1024,6 @@ class Analysis:
              reltol= 1e-6,
              variables=None,
              capa_voltages=None,
-             alpha = 1,
              energy_factor =1):
         if variables is None:
             variables = dict()
@@ -1043,7 +1043,7 @@ class Analysis:
         res = solve(solution_vec, f, Df, abstol, reltol, maxit)
         if isinstance(res, str):
             return res
-        (sol, y, dfx, iterations) = res
+        (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
         return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
 
@@ -1065,11 +1065,26 @@ def solve(x0, f, df, abstol, reltol, maxiter=20):
             break
         iterations +=1
         y = f(x)
+        norm_y = np.linalg.norm(y)
+        
         dfx = df(x)
         dx = np.linalg.solve(dfx, -y)
-        xn = x + dx
+        if iterations > -maxiter/2:
+            k = 0
+            while True:
+                k = k+1
+                if k > 20:
+                    break
+                xn = x + dx
+                norm_y_n = np.linalg.norm(f(xn))
+                if norm_y_n <= norm_y:
+                    break
+                print(("dn", k, norm_y,  norm_y_n))
+                dx = dx/2
+        else:
+            xn = x + dx *alpha
         #print((xn, y, dfx))
-        if close_enough(x, xn, abstol, reltol):
-            return (xn, y, dfx, iterations)
+        if close_enough(x, xn, abstol, reltol) or norm_y < abstol or iterations > maxiter -1:
+            return (xn, y, dfx, iterations, norm_y)
         x = xn
     return "Fail"
