@@ -8,14 +8,17 @@ from util import *
 import math
 
 
+
+
 def plot1(args):
     # das passt alles nicht
+    # oder doch: Basis Spannug sollte über der vom Kollektor liegen
     t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     vbl = [0, 0.1, 0.2, 0.3,0.4]
     k = math.ceil(math.sqrt(len(vbl)))
     (f,plts) = plt.subplots(k,k)
     ve = 0
-    x = list(drange(0, 3, 0.1))
+    x = list(drange(0, 0.3, 0.01))
     i = 0
     for vb in vbl:
         ax = plts[i//k][i%k]
@@ -76,7 +79,7 @@ def plot4(args):
     iy = []
 
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-    nw = Network()
+ 
     net = Network()
     vc = net.addV("vc", 2)
     vb = net.addV("vb", Variable("vb"))
@@ -105,11 +108,15 @@ def plot4(args):
             iy.append(res.iterations)
             sol = res.solution_vec
     fig, (ax1,ax) = plt.subplots(2)
-    ax1.plot(x,y, color="black")
+    ax1.plot(x,y, color="black", label="I(E)")
     ax2 = ax1.twinx()
-    ax2.plot(x,z, color="green")
+    ax2.plot(x,z, color="green", label="I(B)")
+    ax1.legend()
+    ax2.legend()
+    
     fig.tight_layout()
     ax.plot(x, iy)
+    ax.set_title("Iterations")
     plt.show()
     #input()
 
@@ -245,14 +252,14 @@ def create_blinker():
     # https://www.elektronik-labor.de/Lernpakete/Blinker.html
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     net = Network()
-    vc = net.addV("vc",  Variable("vc")) #?
+    vc = net.addV("vc",  Variable("vc", 7)) #?
     d1 = net.addD("d1", 1e-8, 25e-3)
     rd= net.addR("rd", Variable("rd",1e3)) # resistor parallel to diode
     r1 = net.addR("r1", 2.7e3)
     r2 = net.addR("r2", 27e3)
     r3 = net.addR("r3", 1e3)
 
-    rt2e = net.addR("rt2e", Variable("rt2e"))
+    rt2e = net.addR("rt2e", Variable("rt2e",1))
     ca = net.addCapa("ca", 10e-6)
   #  ca = net.addR("ca", 1e-1)
     t1 = net.addComp("t1",tt)
@@ -387,7 +394,7 @@ def blinker(args):
 
         capa = net.get_object("ca").capa
         vca_new = v_ca + s*ca_cu/capa
-        print(("OK", x, ca_cu,v_ca, vca_new))
+        print(("OK", x, ca_cu,v_ca, vca_new, res.mat_det))
         v_ca = vca_new
        
         xs.append(x)
@@ -456,9 +463,14 @@ def transient(ana, variables, start_sol, limit, step):
             print(capa_voltages)
             break
         capa_voltages_new = {}
+        dv = 0
+        for c in capas:
+            dv = max(dv, abs(res.get_current(c.p)) / c.capa)
+        dv = max(0.01,dv)
+        real_step = min(step, 0.01/dv)
         for c in capas:
             ca_cu = res.get_current(c.p)
-            capa_voltages_new[c.name] =  capa_voltages[c.name] + step*ca_cu/c.capa
+            capa_voltages_new[c.name] =  capa_voltages[c.name] + real_step*ca_cu/c.capa
         capa_voltages = capa_voltages_new
         ts.append(t)
         for port in res.voltages:
@@ -474,7 +486,8 @@ def transient(ana, variables, start_sol, limit, step):
                 vals[x] = []
             vals[x].append(c_port)
         
-        t+=step
+        
+        t+=real_step
     return (ts, vals)
     
     
@@ -513,6 +526,24 @@ def blinker2b(args):
         sol = res.solution_vec
     print(res.solution_vec)
 
+def blinker3(args):
+    net = create_blinker()
+    ana = Analysis(net)
+    sol = None
+    for x in [0.001, 0.01, 0.02,0.05,0.06,0.07, 0.08,  0.1,0.15, 0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
+        #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
+        res = ana.analyze(maxit=50, start_solution_vec=sol,
+                          capa_voltages={"cax": -1},
+                          variables={}, energy_factor=x)
+        #print(x,res)
+        sol = res.solution_vec
+    print("---------------------------------------------------")
+    (t, x) = transient(ana, {}, sol, 1, 0.001)
+    (f,(p1, p2, p3)) = plt.subplots(3)
+    #p1.set_titile("volts!")
+    p1.plot(t, x["v.ca.p"], label="v.ca.p")
+    p1.plot(t, x["v.ca.n"], label="v.ca.n")
+    plt.show()
     
 def main():
     (cmd, args) = getargs()
@@ -536,6 +567,8 @@ def main():
         blinker2(args)
     elif cmd == "b2b":
         blinker2b(args)
+    elif cmd == "b3":
+        blinker3(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
