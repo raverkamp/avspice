@@ -492,6 +492,8 @@ def compute_nodes(nw):
                 if not p in done:
                     todo.append(p)
             node.add(x)
+            if not x in adj:
+                raise Exception("{0} is not connected".format(x))
             for p1 in adj[x]:
                 if p1 in done:
                     continue
