@@ -1057,7 +1057,7 @@ def close_enough(v1,v2, abstol, reltol):
     return True
 
 
-def solve(x0, f, df, abstol, reltol, maxiter=20):
+def solve_old(x0, f, df, abstol, reltol, maxiter=20):
     iterations = 0
     x = x0
     while True:
@@ -1084,7 +1084,45 @@ def solve(x0, f, df, abstol, reltol, maxiter=20):
         else:
             xn = x + dx *alpha
         #print((xn, y, dfx))
-        if close_enough(x, xn, abstol, reltol) or norm_y < abstol or iterations > maxiter -1:
+        if (close_enough(x, xn, abstol, reltol)
+            or norm_y < abstol
+            or iterations > maxiter -1):
+            return (xn, y, dfx, iterations, norm_y)
+        x = xn
+    return "Fail"
+
+
+def solve(x0, f, df, abstol, reltol, maxiter=20):
+    iterations = 0
+    x = x0
+    while True:
+        if iterations > maxiter:
+            break
+        iterations +=1
+        y = f(x)
+        norm_y = np.linalg.norm(y)
+
+        dfx = df(x)
+        dx = np.linalg.solve(dfx, -y)
+        a = 1
+        k = 0
+        while True:
+            k = k +1
+            if k >= 20:
+                break
+                #print(a,norm_y, dx, x, dfx)
+                #stop()
+            xn = x + a * dx
+            norm_y_n = np.linalg.norm(f(xn))
+            if k > 10:
+                print(k,norm_y)
+            if norm_y_n/norm_y <= (1-a/2):
+                break
+            else:
+                a = a/2
+        if (close_enough(x, xn, abstol, reltol)
+            or norm_y < abstol
+            or -iterations > maxiter -1):
             return (xn, y, dfx, iterations, norm_y)
         x = xn
     return "Fail"
