@@ -588,7 +588,6 @@ class Analysis:
                 self.capa_list.append(comp)
 
 
-
     def node_ports(self, node):
         return node.ports
 
@@ -611,29 +610,6 @@ class Analysis:
         k = self.port_index(port)
         return solution_vec[k]
 
-
-    def process_diode(self, comp, mat, r, solution_vec):
-        dv0 = self.voltage(solution_vec,comp.p) - self.voltage(solution_vec, comp.n)
-
-        #pp.pprint(("d diode", dv0))
-
-        Id = comp.current(dv0)
-        dId = comp.diff_conductance(dv0)
-        print(("old diode cur, diff", Id, dId))
-        #I(dv) = I(v0) + dI(v0) * (dv- dv0)
-        k = self.port_index(comp.p) #if port == comp.p:
-        # current leaves node
-        r[k] += Id
-        r[k] -=  dId * dv0
-        mat[k][self.port_index(comp.n)] += dId
-        mat[k][k] -= dId
-        k = self.port_index(comp.n)
-        # current enters node
-        r[k] -= Id
-        r[k] +=  dId * dv0
-        mat[k][self.port_index(comp.p)] += dId
-        mat[k][k] -= dId
-
     def process_diode_y(self, comp, sol, y, variables):
         kp = self.port_index(comp.p)
         kn = self.port_index(comp.n)
@@ -652,59 +628,6 @@ class Analysis:
         D[kn][kp] += diff
         D[kn][kn] -= diff
 
-    def process_npn_transistor(self, tra, mat, r, solution_vec):
-        #if port != tra.B:
-        #    return
-        #        print("-------------------------------------------------------")
-        if solution_vec is None:
-            vbe0 = 0 #   0.2
-            vbc0 = 0
-        else:
-            vbe0 = self.voltage(solution_vec,tra.B) - self.voltage(solution_vec, tra.E)
-            vbc0 = (self.voltage(solution_vec, tra.B) - self.voltage(solution_vec, tra.C))
-
-        kB = self.port_index(tra.B)
-        kE = self.port_index(tra.E)
-        kC = self.port_index(tra.C)
-
-
-        # IB(vbe, vbc) = IB(vbe0, vbc0) + d_IB_vbe(vbe0, vbc0) * (vbe -vbe0)
-        #                               + d_IB_vbc(vbe0, vbc0) * (vbc- vbc0)
-        # basis current leaves node
-
-        r[kB] += tra.IB(vbe0, vbc0)
-        r[kB] -= tra.d_IB_vbe(vbe0) * vbe0 + tra.d_IB_vbc(vbc0) * vbc0
-        mat[kB][kB] += -tra.d_IB_vbe(vbe0)
-        mat[kB][kB] += -tra.d_IB_vbc(vbc0)
-        mat[kB][kE] += tra.d_IB_vbe(vbe0)
-        mat[kB][kC] += tra.d_IB_vbc(vbc0)
-        #pp.pprint((("VBE", vbe0), ("VBC", vbc0),
-        #           ("B", tra.IB(vbe0, vbc0)),
-        #           ("E", tra.IE(vbe0, vbc0)),
-        #           ("C", tra.IC(vbe0, vbc0))))
-
-
-        # IC(vbe, vbc) = IC(vbe0, vbc0) + d_IC_vbe(vbe0, vbc0) * (vbe -vbe0)
-        #                               + d_IC_vbc(vbe0, vbc0) * (vbc- vbc0)
-        # Collector current leaves nodes
-        r[kC] += tra.IC(vbe0, vbc0)
-        r[kC] -= tra.d_IC_vbe(vbe0) * vbe0 + tra.d_IC_vbc(vbc0) * vbc0
-        mat[kC][kB] -= tra.d_IC_vbe(vbe0)
-        mat[kC][kB] -= tra.d_IC_vbc(vbc0)
-        mat[kC][kE] += tra.d_IC_vbe(vbe0)
-        mat[kC][kC] += tra.d_IC_vbc(vbc0)
-        #        pp.pprint(("CC", tra.d_IC_vbe(vbe0), tra.d_IC_vbc(vbc0)))
-
-        # IE(vbe, vbc) = IE(vbe0, vbc0) + d_IE_vbe(vbe0, vbc0) * (vbe -vbe0)
-        #                               + d_IE_vbc(vbe0, vbc0) * (vbc- vbc0)
-        # emitter curren enters node
-        r[kE] -= tra.IE(vbe0, vbc0)
-        r[kE] += tra.d_IE_vbe(vbe0) * vbe0 + tra.d_IE_vbc(vbc0) * vbc0
-        mat[kE][kB] += tra.d_IE_vbe(vbe0)
-        mat[kE][kB] += tra.d_IE_vbc(vbc0)
-        mat[kE][kE] -= tra.d_IE_vbe(vbe0)
-        mat[kE][kC] -= tra.d_IE_vbc(vbc0)
-        #pp.pprint(("EE", tra.d_IE_vbe(vbe0), tra.d_IE_vbc(vbc0)))
 
     def process_npn_transistor_y(self, tra, sol, y, variables):
         kB = self.port_index(tra.B)
@@ -745,16 +668,6 @@ class Analysis:
         D[kE][kE] -= tra.d_IE_vbe(vbe0)
         D[kE][kC] -= tra.d_IE_vbc(vbc0)
 
-
-    def process_voltage(self, vol: Voltage, mat, r, variables):
-        k = self.voltage_index(vol)
-        mat[k][self.port_index(vol.p)] = 1
-        mat[k][self.port_index(vol.n)] = -1
-        mat[self.port_index(vol.p)][k] = 1
-        mat[self.port_index(vol.n)][k] = -1
-
-        r[k] = vol.voltage(variables) * self.energy_factor
-
     def process_voltage_y(self, vol: Voltage, sol, y, variables):
         k = self.voltage_index(vol)
         kp = self.port_index(vol.p)
@@ -771,11 +684,6 @@ class Analysis:
         D[kn][k]-=1
         D[k][kp] +=1
         D[k][kn] -=1
-
-    def process_current_source(self, cs:  Current, mat, r, variables):
-        amp = cs.get_amp(variables)
-        r[self.port_index(cs.p)] -= amp * self.energy_factor
-        r[self.port_index(cs.n)] += amp * self.energy_factor
 
     def process_current_source_y(self, cs:  Current, sol, y, variables):
         cur = cs.get_amp(variables) * self.energy_factor
@@ -853,41 +761,6 @@ class Analysis:
         else:
             D[k][k] = 1
 
-
-
-    def compute_mat_and_r(self, solution_vec, capa_voltages, variables):
-        capa_voltages = capa_voltages or {}
-        n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
-        mat = np.zeros((n,n))
-        r = np.zeros(n)
-
-        for comp in self.netw.components.values():
-
-            if isinstance(comp, Node):
-                pass
-            elif isinstance(comp, Voltage):
-                self.process_voltage(comp, mat, r, variables)
-            elif isinstance(comp, Current):
-                self.process_current_source(comp, mat, r, variables)
-            elif isinstance(comp, Resistor):
-                self.process_resistor(comp, mat, r, variables)
-            elif isinstance(comp, Diode):
-                self.process_diode(comp, mat, r, solution_vec)
-            elif isinstance(comp, NPNTransistor):
-                self.process_npn_transistor(comp, mat, r, solution_vec)
-            elif isinstance(comp, Capacitor):
-                self.process_capacitor(comp, mat, r, capa_voltages)
-            else:
-                raise Exception("unknown component type of {0}".format(comp))
-
-        # we do not need the equation for ground, use this equation to fix voltage
-        # ground voltage is fixed to 0
-        k  = self.node_index(self.ground)
-        mat[k] = np.zeros(n)
-        mat[k][k] = 1
-        r[k] = 0
-        return (mat,r)
-
     def compute_y(self, sol, capa_voltages, variables):
         capa_voltages = capa_voltages or {}
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
@@ -943,77 +816,6 @@ class Analysis:
         D[k][k] = 1
         return D
 
-
-
-    def analyze_old(self,
-                maxit=20,
-                start_solution_vec=None,
-                abstol= 1e-8,
-                reltol= 1e-6,
-                variables=None,
-                capa_voltages=None,
-                alpha = 1,
-                energy_factor =1):
-        if variables is None:
-            variables = dict()
-        self.energy_factor = energy_factor
-
-        n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
-        if start_solution_vec is None:
-            solution_vec = np.zeros(n)
-        else:
-            solution_vec = start_solution_vec
-
-        i = 0
-        while True:
-            if i >=maxit:
-                for node in self.node_list:
-                    i = self.node_index(node)
-                    pp.pprint((i, node))
-                print("no convergence {0} {1}".format(maxit, alpha))
-                return "no_convergence"
-            i += 1
-            (mat,r) = self.compute_mat_and_r(solution_vec, capa_voltages, variables)
-            y = self.compute_y(solution_vec, capa_voltages, variables)
-            D = self.compute_D(solution_vec, capa_voltages, variables)
-            solution_vec_n = np.linalg.solve(mat, r)
-            dx = np.linalg.solve(D, -y)
-            xn = solution_vec + dx
-            print(">>>>>>>>>>>>>>>>>>>")
-            print(("sol", solution_vec))
-            print(("r alt", r))
-            print(("r neu", np.matmul(D, solution_vec)-y))
-            print(("y neu", y))
-            print(("D alt", np.linalg.det(mat)))
-            print(("D neu", np.linalg.det(D)))
-            print(("xn alt" , solution_vec_n))
-            print(("xn neu" , xn))
-            print("<<<<<<<<<<<<<<<<<<<<")
-
-            if solution_vec is not None:
-
-                norm_y =np.linalg.norm(y)
-                if (i>=10):
-                    print(("y_norm", norm_y, "mat_det", np.linalg.det(mat)))
-                close_enough = True
-                for j in range(solution_vec.size):
-                    x = solution_vec[j]
-                    y = solution_vec_n[j]
-                    if not (abs(x-y) < abstol  or reldiff(x,y) < reltol ):
-                        close_enough = False
-                if close_enough:
-                    iterations = i
-                    break
-            if solution_vec is None:
-                solution_vec = solution_vec_n
-            else:
-                solution_vec = solution_vec_n * alpha + (1- alpha) * solution_vec
-
-
-        self.mat = mat
-        self.r = r
-        self.solution_vec = solution_vec
-        return Result(self.netw, self, iterations, self.solution_vec, variables, y, norm_y, np.linalg.det(mat))
 
     def analyze(self,
                 maxit=20,
