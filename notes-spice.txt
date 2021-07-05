@@ -89,3 +89,54 @@ Lösungssuche konvergiert nicht weil die Ableitunsgmatrix Singulär wird.
 Problem ist Schrittweite ich bekomme shr grosse Ströme ins System.
 Und wieso sind da negative Potentiale?
 
+
+2021-05-22_14:30
+Nochmal am Solver gedreht
+Ich habe eine Transistor Schaltung, wenn hier die Lösung mittles Newton Rapson verfahren gesucht wird,
+dann ist der Start bei 0 totaler Mist.
+
+Wahrscheinlich ist das Differential fast Singular.
+
+Momentan besteht die Möglichkeit den Energy Level schrittweise zu erhöhen, also die Spannungsquellen
+langsam hochzufahren.
+
+Alternativ kann man jeden Konten ueber einen Widerstand mit Ground zu verbinden. Und diese Wderstände langsam immer grösser machen.
+Diese Lösungen wuerden physikalisch Sinn machen.
+
+Oder statt f(x)= 0 löst man zuerst f(x)+ a(x - f(0)) = 0
+
+Fuer a=1 ist 0 eine Lösung!
+
+
+2021-05-22_14:55
+Funktioniert nicht. Start bei 0 ist immer noch mist.
+
+
+2021-05-23_10:49
+Auch start bei 1 oder zufällig ist Mist.
+
+Zufällig kann funktionieren.
+Es gib anscheinend viele Stellen wo man versacken kann.
+Also scheint der Algorithmus prinizipiell zu funktionieren.
+
+Und ich löse f(x) + a ((x-x0) -f(x0))
+Das hat Nullstelle x0 bei a = 1, damit anfangen.
+Aber es läuft immer mal wieder in Löcher rein.
+
+Es funktioniert genauso gut wenn a=0 und man mit einem zufälligen Startwert anfängt.
+
+Wenn eine Lösung in sicht ist, scheint die Konvergenz auch quadratisch zu sein wie es beim
+Newton Verfahren zu erwarten ist.
+
+Wie finde ich vernünftige Startwerte:
+
+Geerdete Voltage Source: Klar + Knoten bekommt Voltage zugeordnet.
+
+Oder einfach alles erstmal über Widerstände erden?
+
+
+Ich habe gerade einen Text zu LTSpice gefunden. Um den Operating Point zu bestimmen werden die Voltages langsam
+hochgefahren. dann war meine Idee doch nicht so dumm.
+2021-05-23_15:49
+jetzt arbiete ich nur mit Energy Levels  und für die einfache Transistor Schaltung
+wird keine Lösung gefunden.

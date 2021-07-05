@@ -4,6 +4,7 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
+from solving import solvea as solve
 
 def explin(x: float, cutoff: float):
     if x < cutoff:
@@ -14,9 +15,6 @@ def dexplin(x:float, cutoff:float):
     if x < cutoff:
         return math.exp(x)
     return math.exp(cutoff)
-
-def reldiff(x,y):
-    return abs(x-y) /  max(abs(x), abs(y))
 
 class Variable:
     """a variable"""
@@ -1018,111 +1016,56 @@ class Analysis:
         return Result(self.netw, self, iterations, self.solution_vec, variables, y, norm_y, np.linalg.det(mat))
 
     def analyze(self,
-             maxit=20,
-             start_solution_vec=None,
-             abstol= 1e-8,
-             reltol= 1e-6,
-             variables=None,
-             capa_voltages=None,
-             energy_factor =1):
+                maxit=20,
+                start_solution_vec=None,
+                abstol= 1e-8,
+                reltol= 1e-6,
+                variables=None,
+                capa_voltages=None,
+                energy_factor = 1):
         if variables is None:
             variables = dict()
-        self.energy_factor = energy_factor
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         if start_solution_vec is None:
-            solution_vec = np.zeros(n)
+            solution_vec = np.zeros(n) 
         else:
             solution_vec = start_solution_vec
 
+            
         def f(x):
             return self.compute_y(x, capa_voltages, variables)
 
         def Df(x):
             return self.compute_D(x, capa_voltages, variables)
 
+        self.energy_factor = energy_factor
+
+        
         res = solve(solution_vec, f, Df, abstol, reltol, maxit)
         if isinstance(res, str):
             return res
+        fac = 0.1
+        for i in range(20):
+            self.energy_factor = fac/2
+            res = solve(solution_vec, f, Df, abstol, reltol, maxit)
+            if not isinstance(res, str):
+                solution_vec = res[0]
+                break
+        if isinstance(res,str):
+            return res
+        while True:
+            fac = min(fac * 1.1, 1)
+            self.energy_factor = fac
+            res = solve(solution_vec, f, Df, abstol, reltol, maxit)
+            if isinstance(res, str):
+                return res
+            if fac >=1:
+                break
+            else:
+                solution_vec = res[0]
+
         (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
         return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
 
-
-def close_enough(v1,v2, abstol, reltol):
-    for j in range(v1.size):
-        x = v1[j]
-        y = v2[j]
-        if not (abs(x-y) < abstol  or reldiff(x,y) < reltol):
-            return False
-    return True
-
-
-def solve_old(x0, f, df, abstol, reltol, maxiter=20):
-    iterations = 0
-    x = x0
-    while True:
-        if iterations > maxiter:
-            break
-        iterations +=1
-        y = f(x)
-        norm_y = np.linalg.norm(y)
-        
-        dfx = df(x)
-        dx = np.linalg.solve(dfx, -y)
-        if iterations > -maxiter/2:
-            k = 0
-            while True:
-                k = k+1
-                if k > 20:
-                    break
-                xn = x + dx
-                norm_y_n = np.linalg.norm(f(xn))
-                if norm_y_n <= norm_y:
-                    break
-                print(("dn", k, norm_y,  norm_y_n))
-                dx = dx/2
-        else:
-            xn = x + dx *alpha
-        #print((xn, y, dfx))
-        if (close_enough(x, xn, abstol, reltol)
-            or norm_y < abstol
-            or iterations > maxiter -1):
-            return (xn, y, dfx, iterations, norm_y)
-        x = xn
-    return "Fail"
-
-
-def solve(x0, f, df, abstol, reltol, maxiter=20):
-    iterations = 0
-    x = x0
-    while True:
-        if iterations > maxiter:
-            break
-        iterations +=1
-        y = f(x)
-        norm_y = np.linalg.norm(y)
-
-        dfx = df(x)
-        dx = np.linalg.solve(dfx, -y)
-        a = 1
-        k = 0
-        while True:
-            k = k +1
-            if k >= 20:
-                break
-                #print(a,norm_y, dx, x, dfx)
-                #stop()
-            xn = x + a * dx
-            norm_y_n = np.linalg.norm(f(xn))
-            if k > 10:
-                print(k,norm_y)
-            if norm_y_n/norm_y <= (1-a/2):
-                break
-            else:
-                a = a/2
-        if (close_enough(x, xn, abstol, reltol)
-            or norm_y < abstol
-            or -iterations > maxiter -1):
-            return (xn, y, dfx, iterations, norm_y)
-        x = xn
-    return "Fail"
+    

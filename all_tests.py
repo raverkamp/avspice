@@ -90,6 +90,7 @@ class Test1(unittest.TestCase):
         connect(r1.n, net.ground)
         analy = Analysis(net)
         res = analy.analyze()
+        print(("res",res))
         self.assertAlmostEqual(res.get_current("r1.p"), 1)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
         self.assertAlmostEqual(res.y_norm, 0)
@@ -284,7 +285,7 @@ class TestTransistor(unittest.TestCase):
         connect(re.n, cc.n)
         connect(cc.n, net.ground)
         ana = Analysis(net)
-        res = ana.analyze()
+        res = ana.analyze(maxit=50)
         self.assertAlmostEqual(res.get_current(t1.B),0.02)
         self.assertAlmostEqual(res.y_norm, 0)
 
