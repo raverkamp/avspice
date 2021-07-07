@@ -844,17 +844,23 @@ class Analysis:
 
         
         res = solve(solution_vec, f, Df, abstol, reltol, maxit)
-        if isinstance(res, str):
-            return res
+        if not isinstance(res, str):
+            (sol, y, dfx, iterations, norm_y) = res
+            norm_y = np.linalg.norm(y)
+            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
+
         fac = 0.1
         for i in range(20):
+            print(("energy factor ",i))
             self.energy_factor = fac/2
             res = solve(solution_vec, f, Df, abstol, reltol, maxit)
             if not isinstance(res, str):
                 solution_vec = res[0]
                 break
         if isinstance(res,str):
+            print("failed getting initial solution")
             return res
+        print("got initial solution")
         while True:
             fac = min(fac * 1.1, 1)
             self.energy_factor = fac
