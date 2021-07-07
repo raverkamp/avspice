@@ -823,8 +823,7 @@ class Analysis:
                 abstol= 1e-8,
                 reltol= 1e-6,
                 variables=None,
-                capa_voltages=None,
-                energy_factor = 1):
+                capa_voltages=None):
         if variables is None:
             variables = dict()
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
@@ -840,7 +839,7 @@ class Analysis:
         def Df(x):
             return self.compute_D(x, capa_voltages, variables)
 
-        self.energy_factor = energy_factor
+        self.energy_factor = 1
 
         
         res = solve(solution_vec, f, Df, abstol, reltol, maxit)

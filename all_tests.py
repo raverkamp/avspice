@@ -333,10 +333,7 @@ class TestTransistor(unittest.TestCase):
         connect(t1.E, net.ground)
         ana = Analysis(net)
         sol = None
-        for x in [0.01, 0.1, 0.2, 0.3, 0.5]:
-            res = ana.analyze(start_solution_vec = sol, energy_factor=x)
-            sol = res.solution_vec
-        res = ana.analyze(start_solution_vec = sol, abstol=1e-8, reltol = 1e-9)
+        res = ana.analyze(start_solution_vec = None, abstol=1e-8, reltol = 1e-9)
         # die Konstante habe ich mir ausgeben lassen
         self.assertAlmostEqual(res.get_current(t1.B), 438.7e-6)
         self.assertAlmostEqual(res.get_current(t1.B), res.get_current(t1.C)/100)
