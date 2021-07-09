@@ -132,7 +132,8 @@ class Current(Node2):
         return "<Current {0}>".format(self.name)
 
     def get_currents(self, v, variables):
-        return {self.p: -self.amp, self.n: self.amp}
+        x = self.get_val(self.amp, variables)
+        return {self.p: -x, self.n: x}
 
     def get_amp(self, variables):
         return self.get_val(self.amp, variables)
