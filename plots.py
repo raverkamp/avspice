@@ -350,13 +350,11 @@ def blinker(args):
     base_vca = 0
 
     sol = None
-    for x in [0.001, 0.01, 0.02,0.05,0.06,0.07, 0.08,  0.1,0.15, 0.2,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
-        #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
-        res = ana.analyze(maxit=50, start_solution_vec=sol,
-                          capa_voltages={"ca": base_vca},
-                          variables={"vc": voltage, "rt2e": 0.001}, energy_factor=x)
-        print(x,res)
-        sol = res.solution_vec
+    
+    res = ana.analyze(maxit=50, start_solution_vec=sol,
+                      capa_voltages={"ca": base_vca},
+                      variables={"vc": voltage, "rt2e": 0.001})
+    sol = res.solution_vec
     print("---------------------------------------------------")
     ch = 0
 
@@ -389,7 +387,11 @@ def blinker(args):
             break
         if isinstance(res,str):
             print(x, res)
-            break
+            if sol is None:
+                break
+            # neu start der Suche, aber nur einmal
+            sol = None
+            continue
         ca_cu = res.get_current("ca.p")
 
         capa = net.get_object("ca").capa
@@ -428,13 +430,16 @@ def blinker(args):
     a3.plot(xs, t1c, color ="green")
     a3.plot(xs, t1b, color ="red")
     a3.plot(xs, t2e, color ="pink")
+    a3.legend()
     a3.set_title("T2 C voltage blue T1 C voltage green, t1b red, t1e pink")
 
     a4.plot(xs, it2c)
     a4.set_title("it2c")
 
-    a5.plot(xs, it2b)
-    a5.set_title("it2b")
+    a5.plot(xs, it2b, label="I(tb2)")
+    a5.plot(xs, it1b, label="I(tb1)")
+    a5.set_title("Base currents")
+    a5.legend()
 
     a6.set_title("iterations")
     a6.plot(xs, iters)
