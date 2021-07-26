@@ -298,8 +298,106 @@ class NPNTransistor(Component):
         vbe = v[self.B] - v[self.E]
         return { self.B: self.IB(vbe, vbc),  self.E: -self.IE(vbe, vbc), self.C: self.IC(vbe, vbc)}
 
+class PNPTransistor(Component):
+
+    
+    """
 
 
+    t1 = exp(-V_BE/VT) - exp(-V_BC/VT)
+    t2 = 1/beta_R (exp(-V_BC/VT) -1)
+    t3 = 1/beta_F (exp(-V_BE/VT) -1)
+
+    Emitter is positive
+
+    I_C = IS(-t1 + t2) = IS(t2 - t1)
+    I_B = IS(-t2 -t3) = -IS(t1 + t3)
+    I_E = IS(t1 + t3) =  IS(t1 + t3)
+
+    My interpretation:
+    t3 is the current from emitter to base
+    t2 is the current from collector to base
+    t1 is controlled current, emitter to collector
+
+
+
+    PNP!
+    """
+    
+    def __init__(self, parent: 'Network', name:str, IS:float, VT:float, beta_F:float, beta_R:float,
+                 cutoff:float =40):
+        super().__init__(parent, name)
+        self.IS = IS
+        self.VT = VT
+        self.beta_F = beta_F
+        self.beta_R = beta_R
+        self.B = Port(self,"B")
+        self.C = Port(self,"C")
+        self.E = Port(self,"E")
+
+        self.cutoff = cutoff
+
+    def ports(self):
+        return [self.B, self.C, self.E]
+
+    def t1(self, vbe, vbc):
+        return explin(-vbe/self.VT, self.cutoff) - explin(-vbc/self.VT, self.cutoff)
+
+    def d_t1_vbe(self, vbe):
+        return -dexplin(-vbe/self.VT, self.cutoff) / self.VT
+
+    def d_t1_vbc(self, vbc):
+        return dexplin(-vbc/self.VT, self.cutoff) / self.VT
+
+    def t2(self, vbc):
+        return 1/self.beta_R *(explin(-vbc/self.VT, self.cutoff)-1)
+
+    def d_t2_vbc(self, vbc):
+        return -1/self.beta_R * dexplin(vbc/self.VT, self.cutoff) /self.VT
+
+    def t3(self, vbe):
+        return 1/self.beta_F *(explin(-vbe/self.VT, self.cutoff)-1)
+
+    def d_t3_vbe(self, vbe):
+        return -1/self.beta_F * dexplin(vbe/self.VT, self.cutoff) / self.VT
+    
+    #---
+    def IC(self, vbe, vbc):
+        return self.IS*(self.t2(vbc) - self.t1(vbe, vbc))
+
+    def d_IC_vbe(self, vbe):
+        return -self.IS * self.d_t1_vbe(vbe)
+
+    def d_IC_vbc(self, vbc):
+        return self.IS * (self.d_t2_vbc(vbc) - self.d_t1_vbc(vbc))
+
+    
+    def IB(self, vbe, vbc):
+        return -self.IS * (self.t2(vbc) + self.t3(vbe))
+
+    def d_IB_vbe(self, vbe):
+        return -self.IS * self.d_t3_vbe(vbe)
+
+    def d_IB_vbc(self, vbc):
+        return -self.IS * self.d_t2_vbc(vbc)
+
+
+    def IE(self, vbe, vbc):
+        return self.IS * (self.t1(vbe, vbc) + self.t3(vbe))
+
+    def d_IE_vbe(self, vbe):
+        return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
+
+    def d_IE_vbc(self, vbc):
+        return self.IS * self.d_t1_vbc(vbc)
+
+    
+    def get_currents(self, v, variables):
+        vbc = v[self.B] - v[self.C]
+        vbe = v[self.B] - v[self.E]
+        return { self.B: self.IB(vbe, vbc),  self.E: self.IE(vbe, vbc), self.C: self.IC(vbe, vbc)}
+
+        
 class Network:
     """ this class describes the toplogy of an electrical network
         It only contains the topology"""
@@ -668,6 +766,46 @@ class Analysis:
         D[kE][kB] += tra.d_IE_vbc(vbc0)
         D[kE][kE] -= tra.d_IE_vbe(vbe0)
         D[kE][kC] -= tra.d_IE_vbc(vbc0)
+
+    def process_pnp_transistor_y(self, tra, sol, y, variables):
+        kB = self.port_index(tra.B)
+        kE = self.port_index(tra.E)
+        kC = self.port_index(tra.C)
+
+        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
+        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+
+        ie = tra.IE(vbe0, vbc0)
+        ib = tra.IB(vbe0, vbc0)
+        ic = tra.IC(vbe0, vbc0)
+
+        y[kE]+= ie
+        y[kB]-= ib
+        y[kC]-= ic
+
+    def process_pnp_transistor_D(self, tra, sol, D, variables):
+        kB = self.port_index(tra.B)
+        kE = self.port_index(tra.E)
+        kC = self.port_index(tra.C)
+
+        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
+        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+
+        D[kB][kB] += -tra.d_IB_vbe(vbe0)
+        D[kB][kB] += -tra.d_IB_vbc(vbc0)
+        D[kB][kE] += tra.d_IB_vbe(vbe0)
+        D[kB][kC] += tra.d_IB_vbc(vbc0)
+
+        D[kC][kB] -= tra.d_IC_vbe(vbe0)
+        D[kC][kB] -= tra.d_IC_vbc(vbc0)
+        D[kC][kE] += tra.d_IC_vbe(vbe0)
+        D[kC][kC] += tra.d_IC_vbc(vbc0)
+
+        D[kE][kB] += tra.d_IE_vbe(vbe0)
+        D[kE][kB] += tra.d_IE_vbc(vbc0)
+        D[kE][kE] -= tra.d_IE_vbe(vbe0)
+        D[kE][kC] -= tra.d_IE_vbc(vbc0)
+
 
     def process_voltage_y(self, vol: Voltage, sol, y, variables):
         k = self.voltage_index(vol)

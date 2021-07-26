@@ -3,7 +3,7 @@ import unittest
 import pprint as pp
 from math import exp
 import numpy as np
-from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable, solve
+from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable, solve, PNPTransistor
 
 DIODE = Diode(None, "", 1e-8, 25e-3, 10)
 
@@ -340,5 +340,39 @@ class TestTransistor(unittest.TestCase):
         self.assertAlmostEqual(res.y_norm, 0)
 
 
+
+class PNPTransistorTests(unittest.TestCase):
+    """test for PNPtransistor"""
+
+    def test_formulas(self):
+        tt = PNPTransistor(None, "", 1e-12, 25e-3, 100, 10)
+
+
+        for vbc in [-0.3, -0.1, 0, 0.1,0.3]:
+            for vbe in [-0.3, -0.1, 0, 0.1,0.3]:
+                
+                ie = tt.IE(vbe, vbc)
+                ic = tt.IC(vbe, vbc)
+                ib = tt.IB(vbe, vbc)
+        
+                self.assertAlmostEqual(ie+ ic + ib,0)
+
+                d_vbe = tt.d_IB_vbe(vbe) + tt.d_IC_vbe(vbe) + tt.d_IE_vbe(vbe)
+
+                self.assertAlmostEqual(d_vbe,0)
+
+                d_vbc = tt.d_IB_vbc(vbc) + tt.d_IC_vbc(vbc) + tt.d_IE_vbc(vbc)
+
+                self.assertAlmostEqual(d_vbc,0)
+
+        ie = tt.IE(-0.3,0.2)
+        self.assertGreater(ie,0)
+        
+        ic = tt.IC(0.2,-0.3)
+        self.assertGreater(ic,0)
+
+        
+
+        
 if __name__ == '__main__':
     unittest.main()
