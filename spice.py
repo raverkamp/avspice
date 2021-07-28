@@ -311,7 +311,7 @@ class PNPTransistor(Component):
     Emitter is positive
 
     I_C = IS(-t1 + t2) = IS(t2 - t1)
-    I_B = IS(-t2 -t3) = -IS(t1 + t3)
+    I_B = IS(-t2 -t3) = -IS(t2 + t3)
     I_E = IS(t1 + t3) =  IS(t1 + t3)
 
     My interpretation:
@@ -779,7 +779,7 @@ class Analysis:
         ib = tra.IB(vbe0, vbc0)
         ic = tra.IC(vbe0, vbc0)
 
-        y[kE]+= ie
+        y[kE]-= ie
         y[kB]-= ib
         y[kC]-= ic
 
@@ -801,10 +801,10 @@ class Analysis:
         D[kC][kE] += tra.d_IC_vbe(vbe0)
         D[kC][kC] += tra.d_IC_vbc(vbc0)
 
-        D[kE][kB] += tra.d_IE_vbe(vbe0)
-        D[kE][kB] += tra.d_IE_vbc(vbc0)
-        D[kE][kE] -= tra.d_IE_vbe(vbe0)
-        D[kE][kC] -= tra.d_IE_vbc(vbc0)
+        D[kE][kB] -= tra.d_IE_vbe(vbe0)
+        D[kE][kB] -= tra.d_IE_vbc(vbc0)
+        D[kE][kE] += tra.d_IE_vbe(vbe0)
+        D[kE][kC] += tra.d_IE_vbc(vbc0)
 
 
     def process_voltage_y(self, vol: Voltage, sol, y, variables):
@@ -917,6 +917,8 @@ class Analysis:
                 self.process_diode_y(comp, sol, y, variables)
             elif isinstance(comp, NPNTransistor):
                 self.process_npn_transistor_y(comp, sol, y, variables)
+            elif isinstance(comp, PNPTransistor):
+                self.process_pnp_transistor_y(comp, sol, y, variables)
             elif isinstance(comp, Capacitor):
                 self.process_capacitor_y(comp, sol, y, capa_voltages, variables)
             else:
@@ -944,6 +946,8 @@ class Analysis:
                 self.process_diode_D(comp, sol, D, variables)
             elif isinstance(comp, NPNTransistor):
                 self.process_npn_transistor_D(comp, sol, D, variables)
+            elif isinstance(comp, PNPTransistor):
+                self.process_pnp_transistor_D(comp, sol, D, variables)
             elif isinstance(comp, Capacitor):
                 self.process_capacitor_D(comp, sol, D, capa_voltages, variables)
             else:

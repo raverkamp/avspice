@@ -371,7 +371,55 @@ class PNPTransistorTests(unittest.TestCase):
         ic = tt.IC(0.2,-0.3)
         self.assertGreater(ic,0)
 
+    def test_trans1_fw(self):
+
+        beta_f = 100
+        beta_r = 20
+        tt = NPNTransistor(None, "", 1e-12, 25e-3, beta_f, beta_r)
         
+        net = Network()
+        ve = net.addV("ve", 6)
+        re = net.addR("re", 10)
+        rb = net.addR("rb", 20e3)
+        rc = net.addR("rc", 10)
+        t1 = net.addComp("T1", tt)
+
+        connect(ve.p, re.p)
+        connect(re.n, t1.E)
+        connect(rb.n, net.ground)
+        connect(rb.p, t1.B) 
+        connect(t1.C, rc.p)
+        connect(rc.n, ve.n)
+        connect(ve.n, net.ground)
+        ana = Analysis(net)
+        res = ana.analyze(maxit=50)
+        self.assertAlmostEqual(-res.get_current(t1.E)/beta_f,res.get_current(t1.B),places=5)
+        self.assertAlmostEqual(res.y_norm, 0)
+        
+    def test_trans_bw(self):
+
+        beta_f = 100
+        beta_r = 20
+        tt = NPNTransistor(None, "", 1e-12, 25e-3, beta_f, beta_r)
+
+        net = Network()
+        ve = net.addV("ve", 6)
+        re = net.addR("re", 10)
+        rb = net.addR("rb", 20e3)
+        rc = net.addR("rc", 10)
+        t1 = net.addComp("T1", tt)
+
+        connect(ve.p, re.p)
+        connect(re.n, t1.C)
+        connect(rb.n, net.ground)
+        connect(rb.p, t1.B) 
+        connect(t1.E, rc.p)
+        connect(rc.n, ve.n)
+        connect(ve.n, net.ground)
+        ana = Analysis(net)
+        res = ana.analyze(maxit=50)
+        self.assertAlmostEqual(-res.get_current(t1.E)/beta_r,res.get_current(t1.B),places=5)
+        self.assertAlmostEqual(res.y_norm, 0)
 
         
 if __name__ == '__main__':
