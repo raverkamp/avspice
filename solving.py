@@ -88,6 +88,7 @@ def solvea(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
     iterations = 0
     print("-----------------------------")
     print(xstart)
+    x0 = xstart
     x = xstart
     if not alfa is None:
         fx0 = f(x0)

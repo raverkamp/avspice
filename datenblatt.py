@@ -14,14 +14,14 @@ def kennlinie(args):
     net = Network()
     t1 = net.addComp("T1", tt)
     vc = net.addV("vc", Variable("vc"))
-    cb = net.addC("cb", Variable("cb"))
-    rb = net.addR("rb", 10e3)
+    vb = net.addV("cb", 1)
+    rb = net.addR("rb", Variable("rb"))
     connect(t1.C, vc.p)
     connect(t1.E, net.ground)
     connect(vc.n, net.ground)
-    connect(cb.p, rb.p)
+    connect(vb.p, rb.p)
     connect(rb.n, t1.B)
-    connect(cb.n, net.ground)
+    connect(vb.n, net.ground)
     
     ana = Analysis(net)
     ce_voltages = list(drange(0, 10, 0.01))
@@ -31,7 +31,7 @@ def kennlinie(args):
         x = []
         sol = None
         for v in ce_voltages:
-            res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vc": v, "cb": i})
+            res = ana.analyze2(maxit=30, start_solution_vec=sol, variables={"vc": v, "rb": 1/i})
             if isinstance(res, str):
                 break
             x.append(v)
