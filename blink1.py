@@ -54,11 +54,9 @@ def blinker(args):
     rt1e = 1
 
     sol = None
-    for x in [0.001, 0.01, 0.1,0.2,0.25,0.27,0.28, 0.29,0.295,0.299, 0.2995, 0.29995 ,0.3001,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1,2,4,9]: #,20,30,40,45, 47,47.5,47.7,478.9,48, 50,100, 200,300] : # 100, 900, 1000]:
-        res = ana.analyze(maxit=50, start_solution_vec=sol, capa_voltages={"ca": base_vca},
-                          variables={"vc": x, "rt2e": rt2e, "rt1e": rt1e})
-        print("a", x,res)
-        sol = res.solution_vec
+    res = ana.analyze(maxit=50, start_solution_vec=sol, capa_voltages={"ca": base_vca},
+                  variables={"vc": 9, "rt2e": rt2e, "rt1e": rt1e})
+    sol = res.solution_vec
     print("---------------------------------------------------")
     ch = 0
 
@@ -80,7 +78,7 @@ def blinker(args):
     x = 0
     v_ca = base_vca
     switched = False
-    while x < 3:
+    while x < 3.5:
         ok = False
         maxit = 50
         res = ana.analyze(maxit=maxit, start_solution_vec=sol, capa_voltages={"ca": v_ca },
