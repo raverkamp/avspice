@@ -354,13 +354,13 @@ class PNPTransistor(Component):
         return 1/self.beta_R *(explin(-vbc/self.VT, self.cutoff)-1)
 
     def d_t2_vbc(self, vbc):
-        return -1/self.beta_R * dexplin(vbc/self.VT, self.cutoff) /self.VT
+        return -1/self.beta_R * dexplin(-vbc/self.VT, self.cutoff) /self.VT
 
     def t3(self, vbe):
         return 1/self.beta_F *(explin(-vbe/self.VT, self.cutoff)-1)
 
     def d_t3_vbe(self, vbe):
-        return -1/self.beta_F * dexplin(vbe/self.VT, self.cutoff) / self.VT
+        return -1/self.beta_F * dexplin(-vbe/self.VT, self.cutoff) / self.VT
     
     #---
     def IC(self, vbe, vbc):
@@ -456,6 +456,10 @@ class Network:
             return d
         if isinstance(comp, NPNTransistor):
             t = NPNTransistor(self, name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
+            self.components[name] = t
+            return t
+        if isinstance(comp, PNPTransistor):
+            t = PNPTransistor(self, name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
             self.components[name] = t
             return t
         raise Exception("addComp not supported for {0}".format(comp))
@@ -961,7 +965,7 @@ class Analysis:
         return D
 
 
-    def analyze(self,
+    def old_analyze(self,
                 maxit=20,
                 start_solution_vec=None,
                 abstol= 1e-8,
@@ -1020,7 +1024,7 @@ class Analysis:
         return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
 
     
-    def analyze2(self,
+    def analyze(self,
                  maxit=20,
                  start_solution_vec=None,
                  abstol= 1e-8,

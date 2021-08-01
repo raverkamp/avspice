@@ -31,7 +31,7 @@ def kennlinie(args):
         x = []
         sol = None
         for v in ce_voltages:
-            res = ana.analyze2(maxit=30, start_solution_vec=sol, variables={"vc": v, "rb": 1/i})
+            res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vc": v, "rb": 1/i})
             if isinstance(res, str):
                 break
             x.append(v)
