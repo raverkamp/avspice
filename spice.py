@@ -7,15 +7,24 @@ import numpy as np
 from solving import solvea as solve
 from solving import solvea as solvea
 
-def explin(x: float, cutoff: float):
-    if x < cutoff:
+def explin(x: float, lcutoff: float, rcutoff:float):
+    assert lcutoff  <= rcutoff, "cutoffs wrong"
+    if lcutoff <=  x <= rcutoff:
         return math.exp(x)
-    return math.exp(cutoff) +  (x-cutoff) * math.exp(cutoff)
+    if x > rcutoff:
+        return math.exp(rcutoff) +  (x-rcutoff) * math.exp(rcutoff)
+    if x < lcutoff:
+        return math.exp(lcutoff) +  (x-lcutoff) * math.exp(lcutoff)
+    
 
-def dexplin(x:float, cutoff:float):
-    if x < cutoff:
+def dexplin(x:float, lcutoff:float, rcutoff:float):
+    assert lcutoff  <= rcutoff, "cutoffs wrong"
+    if lcutoff <=  x <= rcutoff:
         return math.exp(x)
-    return math.exp(cutoff)
+    if x > rcutoff:
+        return math.exp(rcutoff)
+    if x < lcutoff:
+        return  math.exp(lcutoff)
 
 class Variable:
     """a variable"""
@@ -157,23 +166,16 @@ class Voltage(Node2):
 
 class Diode(Node2):
     """solid state diode"""
-    def __init__(self, parent, name, Is, Nut, cut_off = 40):
+    def __init__(self, parent, name, Is, Nut, lcut_off = -40, rcut_off=40):
         super().__init__(parent, name)
         self.Is = Is
         self.Nut = Nut
-        self.cut_off = cut_off
+        
+        self.lcut_off = lcut_off
+        self.rcut_off = rcut_off
 
     def current(self, v):
-        if v<0:
-            return 0
-        return self.Is * (explin(v/self.Nut, self.cut_off)-1)
-
-    def xvolt_amp(self, cur):
-        if cur > 10:
-            cur = 10
-        if cur < 0:
-            return 0
-        return (math.log(cur/self.Is )+1)* self.Nut
+        return self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
 
     def diff_conductance(self, v):
         if v<0:
@@ -181,9 +183,7 @@ class Diode(Node2):
         return self.Is * 1/self.Nut * dexplin(v/self.Nut, self.cut_off)
 
     def diff_curr(self, dv):
-        if dv<0:
-            return 0
-        return self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.cut_off)
+        return self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
 
     def __repr__(self):
         return "<Diode {0}>".format(self.name)
@@ -240,31 +240,33 @@ class NPNTransistor(Component):
         self.C = Port(self,"C")
         self.E = Port(self,"E")
 
-        self.cutoff = cutoff
+        self.lcutoff = -cutoff
+        self.rcutoff = cutoff
+       
 
     def ports(self):
         return [self.B, self.C, self.E]
 
     def t1(self, vbe, vbc):
-        return explin(vbe/self.VT, self.cutoff) - explin(vbc/self.VT, self.cutoff)
+        return explin(vbe/self.VT, self.lcutoff, self.rcutoff) - explin(vbc/self.VT, self.lcutoff, self.rcutoff)
 
     def d_t1_vbe(self, vbe):
-        return dexplin(vbe/self.VT, self.cutoff) / self.VT
+        return dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
     def d_t1_vbc(self, vbc):
-        return -dexplin(vbc/self.VT, self.cutoff) / self.VT
+        return -dexplin(vbc/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
     def t2(self, vbc):
-        return 1/self.beta_R *(explin(vbc/self.VT, self.cutoff)-1)
+        return 1/self.beta_R *(explin(vbc/self.VT, self.lcutoff, self.rcutoff)-1)
 
     def d_t2_vbc(self, vbc):
-        return 1/self.beta_R * dexplin(vbc/self.VT, self.cutoff) /self.VT
+        return 1/self.beta_R * dexplin(vbc/self.VT, self.lcutoff, self.rcutoff) /self.VT
 
     def t3(self, vbe):
-        return 1/self.beta_F *(explin(vbe/self.VT, self.cutoff)-1)
+        return 1/self.beta_F *(explin(vbe/self.VT, self.lcutoff, self.rcutoff)-1)
 
     def d_t3_vbe(self, vbe):
-        return 1/self.beta_F * dexplin(vbe/self.VT, self.cutoff) / self.VT
+        return 1/self.beta_F * dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
     def IC(self, vbe, vbc):
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
@@ -336,31 +338,33 @@ class PNPTransistor(Component):
         self.C = Port(self,"C")
         self.E = Port(self,"E")
 
-        self.cutoff = cutoff
+        self.lcutoff = -cutoff
+        self.rcutoff = cutoff
 
     def ports(self):
         return [self.B, self.C, self.E]
 
     def t1(self, vbe, vbc):
-        return explin(-vbe/self.VT, self.cutoff) - explin(-vbc/self.VT, self.cutoff)
+        return (explin(-vbe/self.VT, self.lcutoff, self.rcutoff)
+                - explin(-vbc/self.VT, self.lcutoff, self.rcutoff))
 
     def d_t1_vbe(self, vbe):
-        return -dexplin(-vbe/self.VT, self.cutoff) / self.VT
+        return -dexplin(-vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
     def d_t1_vbc(self, vbc):
-        return dexplin(-vbc/self.VT, self.cutoff) / self.VT
+        return dexplin(-vbc/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
     def t2(self, vbc):
-        return 1/self.beta_R *(explin(-vbc/self.VT, self.cutoff)-1)
+        return 1/self.beta_R *(explin(-vbc/self.VT, self.lcutoff, self.rcutoff)-1)
 
     def d_t2_vbc(self, vbc):
-        return -1/self.beta_R * dexplin(-vbc/self.VT, self.cutoff) /self.VT
+        return -1/self.beta_R * dexplin(-vbc/self.VT, self.lcutoff, self.rcutoff) /self.VT
 
     def t3(self, vbe):
-        return 1/self.beta_F *(explin(-vbe/self.VT, self.cutoff)-1)
+        return 1/self.beta_F *(explin(-vbe/self.VT, self.lcutoff, self.rcutoff)-1)
 
     def d_t3_vbe(self, vbe):
-        return -1/self.beta_F * dexplin(-vbe/self.VT, self.cutoff) / self.VT
+        return -1/self.beta_F * dexplin(-vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
     
     #---
     def IC(self, vbe, vbc):
@@ -451,7 +455,7 @@ class Network:
         if name in self.components:
             raise Exception("Name {0} already exists".format(name))
         if isinstance(comp, Diode):
-            d = Diode(self, name, comp.Is, comp.Nut, cut_off = comp.cut_off)
+            d = Diode(self, name, comp.Is, comp.Nut, lcut_off = comp.lcut_off, rcut_off = comp.rcut_off)
             self.components[name] = d
             return d
         if isinstance(comp, NPNTransistor):

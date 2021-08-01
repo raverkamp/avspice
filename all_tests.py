@@ -13,32 +13,47 @@ class TestMath(unittest.TestCase):
     """test of mathematics functions"""
 
     def test_explin(self):
-        x = explin(2,3)
+        x = explin(2,-2,3)
         self.assertAlmostEqual(x, exp(2))
 
-        x = explin(3,3)
+        x = explin(3,-2,3)
         self.assertAlmostEqual(x, exp(3))
         #
-        x = explin(4,3)
+        x = explin(4,-2,3)
         self.assertAlmostEqual(x, exp(3) + exp(3) * (4-3))
 
-        x = explin(4,3)
-        y = explin(23,3)
+
+        x = explin(-4,-2,3)
+        self.assertAlmostEqual(x, exp(-2) + exp(-2) * (-4-(-2)))
+
+        
+        x = explin(4,-2,3)
+        y = explin(23,-2,3)
         self.assertAlmostEqual((y-x)/(23-4), exp(3.0))
 
 
     def test_dexplin(self):
-        x = dexplin(2,3)
+        x = dexplin(2,-2,3)
         self.assertAlmostEqual(x, exp(2))
 
-        x = dexplin(3,3)
+        x = dexplin(3,-2,3)
         self.assertAlmostEqual(x, exp(3))
 
-        x = dexplin(4,3)
+        x = dexplin(4,-2,3)
         self.assertAlmostEqual(x, exp(3))
 
-        x = dexplin(6,3)
+        x = dexplin(6,-2,3)
         self.assertAlmostEqual(x, exp(3))
+
+        x = dexplin(-6,-2,3)
+        self.assertAlmostEqual(x, exp(-2))
+
+        x = dexplin(-2,-2,3)
+        self.assertAlmostEqual(x, exp(-2))
+
+        x = dexplin(-1.5,-2,3)
+        self.assertAlmostEqual(x, exp(-1.5))
+
 
 class TestSolve(unittest.TestCase):
 
@@ -523,8 +538,6 @@ class PNPTransistorTests(unittest.TestCase):
             raise Exception(res)
         self.assertAlmostEqual(res.get_current(t1.E)/beta_r,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
-        
-    
         
 if __name__ == '__main__':
     unittest.main()
