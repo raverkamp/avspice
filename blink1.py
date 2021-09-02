@@ -8,6 +8,7 @@ from util import *
 
 def create_blinker():
     # https://www.elektronik-labor.de/Lernpakete/Blinker.html
+    # weiter unten
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10) 
     net = Network()
     vc = net.addV("vc",  Variable("vc")) #?
@@ -48,7 +49,7 @@ def blinker(args):
     net = create_blinker()
     ana = Analysis(net)
 
-    base_vca = 0 #-5 # -8.25
+    base_vca = 0.398 +0.2  #0.397 #-5 # -8.25
 
     rt2e= 1
     rt1e = 1
@@ -56,6 +57,8 @@ def blinker(args):
     sol = None
     res = ana.analyze(maxit=50, start_solution_vec=sol, capa_voltages={"ca": base_vca},
                   variables={"vc": 9, "rt2e": rt2e, "rt1e": rt1e})
+    if isinstance(res, str):
+        raise Exception("can not find inital solution")
     sol = res.solution_vec
     print("---------------------------------------------------")
     ch = 0
@@ -74,24 +77,32 @@ def blinker(args):
     it2b = []
     itd  = []
     iters = []
-    s = 0.0001/10
+    s = 0.001/1
     x = 0
     v_ca = base_vca
     switched = False
+    ca_cu = 0
     while x < 3.5:
         ok = False
         maxit = 50
+        capa = net.get_object("ca").capa
+        vca_new = v_ca + s*ca_cu/capa
+        v_ca = vca_new
         res = ana.analyze(maxit=maxit, start_solution_vec=sol, capa_voltages={"ca": v_ca },
                               variables={"vc": 9, "rt2e": rt2e, "rt1e": rt1e})
         if isinstance(res,str):
-            print(x, res)
-            break
+            if s < 0.001 * 1e-4:
+                print(x, res)
+                break
+            s = s/2
+            print("############### step ", x, s, v_ca)
+            continue
         ca_cu = res.get_current("ca.p")
 
-        capa = net.get_object("ca").capa
-        vca_new = v_ca + s*ca_cu/capa
-        print(("OK", x, ca_cu,v_ca, vca_new))
-        v_ca = vca_new
+#        capa = net.get_object("ca").capa
+#        vca_new = v_ca + s*ca_cu/capa
+#        print(("OK", x, ca_cu,v_ca, vca_new))
+#        v_ca = vca_new
         xs.append(x)
 
         ca_v.append(v_ca)

@@ -2,7 +2,7 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-
+import scipy.optimize
 
 def reldiff(x,y):
     return abs(x-y) /  max(abs(x), abs(y))
@@ -100,3 +100,35 @@ def bisect(f, xl, xr):
             
         
     
+def scipy_solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
+    x0 = xstart
+    x = xstart
+    if not alfa is None:
+        fx0 = f(x0)
+        dalfa = np.identity(len(x)) * alfa
+    else:
+        fx0 = None
+        dalfa = None
+
+    # has a root at x for alfa=1
+    # alfa=0 equivalent to F(x)
+    def fn(x):
+        if alfa is None:
+            return f(x)
+        else:
+            return f(x) + ((x-x0) - fx0) * alfa
+
+    def dfn(x):
+        if alfa is None:
+            return df(x)
+        else:
+            return  df(x) + dalfa
+
+    res = scipy.optimize.fsolve(fn, x, fprime=dfn, full_output=True)
+    print("@@@@@@@", type(res), res)
+    (x, infodict, ier, mesg) = res
+    
+    if ier == 1:
+        return (x, infodict["fvec"], infodict["nfev"],None)
+    else:
+        return mesg

@@ -1,4 +1,4 @@
-3import spice
+import spice
 from spice import Network, connect, compute_nodes, Analysis, Diode, NPNTransistor
 import argparse
 import pprint as pp
