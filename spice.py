@@ -4,8 +4,7 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-from solving import solvea as solve
-from solving import solvea as solvea
+from solving import solve
 
 def explin(x: float, lcutoff: float, rcutoff:float):
     assert lcutoff  <= rcutoff, "cutoffs wrong"
