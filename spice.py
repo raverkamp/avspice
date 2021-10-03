@@ -4,7 +4,7 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-from solving import scipy_solve as solve
+from solving import solve as solve
 
 def explin(x: float, lcutoff: float, rcutoff:float):
     assert lcutoff  <= rcutoff, "cutoffs wrong"
@@ -841,17 +841,6 @@ class Analysis:
         # currents are constant
         pass
 
-
-    def process_resistor(self, resi: Resistor, mat, r, variables):
-          # I = (Vp - Vn) * G
-        G = 1/ resi.get_ohm(variables)
-        pk = self.port_index(resi.p)
-        nk = self.port_index(resi.n)
-        mat[pk][pk] -= G
-        mat[pk][nk] += G
-        mat[nk][pk] += G
-        mat[nk][nk] -= G
-
     def process_resistor_y(self, resi, sol, y, variables):
         G = 1/ resi.get_ohm(variables)
         pk = self.port_index(resi.p)
@@ -868,21 +857,6 @@ class Analysis:
         D[pk][nk] += G
         D[nk][pk] += G
         D[nk][nk] -= G
-
-
-    def process_capacitor(self, c, mat, r, capa_voltages):
-        k = self.capa_index(c)
-        mat[self.port_index(c.p)][k] = 1
-        mat[self.port_index(c.n)] [k] = -1
-        if c.name in capa_voltages:
-            v = capa_voltages[c.name] * self.energy_factor
-            mat[k][self.port_index(c.p)] = 1
-            mat[k][self.port_index(c.n)] = -1
-            r[k] = v
-        else:
-            mat[k][k] = 1
-            r[k] = 0
-
 
     def process_capacitor_y(self, c, sol, y, capa_voltages, variables):
         k = self.capa_index(c)
