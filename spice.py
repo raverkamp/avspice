@@ -614,14 +614,14 @@ def compute_nodes(nw):
 
 class Result:
     """result of an analysis run"""
-    def __init__(self, network, analysis, iterations, solution_vec, variables, y, y_norm, mat_det):
+    def __init__(self, network, analysis, iterations, solution_vec, variables, y, y_norm, mat_cond):
         self.analysis = analysis
         self.network = network
         self.solution_vec = solution_vec
         self.voltages = dict()
         self.currents = dict()
         self.iterations = iterations
-        self.mat_det = mat_det
+        self.mat_cond = mat_cond
         self.y = y
         self.y_norm = y_norm
         for c in network.components.values():
@@ -971,7 +971,7 @@ class Analysis:
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             norm_y = np.linalg.norm(y)
-            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
+            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
 
         fac = 0.1
         for i in range(20):
@@ -998,7 +998,7 @@ class Analysis:
 
         (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
-        return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
+        return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
 
     
     def analyze(self,
@@ -1029,7 +1029,7 @@ class Analysis:
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             norm_y = np.linalg.norm(y)
-            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
+            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
 
         alfa = 0.5
 
@@ -1058,7 +1058,7 @@ class Analysis:
 
         (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
-        return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.det(dfx))
+        return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
 
     
 

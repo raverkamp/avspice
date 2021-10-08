@@ -18,8 +18,7 @@ def close_enough(v1,v2, abstol, reltol):
 
 def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
     iterations = 0
-    print("-----------------------------")
-    print(xstart)
+    print("-----------------------------",xstart,alfa)
     x0 = xstart
     x = xstart
     if not alfa is None:
@@ -62,7 +61,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
             xn = x + a * dx
             yn = fn(xn)
             norm_y_n = np.linalg.norm(yn)
-            if k >= -2:
+            if k >= 15:
                 print("#", k,norm_y_n, norm_y_n/norm_y, 1-a/2)
                 print("++", xn)
             # if everything was linear we would expect norm_y / norm_y = 1-a
@@ -129,6 +128,6 @@ def scipy_solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None)
     (x, infodict, ier, mesg) = res
     
     if ier == 1:
-        return (x, infodict["fvec"], infodict["nfev"],None)
+        return (x, infodict["fvec"], infodict["nfev"],None,0)
     else:
         return mesg

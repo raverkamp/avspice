@@ -396,7 +396,7 @@ def blinker(args):
 
         capa = net.get_object("ca").capa
         vca_new = v_ca + s*ca_cu/capa
-        print(("OK", x, ca_cu,v_ca, vca_new, res.mat_det))
+        print(("OK", x, ca_cu,v_ca, vca_new, res.mat_cond))
         v_ca = vca_new
        
         xs.append(x)
