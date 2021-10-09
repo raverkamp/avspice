@@ -940,67 +940,7 @@ class Analysis:
         D[k] = np.zeros(n)
         D[k][k] = 1
         return D
-
-
-    def old_analyze(self,
-                maxit=20,
-                start_solution_vec=None,
-                abstol= 1e-8,
-                reltol= 1e-6,
-                variables=None,
-                capa_voltages=None):
-        if variables is None:
-            variables = dict()
-        n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
-        if start_solution_vec is None:
-            solution_vec = np.zeros(n) 
-        else:
-            solution_vec = start_solution_vec
-
-            
-        def f(x):
-            return self.compute_y(x, capa_voltages, variables)
-
-        def Df(x):
-            return self.compute_D(x, capa_voltages, variables)
-
-        self.energy_factor = 1
-
-        
-        res = solve(solution_vec, f, Df, abstol, reltol, maxit)
-        if not isinstance(res, str):
-            (sol, y, dfx, iterations, norm_y) = res
-            norm_y = np.linalg.norm(y)
-            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
-
-        fac = 0.1
-        for i in range(20):
-            print(("energy factor ",i))
-            self.energy_factor = fac/2
-            res = solve(solution_vec, f, Df, abstol, reltol, maxit)
-            if not isinstance(res, str):
-                solution_vec = res[0]
-                break
-        if isinstance(res,str):
-            print("failed getting initial solution")
-            return res
-        print("got initial solution")
-        while True:
-            fac = min(fac * 1.1, 1)
-            self.energy_factor = fac
-            res = solve(solution_vec, f, Df, abstol, reltol, maxit)
-            if isinstance(res, str):
-                return res
-            if fac >=1:
-                break
-            else:
-                solution_vec = res[0]
-
-        (sol, y, dfx, iterations, norm_y) = res
-        norm_y = np.linalg.norm(y)
-        return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
-
-    
+   
     def analyze(self,
                  maxit=20,
                  start_solution_vec=None,
