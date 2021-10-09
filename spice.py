@@ -908,7 +908,7 @@ class Analysis:
 
         # no euqation for ground, make sure its votage is 0
         k  = self.node_index(self.ground)
-        y[k] = 0
+        y[k] = sol[k] 
         return y
 
     def compute_D(self, sol, capa_voltages, variables):
