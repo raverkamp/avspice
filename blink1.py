@@ -19,7 +19,7 @@ def create_blinker():
     r3 = net.addR("r3", 1e3)
 
     ca = net.addCapa("ca", 10e-6)
-  #  ca = net.addR("ca", 1e-1)
+  #  ca = net.addR("ca", 10e6)
     t1 = net.addComp("t1",tt)
     t2 = net.addComp("t2",tt)
     connect(vc.p, r2.p)
@@ -29,11 +29,11 @@ def create_blinker():
     connect(r2.n, r1.p)
     connect(r2.n, t2.B)
     
-    connect(r1.n, ca.p)
+    connect(r1.n, ca.n)
     connect(r1.n, t1.B)
 
     connect(d1.n, r3.p)
-    connect(r3.n, ca.n)
+    connect(r3.n, ca.p)
     connect(r3.n, t2.C)
 
     connect(t1.E, net.ground)
@@ -46,12 +46,16 @@ def blinker(args):
     net = create_blinker()
     ana = Analysis(net)
 
-    base_vca = 0.6   #0.397 #-5 # -8.25
+    base_vca = 0   #0.397 #-5 # -8.25
 
 
     sol = None
     res = ana.analyze(maxit=50, start_solution_vec=sol, capa_voltages={"ca": base_vca},
-                  variables={"vc": 9})
+                      variables={"vc": 9},
+                       start_voltages= {
+                          "t1.C": 4,
+                          "t2.C": 0.1,
+                          "t1.B": 0.1})
     if isinstance(res, str):
         raise Exception("can not find inital solution")
     sol = res.solution_vec
@@ -169,7 +173,7 @@ def blinker(args):
 
 def catest(args):
     net = Network()
-    vc = net.addV("vc",  9) #?
+    vc = net.addV("vc",  9) 
     r1 = net.addR("r1", 1e3)
     c = net.addCapa("capa", 1e-6)
 
@@ -194,7 +198,7 @@ def catest(args):
     ca_v = []
     ca_i = []
     xs =[]
-    while x < 0.1:
+    while x < 0.01:
         print("///", x)
         ok = False
         maxit = 50
@@ -220,14 +224,36 @@ def catest(args):
     plt.ion()
     plt.show()
     input()
+
+def blinker_static(args):
+    net = create_blinker()
+    ana = Analysis(net)
+
+    base_vca = 0.0   #0.397 #-5 # -8.25
+
+
+    sol = None
+    res = ana.analyze(maxit=50, start_solution_vec=sol, capa_voltages={"ca": base_vca},
+                      variables={"vc": 9},
+                      start_voltages= {
+                          "t1.C": 4,
+                          "t2.C": 0.1,
+                          "t1.B": 0.1})
+    print(res)
+    vn = res.get_voltage("ca.n")
+    vp = res.get_voltage("ca.p")
+    print("voltage ca ={0}".format(vp-vn))
+    
     
 def main():
     (cmd, args) = getargs()
 
     if cmd == "b":
         blinker(args)
-    if cmd == "c":
+    elif cmd == "c":
         catest(args)
+    elif cmd == "s":
+        blinker_static(args)
     else:
         raise Exception("unknown command: {0}".format(cmd))
     

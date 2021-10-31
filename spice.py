@@ -947,13 +947,21 @@ class Analysis:
                  abstol= 1e-8,
                  reltol= 1e-6,
                  variables=None,
-                 capa_voltages=None):
+                 capa_voltages=None,
+                 start_voltages= None):
         if variables is None:
             variables = dict()
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         if start_solution_vec is None:
-            solution_vec0 = np.zeros(n)
-#            solution_vec0 = np.random.rand(n)
+            if start_voltages is None:
+                solution_vec0 = np.zeros(n)
+            else:
+                solution_vec0 = np.zeros(n)
+                for vk in start_voltages:
+                    p = self.netw.get_object(vk)
+                    #                    p = self._port(vk)
+                    n = self.port_index(p)
+                    solution_vec0[n] = start_voltages[vk]
         else:
             solution_vec0 = start_solution_vec
 
