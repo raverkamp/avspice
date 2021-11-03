@@ -9,7 +9,7 @@ from blinker_circuit import create_blinker
 
     
 def blinker(args):
-    net = create_blinker()
+    net = create_blinker(transistor_gain=100, r_ca=1e4)
     ana = Analysis(net)
 
     base_vca = 0   #0.397 #-5 # -8.25
@@ -113,6 +113,7 @@ def blinker(args):
     a3.plot(xs, t2b, label="t2b,t1c")
     a3.set_title("Voltages")
     a3.legend()
+    
     a4.plot(xs, it2c)
     a4.set_title("it2c")
 
@@ -124,14 +125,15 @@ def blinker(args):
 
     a7.set_title("CA current")
     a7.plot(xs,iC, label="CA current")
-    a7.plot(xs,iC, label="CA current")
     
     a7.legend()
 
     a8.plot(xs, ca_v, label="capa voltage")
     a8.legend()
 
+    a9.set_title("log(cond)")
     a9.plot(xs, cond)
+    a9.legend()
     
     plt.ion()
     plt.show()
