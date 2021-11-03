@@ -211,8 +211,26 @@ def blinker_static(args):
     vn = res.get_voltage("ca.n")
     vp = res.get_voltage("ca.p")
     print("voltage ca ={0}".format(vp-vn))
-    
-    
+
+
+def try_random_start(args):
+    import random
+    net = create_blinker()
+    ana = Analysis(net)
+    base_vca = 0.0
+    res = ana.analyze(maxit=50, start_solution_vec=None, capa_voltages={"ca": base_vca},
+                      variables={"vc": 9},
+                      start_voltages= {
+                          "t1.C": random.random() * 9,
+                          #"t2.C": random.random() * 9,
+                          "t1.B": random.random() * 9
+                      })
+    if isinstance(res, str):
+        print("fail")
+    else:
+        for s in ["t1.C", "t1.B", "t2.C", "t2.B"]:
+            print("{0} V = {1}   I={2}".format(s, res.get_voltage(s), res.get_current(s)))
+
 def main():
     (cmd, args) = getargs()
 
@@ -222,6 +240,8 @@ def main():
         catest(args)
     elif cmd == "s":
         blinker_static(args)
+    elif cmd == "sol":
+        try_random_start(args)
     else:
         raise Exception("unknown command: {0}".format(cmd))
     
