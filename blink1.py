@@ -9,19 +9,19 @@ from blinker_circuit import create_blinker
 
     
 def blinker(args):
-    net = create_blinker(transistor_gain=100, r_ca=1e4)
+    net = create_blinker(transistor_gain=100, r_ca=0.01)
     ana = Analysis(net)
 
-    base_vca = 0   #0.397 #-5 # -8.25
+    base_vca = args.vca   #0.397 #-5 # -8.25
 
 
     sol = None
     res = ana.analyze(maxit=50, start_solution_vec=sol, capa_voltages={"ca": base_vca},
                       variables={"vc": 9},
                        start_voltages= {
-                          "t1.C": 4,
-                          "t2.C": 0.1,
-                          "t1.B": 0.1})
+                          "t1.C": args.t1c,
+                           "t1.B": args.t1b
+                       })
     if isinstance(res, str):
         raise Exception("can not find inital solution")
     sol = res.solution_vec
@@ -211,19 +211,23 @@ def blinker_static(args):
     vn = res.get_voltage("ca.n")
     vp = res.get_voltage("ca.p")
     print("voltage ca ={0}".format(vp-vn))
+    
+    for s in ["t1.C", "t1.B", "t2.C", "t2.B"]:
+            print("{0} V = {1}   I={2}".format(s, res.get_voltage(s), res.get_current(s)))
+
 
 
 def try_random_start(args):
     import random
-    net = create_blinker()
+    net = create_blinker(r_ca=1e-1)
     ana = Analysis(net)
     base_vca = 0.0
     res = ana.analyze(maxit=50, start_solution_vec=None, capa_voltages={"ca": base_vca},
                       variables={"vc": 9},
                       start_voltages= {
-                          "t1.C": random.random() * 9,
+                          "t1.C": args.t1c,
                           #"t2.C": random.random() * 9,
-                          "t1.B": random.random() * 9
+                          "t1.B": args.t1b
                       })
     if isinstance(res, str):
         print("fail")
@@ -232,18 +236,29 @@ def try_random_start(args):
             print("{0} V = {1}   I={2}".format(s, res.get_voltage(s), res.get_current(s)))
 
 def main():
-    (cmd, args) = getargs()
-
-    if cmd == "b":
-        blinker(args)
-    elif cmd == "c":
-        catest(args)
-    elif cmd == "s":
-        blinker_static(args)
-    elif cmd == "sol":
-        try_random_start(args)
-    else:
-        raise Exception("unknown command: {0}".format(cmd))
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
     
+    parser_b = subparsers.add_parser('b')
+    parser_b.set_defaults(func=blinker)
+    parser_b.add_argument('-t1c', type=float, default=0)
+    parser_b.add_argument('-t1b', type=float, default=0)
+    parser_b.add_argument('-vca', type=float, default=0)
+
+    parser_c = subparsers.add_parser('c')
+    parser_c.set_defaults(func=catest)
+
+    parser_s = subparsers.add_parser('s')
+    parser_s.set_defaults(func=blinker_static)
+
+    parser_sol = subparsers.add_parser('sol')
+    parser_sol.set_defaults(func=try_random_start)
+    parser_sol.add_argument('-t1c', type=float, default=0)
+    parser_sol.add_argument('-t1b', type=float, default=0)
+    
+    
+    args = parser.parse_args()
+    args.func(args)
+
 sys.exit(main())
 

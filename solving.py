@@ -2,7 +2,7 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-import scipy.optimize
+#import scipy.optimize
 
 def reldiff(x,y):
     return abs(x-y) /  max(abs(x), abs(y))

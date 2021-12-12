@@ -143,3 +143,8 @@ wird keine Lösung gefunden.
 
 2021-09-02_12:09
 Erster Versuch mit scipy optimize ist auch nicht besser.
+
+2021-11-04_22:08
+
+Wenn Voltage am Kpndensator bei -0,4 ist dann konvergiert nichts mehr.
+Auch wenn ich von verschiedenen Seiten komme.
