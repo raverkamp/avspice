@@ -661,11 +661,33 @@ class Result:
             raise Exception("not a port or node or name thereof: {0}".format(name_or_comp))
         return c
 
-
     def get_current(self, name_or_comp):
         c = self._port(name_or_comp)
         return self.currents[c]
 
+    def has_current(self, name_or_comp):
+        c = self._port(name_or_comp)
+        return c in self.currents
+
+    def display(self):
+        ports = []
+        compos = []
+        for comp in self.network.components.values():
+            compos.append(comp.name)
+            for port in comp.ports():
+                ports.append(port.pname())
+        ports.sort()
+        print("--- Voltages ---")
+        for port in ports:
+            print(port + " " + str(self.get_voltage(port)))
+        compos.sort()
+        print(" --- currents ---")
+        for cname in compos:
+            comp = self.network.get_object(cname)
+            if not isinstance(comp, Node):
+                for port in comp.ports():
+                    if self.has_current(port):
+                        print(port.pname() + " " + str(self.get_current(port)))
 
 class Analysis:
     """captures all data for analysis"""
@@ -1007,7 +1029,5 @@ class Analysis:
         (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
         return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
-
-    
 
     

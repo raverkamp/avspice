@@ -538,6 +538,32 @@ class PNPTransistorTests(unittest.TestCase):
             raise Exception(res)
         self.assertAlmostEqual(res.get_current(t1.E)/beta_r,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
-        
+
+class ResultDisplayTest(unittest.TestCase):
+    
+    def test_result_display(self):
+        npntransistor = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        net = Network()
+        v = net.addV("vc", 5)
+        vb = net.addV("vb", Variable("vb", 2))
+        rc = net.addR("rc", 100)
+        rb = net.addR("rb", 1e3)
+        t1 = net.addComp("T1", npntransistor)
+        connect(v.p, rc.p)
+        connect(rc.n, t1.C)
+        connect(v.n, net.ground)
+        connect(vb.p, rb.p)
+        connect(rb.n, t1.B)
+        connect(vb.n, net.ground)
+        connect(t1.E, net.ground)
+        ana = Analysis(net)
+        res = ana.analyze(maxit=50)
+        if isinstance(res, str):
+            raise Exception(res)
+
+        res.display()
+
+
+
 if __name__ == '__main__':
     unittest.main()
