@@ -1,9 +1,4 @@
-import matplotlib as mp
-import matplotlib.pyplot as plt
 from spice import *
-import argparse
-import sys
-from util import *
 
 # transistor_gain is the gain of the tarnssistor
 # r_ca is resitor value in front of capacitor

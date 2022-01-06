@@ -5,7 +5,7 @@ import argparse
 import sys
 from util import *
 
-from blinker_circuit import create_blinker
+from example_circuits import create_blinker
 
     
 def blinker(args):
