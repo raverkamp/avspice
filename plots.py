@@ -549,6 +549,32 @@ def blinker3(args):
     p1.plot(t, x["v.ca.p"], label="v.ca.p")
     p1.plot(t, x["v.ca.n"], label="v.ca.n")
     plt.show()
+
+def saw1(args):
+    import util
+    net = Network()
+    vc = net.addV("vc", 1, lambda t: util.saw_tooth(1,t)+1)
+    r1 = net.addR("r1", 100000)
+    ca = net.addCapa("ca", 1e-6)
+    connect(vc.p, r1.p)
+    connect(r1.n, ca.p)
+    connect(ca.n, vc.n)
+    connect(vc.n, net.ground)
+
+    ana = Analysis(net)
+    res = ana.transient(9,0.001)
+    time = []
+    ca_p = []
+    for (t,v,c) in res:
+        time.append(t)
+        ca_p.append(v["ca.p"])
+
+    (f,(p1, p2)) = plt.subplots(2)
+    p1.plot(time, ca_p)
+    plt.show()
+        
+        
+    
     
 def main():
     (cmd, args) = getargs()
@@ -574,6 +600,9 @@ def main():
         blinker2b(args)
     elif cmd == "b3":
         blinker3(args)
+
+    elif cmd == "saw":
+        saw1(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 

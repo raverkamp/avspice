@@ -21,4 +21,12 @@ def drange(start, end, step=None):
     if x < end + s/2.0:
         yield end
 
+def saw_tooth(freq,t):
+    t = 1.0 * t * freq
+    t = t % 1
+    if t<0.5:
+        return t*2
+    else:
+        return 2 - t*2 
+
         
