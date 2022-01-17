@@ -63,10 +63,6 @@ class Component:
             return val
         raise Exception("bug")
 
-    def get_currents(self, v, variables):
-        raise NotImplementedError("ports method not implemented")
-
-
 class Port:
     """ components are connected via their ports"""
 
@@ -93,9 +89,6 @@ class Node2(Component):
     def ports(self):
         return [self.p, self.n]
 
-    def get_currents(self, v, variables):
-        raise NotImplementedError("get_currents method not implemented")
-
     def get_current(self, variables, vd):
         raise NotImplementedError("get_current method not implemented")
 
@@ -111,9 +104,6 @@ class Node(Component):
     def __repr__(self):
         return "<Node {0}>".format(self.name)
 
-    def get_currents(self, v, variables):
-        return {}
-
 
 class Resistor(Node2):
     """resistor"""
@@ -126,11 +116,6 @@ class Resistor(Node2):
 
     def __repr__(self):
         return "<Resistor {0}>".format(self.name)
-
-    def get_currents(self, v,variables):
-        vd = v[self.p] - v[self.n]
-        i = vd / self.get_ohm(variables)
-        return { self.p: i, self.n : -i}
 
     def get_current(self,variables, vd):
         return vd / self.get_ohm(variables)
@@ -145,10 +130,6 @@ class Current(Node2):
     def __repr__(self):
         return "<Current {0}>".format(self.name)
 
-    def get_currents(self, v, variables):
-        x = self.get_val(self.amp, variables)
-        return {self.p: -x, self.n: x}
-
     def get_amp(self, variables):
         return self.get_val(self.amp, variables)
 
@@ -156,7 +137,7 @@ class Current(Node2):
         return self.get_val(self.amp, variables)
 
 class Voltage(Node2):
-    """current source"""
+    """voltage source"""
     def __init__(self, parent, name:str, volts:float):
         super().__init__(parent, name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
@@ -167,9 +148,6 @@ class Voltage(Node2):
 
     def __repr__(self):
         return "<Voltage {0}>".format(self.name)
-
-    def get_currents(self, v, variables):
-        return {}
 
     def get_current(self, variables, vd):
         raise NotImplementedError("get_current for voltage source not implemented")
