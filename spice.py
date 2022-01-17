@@ -138,19 +138,25 @@ class Current(Node2):
 
 class Voltage(Node2):
     """voltage source"""
-    def __init__(self, parent, name:str, volts:float):
+    def __init__(self, parent, name:str, volts:float, waveform = None):
         super().__init__(parent, name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self.volts = volts
+        self.waveform = waveform
 
-    def voltage(self, variables):
-        return self.get_val(self.volts, variables)
+    def voltage(self, time, variables):
+        v = self.get_val(self.volts, variables)
+        if self.waveform is None:
+            return v
+        else:
+            return self.waveform(time) * v
 
     def __repr__(self):
         return "<Voltage {0}>".format(self.name)
 
     def get_current(self, variables, vd):
         raise NotImplementedError("get_current for voltage source not implemented")
+
 
 class Diode(Node2):
     """solid state diode"""
@@ -409,11 +415,11 @@ class Network:
         self.components[name] = c
         return c
 
-    def addV(self, name, volts):
+    def addV(self, name, volts, waveform=None):
         """add a voltage source"""
         if name in self.components:
             raise Exception("Name {0} already exists".format(name))
-        v = Voltage(self, name, volts)
+        v = Voltage(self, name, volts, waveform)
         self.components[name] = v
         return v
 
@@ -856,15 +862,15 @@ class Analysis:
         D[kE][kC] += tra.d_IE_vbc(vbc0)
 
 
-    def process_voltage_y(self, vol: Voltage, sol, y, variables):
+    def process_voltage_y(self, time: float, vol: Voltage, sol, y, variables):
         k = self.voltage_index(vol)
         kp = self.port_index(vol.p)
         kn = self.port_index(vol.n)
         y[kp] += sol[k]
         y[kn] -= sol[k]
-        y[k] = (sol[kp] - sol[kn]) - vol.voltage(variables) * self.energy_factor
+        y[k] = (sol[kp] - sol[kn]) - vol.voltage(time, variables) * self.energy_factor
 
-    def process_voltage_D(self, vol: Voltage, sol, D, variables):
+    def process_voltage_D(self, time: float, vol: Voltage, sol, D, variables):
         k = self.voltage_index(vol)
         kp = self.port_index(vol.p)
         kn = self.port_index(vol.n)
@@ -923,7 +929,7 @@ class Analysis:
         else:
             D[k][k] = 1
 
-    def compute_y(self, sol, capa_voltages, variables):
+    def compute_y(self, sol, time, capa_voltages, variables):
         capa_voltages = capa_voltages or {}
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         y = np.zeros(n)
@@ -931,7 +937,7 @@ class Analysis:
             if isinstance(comp, Node):
                 pass
             elif isinstance(comp, Voltage):
-                self.process_voltage_y(comp, sol, y, variables)
+                self.process_voltage_y(time, comp, sol, y, variables)
             elif isinstance(comp, Current):
                 self.process_current_source_y(comp, sol, y, variables)
             elif isinstance(comp, Resistor):
@@ -952,7 +958,7 @@ class Analysis:
         y[k] = sol[k]
         return y
 
-    def compute_D(self, sol, capa_voltages, variables):
+    def compute_D(self, sol, time, capa_voltages, variables):
         capa_voltages = capa_voltages or {}
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         D = np.zeros((n,n))
@@ -960,7 +966,7 @@ class Analysis:
             if isinstance(comp, Node):
                 pass
             elif isinstance(comp, Voltage):
-                self.process_voltage_D(comp, sol, D, variables)
+                self.process_voltage_D(time, comp, sol, D, variables)
             elif isinstance(comp, Current):
                 self.process_current_source_D(comp, sol, D, variables)
             elif isinstance(comp, Resistor):
@@ -989,7 +995,8 @@ class Analysis:
                  reltol= 1e-6,
                  variables=None,
                  capa_voltages=None,
-                 start_voltages= None):
+                 start_voltages= None,
+                 time =0 ):
         if variables is None:
             variables = dict()
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
@@ -1009,10 +1016,10 @@ class Analysis:
         solution_vec = solution_vec0
 
         def f(x):
-            return self.compute_y(x, capa_voltages, variables)
+            return self.compute_y(x, time, capa_voltages, variables)
 
         def Df(x):
-            return self.compute_D(x, capa_voltages, variables)
+            return self.compute_D(x, time, capa_voltages, variables)
 
         res = solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
@@ -1069,15 +1076,16 @@ class Analysis:
                     work_capa_voltages[comp.name] = 0
                 else:
                     work_capa_voltages[comp.name] = capa_voltages[comp.name]
-
+        time = 0
         res = self.analyze(maxit=maxit,
                            start_solution_vec=start_solution_vec,
                            capa_voltages=work_capa_voltages,
                            variables=variables,
-                           start_voltages=start_voltages)
+                           start_voltages=start_voltages,
+                           time=time)
         if isinstance(res, str):
             raise Exception("can not find inital solution")
-        time = 0
+
         solutions= []
         sol = res.solution_vec
         solutions.append((time, res.get_voltages(), res.get_currents()))
@@ -1091,8 +1099,9 @@ class Analysis:
                 work_capa_voltages[capa_name] += timestep*current/capa
             res = self.analyze(maxit=maxit,
                               start_solution_vec=sol,
-                              capa_voltages= work_capa_voltages,
-                              variables = variables)
+                              capa_voltages=work_capa_voltages,
+                               variables=variables,
+                               time=time)
             if isinstance(res, str):
                 break
             solutions.append((time, res.get_voltages(), res.get_currents()))

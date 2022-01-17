@@ -590,5 +590,25 @@ class TransientTest(unittest.TestCase):
         self.assertTrue(0.98 < ve/ve_expected <1.02)
         print(ve, ve_expected)
 
+    def test2(self):
+        import math
+
+        def waveform(t):
+            return math.sin(t* 2* math.pi)
+
+        net = Network()
+        v0 = 10
+        vc = net.addV("vc", v0, waveform= waveform)
+        rc = net.addR("rc", 100)
+        connect(vc.p, rc.p)
+        connect(rc.n, vc.n)
+        connect(vc.n, net.ground)
+        ana = Analysis(net)
+        res = ana.transient(1,0.005)
+
+        for (t,v,c) in res:
+            self.assertAlmostEqual(v["rc.p"], v0 * waveform(t))
+
+
 if __name__ == '__main__':
     unittest.main()
