@@ -16,9 +16,10 @@ def close_enough(v1,v2, abstol, reltol):
     return True
 
 
-def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
+def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbose=False):
     iterations = 0
-    print("-----------------------------",xstart,alfa)
+    if verbose:
+        print("-----------------------------",xstart,alfa)
     x0 = xstart
     x = xstart
     if not alfa is None:
@@ -50,7 +51,8 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
         norm_y = np.linalg.norm(y)
         dfx = dfn(x) 
         dx = np.linalg.solve(dfx, -y)
-        print("iteration {0}, norm_y={1}, norm_dx={2} ----".format(iterations, norm_y,  np.linalg.norm(dx)))
+        if verbose: 
+            print("iteration {0}, norm_y={1}, norm_dx={2} ----".format(iterations, norm_y,  np.linalg.norm(dx)))
         
         a = 1
         k = 0
@@ -61,7 +63,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
             xn = x + a * dx
             yn = fn(xn)
             norm_y_n = np.linalg.norm(yn)
-            if k >= 15:
+            if k >= 15 and verbose:
                 print("#", k,norm_y_n, norm_y_n/norm_y, 1-a/2)
                 print("++", xn)
             # if everything was linear we would expect norm_y / norm_y = 1-a
@@ -69,7 +71,8 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
                 break
             else:
                 a = a/2
-        print(("norm_y_n", norm_y_n))
+        if verbose:
+            print(("norm_y_n", norm_y_n))
         if norm_y_n < abstol:
             return (xn, yn, dfx, iterations, norm_y_n)
         x = xn

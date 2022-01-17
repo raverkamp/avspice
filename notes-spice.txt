@@ -148,3 +148,32 @@ Erster Versuch mit scipy optimize ist auch nicht besser.
 
 Wenn Voltage am Kpndensator bei -0,4 ist dann konvergiert nichts mehr.
 Auch wenn ich von verschiedenen Seiten komme.
+
+2021-12-28_15:18
+Was neues:
+Zeitabhängigie Voltage Source
+
+Das könnte man mit Variablen behandeln.
+
+
+2022-01-06_21:53
+Fuer eine zeitabhängige Voltage Source brauche ich eine Transienten Analyse.
+
+Ich muss die Interna umstellen.
+
+Es gibt Nodes.
+
+Und die Ports der Bauteile sind mit den Nodes verbunden.
+
+Pro Node wird die Voltage ausgerechnet.
+Pro Port die Current berechnet.
+
+Pro Voltage Source gibt es eine Current Variable.
+
+Capacitors
+Fuer Operating Point haben sie immer Zustand.
+
+Für Transient Analyse sind sie Teil der Differential Gleichung.
+
+Spulen genauso.
+

@@ -26,7 +26,7 @@ class TestMath(unittest.TestCase):
         x = explin(-4,-2,3)
         self.assertAlmostEqual(x, exp(-2) + exp(-2) * (-4-(-2)))
 
-        
+
         x = explin(4,-2,3)
         y = explin(23,-2,3)
         self.assertAlmostEqual((y-x)/(23-4), exp(3.0))
@@ -300,7 +300,7 @@ class TestTransistor(unittest.TestCase):
         connect(vc.p, rc.p)
         connect(rc.n, t1.C)
         connect(vb.p, rb.p)
-        connect(rb.n, t1.B) 
+        connect(rb.n, t1.B)
         connect(vb.n, net.ground)
         connect(t1.E, re.p)
         connect(re.n, vc.n)
@@ -372,7 +372,7 @@ class TestTransistor(unittest.TestCase):
         connect(v.p, rc.p)
         connect(rc.n, t1.C)
         connect(rb.p, v.p)
-        connect(rb.n, t1.B) 
+        connect(rb.n, t1.B)
         connect(t1.E, re.p)
         connect(re.n, v.n)
         connect(v.n, net.ground)
@@ -399,7 +399,7 @@ class TestTransistor(unittest.TestCase):
         connect(v.p, rc.p)
         connect(rc.n, t1.E)
         connect(rb.p, v.p)
-        connect(rb.n, t1.B) 
+        connect(rb.n, t1.B)
         connect(t1.C, re.p)
         connect(re.n, v.n)
         connect(v.n, net.ground)
@@ -420,11 +420,11 @@ class PNPTransistorTests(unittest.TestCase):
 
         for vbc in [-0.3, -0.1, 0, 0.1,0.3]:
             for vbe in [-0.3, -0.1, 0, 0.1,0.3]:
-                
+
                 ie = tt.IE(vbe, vbc)
                 ic = tt.IC(vbe, vbc)
                 ib = tt.IB(vbe, vbc)
-        
+
                 self.assertAlmostEqual(ie+ ic + ib,0)
 
                 d_vbe = tt.d_IB_vbe(vbe) + tt.d_IC_vbe(vbe) + tt.d_IE_vbe(vbe)
@@ -437,7 +437,7 @@ class PNPTransistorTests(unittest.TestCase):
 
         ie = tt.IE(-0.3,0.2)
         self.assertGreater(ie,0)
-        
+
         ic = tt.IC(0.2,-0.3)
         self.assertGreater(ic,0)
 
@@ -475,13 +475,13 @@ class PNPTransistorTests(unittest.TestCase):
         #print("current = {0}, dvolt) = {1}".format(res.get_current("r.p"), res.get_voltage("t1.E")))
         #print(" bisect i={0}, v={1}".format((v0-vv)/r0, vv))
         self.assertAlmostEqual(res.get_current("r.p"), (v0-vv)/r0)
-        
+
     def test_trans_fw(self):
 
         beta_f = 100
         beta_r = 20
         tt = PNPTransistor(None, "", 1e-12, 25e-3, beta_f, beta_r)
-        
+
         net = Network()
         v = net.addV("v", 6)
         re = net.addR("re", 10)
@@ -496,7 +496,7 @@ class PNPTransistorTests(unittest.TestCase):
         connect(rb.p, t1.B)
         connect(rb2.n, t1.B)
         connect(rb2.p, v.p)
-        
+
         connect(t1.C, rc.p)
         connect(rc.n, v.n)
         connect(v.n, net.ground)
@@ -506,14 +506,14 @@ class PNPTransistorTests(unittest.TestCase):
             raise Exception(res)
         self.assertAlmostEqual(-res.get_current(t1.E)/beta_f,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
-        
+
 
     def test_trans_bw(self):
 
         beta_f = 100
         beta_r = 20
         tt = PNPTransistor(None, "", 1e-12, 25e-3, beta_f, beta_r)
-        
+
         net = Network()
         v = net.addV("v", 6)
         re = net.addR("re", 10)
@@ -528,7 +528,7 @@ class PNPTransistorTests(unittest.TestCase):
         connect(rb.p, t1.B)
         connect(rb2.n, t1.B)
         connect(rb2.p, v.p)
-        
+
         connect(t1.E, rc.p)
         connect(rc.n, v.n)
         connect(v.n, net.ground)
@@ -540,7 +540,7 @@ class PNPTransistorTests(unittest.TestCase):
         self.assertAlmostEqual(res.y_norm, 0)
 
 class ResultDisplayTest(unittest.TestCase):
-    
+
     def test_result_display(self):
         npntransistor = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
         net = Network()
@@ -563,7 +563,32 @@ class ResultDisplayTest(unittest.TestCase):
 
         res.display()
 
+class TransientTest(unittest.TestCase):
 
+    def test1(self):
+
+        v0 = 5.6
+        r = 17e3
+        capa = 312e-6
+        timespan = 1
+        net = Network()
+        vc = net.addV("vc", v0)
+        rc = net.addR("rc", r)
+        ca = net.addCapa("ca", capa)
+
+        connect(vc.p, rc.p)
+        connect(rc.n, ca.p)
+        connect(vc.n, net.ground)
+        connect(ca.n, vc.n)
+
+        ana = Analysis(net)
+        res = ana.transient(timespan,0.01)
+
+        import math
+        ve = res[-1][1]["ca.p"]
+        ve_expected = v0 *(1-math.exp(-timespan/(r*capa)))
+        self.assertTrue(0.98 < ve/ve_expected <1.02)
+        print(ve, ve_expected)
 
 if __name__ == '__main__':
     unittest.main()
