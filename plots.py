@@ -553,9 +553,11 @@ def blinker3(args):
 def saw1(args):
     import util
     net = Network()
+    r = 100000
+    capa = 10e-6
     vc = net.addV("vc", 1, lambda t: util.saw_tooth(1,t)+1)
-    r1 = net.addR("r1", 100000)
-    ca = net.addCapa("ca", 1e-6)
+    r1 = net.addR("r1", r)
+    ca = net.addCapa("ca", capa)
     connect(vc.p, r1.p)
     connect(r1.n, ca.p)
     connect(ca.n, vc.n)
@@ -569,7 +571,8 @@ def saw1(args):
         time.append(t)
         ca_p.append(v["ca.p"])
 
-    (f,(p1, p2)) = plt.subplots(2)
+    (f, p1) = plt.subplots(1)
+    p1.set_title("Voltage at capacitor, R={0}, CAPA={1}".format(r,capa))
     p1.plot(time, ca_p)
     plt.show()
         
