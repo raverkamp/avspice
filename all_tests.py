@@ -582,13 +582,13 @@ class TransientTest(unittest.TestCase):
         connect(ca.n, vc.n)
 
         ana = Analysis(net)
-        res = ana.transient(timespan,0.01)
+        # assumption capacitor is empty and will be loaded
+        res = ana.transient(timespan,0.01, capa_voltages={"ca" : 0})
 
         import math
         ve = res[-1][1]["ca.p"]
         ve_expected = v0 *(1-math.exp(-timespan/(r*capa)))
         self.assertTrue(0.98 < ve/ve_expected <1.02)
-        print(ve, ve_expected)
 
     def test2(self):
         import math
