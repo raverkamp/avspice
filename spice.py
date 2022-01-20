@@ -1073,7 +1073,7 @@ class Analysis:
         for comp in self.netw.components.values():
             if isinstance(comp, Capacitor):
                 if not comp.name in capa_voltages:
-                    work_capa_voltages[comp.name] = 0
+                    pass # assumption capacitor is full
                 else:
                     work_capa_voltages[comp.name] = capa_voltages[comp.name]
         time = 0
@@ -1086,10 +1086,18 @@ class Analysis:
         if isinstance(res, str):
             raise Exception("can not find inital solution")
 
+        
+
         solutions= []
         sol = res.solution_vec
         solutions.append((time, res.get_voltages(), res.get_currents()))
         time += timestep
+    
+        for comp in self.netw.components.values():
+            if isinstance(comp, Capacitor):
+                if not comp.name in capa_voltages:
+                    v = res.get_voltage(comp.p) - res.get_voltage(comp.n)
+                    work_capa_voltages[comp.name] = v
 
         while time < maxtime:
             for capa_name in work_capa_voltages:
@@ -1103,6 +1111,7 @@ class Analysis:
                                variables=variables,
                                time=time)
             if isinstance(res, str):
+                raise Exception("fail at time {0}".format(time))
                 break
             solutions.append((time, res.get_voltages(), res.get_currents()))
             sol = res.solution_vec

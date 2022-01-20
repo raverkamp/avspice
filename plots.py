@@ -564,7 +564,7 @@ def saw1(args):
     connect(vc.n, net.ground)
 
     ana = Analysis(net)
-    res = ana.transient(9,0.001)
+    res = ana.transient(9,0.0001)
     time = []
     ca_p = []
     for (t,v,c) in res:
@@ -577,7 +577,75 @@ def saw1(args):
     plt.show()
         
         
+def emitterschaltung(args):
+    #   https://www.elektronik-kompendium.de/sites/slt/0204302.htm
+    import util
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net = Network()
+    vc = net.addV("vc", 10)
+
+    ve = net.addV("ve", 0.1, lambda t: util.saw_tooth(10,t))
+                  
+    ce = net.addCapa("ce", 100e-6)
+    #ce = net.addR("ce", 1)
+    ca = net.addCapa("ca", 10e-6)
+
+    r1 = net.addR("r1", 10e3)
+    r2 = net.addR("r2", 0.5e3)
+
+    rc = net.addR("rc",1000)
+
+    tr = net.addComp("tr", tt)
+
+    rl = net.addR("rl", 100)
+
+    connect(vc.p, r1.p)
+    connect(vc.n, net.ground)
+    connect(r1.n, r2.p)
+    connect(r2.n, net.ground)
+
+    connect(r1.n, tr.B)
     
+    connect(ve.p, ce.p)
+    connect(ve.n, net.ground)
+    connect(ce.n, tr.B)
+
+    connect(rc.p, vc.p)
+    connect(rc.n, tr.C)
+
+    connect(tr.E, net.ground)
+
+    connect(tr.C, ca.p)
+
+    connect(ca.n, rl.p)
+    connect(rl.n, net.ground)
+
+    ana = Analysis(net)
+    res = ana.transient(0.4,0.00001)
+    time = []
+    va = []
+    ca = []
+    ctb = []
+    vtb = []
+    for (t,v,c) in res:
+        time.append(t)
+        va.append(v["rl.p"])
+        ca.append(c["rl.p"])
+        ctb.append(c["tr.B"])
+        vtb.append(v["tr.B"])
+    (fig, (p1, p2, p3, p4)) = plt.subplots(4)
+    p1.plot(time, ctb)
+    p1.set_title("current base")
+    p2.plot(time, vtb)
+    p2.set_title("voltage base")
+
+    p3.plot(time, va)
+    p3.set_title("voltage out")
+    p4.plot(time, ca)
+    p4.set_title("current out")
+    fig.tight_layout()
+    
+    plt.show()
     
 def main():
     (cmd, args) = getargs()
@@ -603,9 +671,10 @@ def main():
         blinker2b(args)
     elif cmd == "b3":
         blinker3(args)
-
     elif cmd == "saw":
         saw1(args)
+    elif cmd == "emitter":
+        emitterschaltung(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
