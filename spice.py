@@ -788,8 +788,8 @@ class Analysis:
         kE = self.port_index(tra.E)
         kC = self.port_index(tra.C)
 
-        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
-        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+        vbe0 = sol[kB] - sol[kE]
+        vbc0 = sol[kB] - sol[kC]
 
         ie = tra.IE(vbe0, vbc0)
         ib = tra.IB(vbe0, vbc0)
@@ -804,8 +804,8 @@ class Analysis:
         kE = self.port_index(tra.E)
         kC = self.port_index(tra.C)
 
-        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
-        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+        vbe0 = sol[kB] - sol[kE]
+        vbc0 = sol[kB] - sol[kC]
 
         D[kB][kB] += -tra.d_IB_vbe(vbe0)
         D[kB][kB] += -tra.d_IB_vbc(vbc0)
@@ -827,8 +827,8 @@ class Analysis:
         kE = self.port_index(tra.E)
         kC = self.port_index(tra.C)
 
-        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
-        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+        vbe0 = sol[kB] - sol[kE]
+        vbc0 = sol[kB] - sol[kC]
 
         ie = tra.IE(vbe0, vbc0)
         ib = tra.IB(vbe0, vbc0)
@@ -843,8 +843,9 @@ class Analysis:
         kE = self.port_index(tra.E)
         kC = self.port_index(tra.C)
 
-        vbe0 = self.voltage(sol, tra.B) - self.voltage(sol, tra.E)
-        vbc0 = (self.voltage(sol, tra.B) - self.voltage(sol, tra.C))
+        vbe0 = sol[kB] - sol[kE]
+        vbc0 = sol[kB] - sol[kC]
+       
 
         D[kB][kB] += -tra.d_IB_vbe(vbe0)
         D[kB][kB] += -tra.d_IB_vbc(vbc0)
