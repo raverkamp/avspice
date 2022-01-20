@@ -728,7 +728,6 @@ class Analysis:
         self.solution_vec = None
         self.node_list = compute_nodes(self.netw)
         self.ground = self.node_list[0]
-        self.energy_factor = 1
 
         for node in self.node_list:
             for port in node.ports:
@@ -869,7 +868,7 @@ class Analysis:
         kn = self.port_index(vol.n)
         y[kp] += sol[k]
         y[kn] -= sol[k]
-        y[k] = (sol[kp] - sol[kn]) - vol.voltage(time, variables) * self.energy_factor
+        y[k] = (sol[kp] - sol[kn]) - vol.voltage(time, variables)
 
     def process_voltage_D(self, time: float, vol: Voltage, sol, D, variables):
         k = self.voltage_index(vol)
@@ -881,7 +880,7 @@ class Analysis:
         D[k][kn] -=1
 
     def process_current_source_y(self, cs:  Current, sol, y, variables):
-        cur = cs.get_amp(variables) * self.energy_factor
+        cur = cs.get_amp(variables)
         y[self.port_index(cs.p)] += cur
         y[self.port_index(cs.n)] -= cur
 
@@ -911,7 +910,7 @@ class Analysis:
         pk = self.port_index(c.p)
         nk = self.port_index(c.n)
         if c.name in capa_voltages:
-            v = capa_voltages[c.name] * self.energy_factor
+            v = capa_voltages[c.name]
             y[pk] += sol[k]
             y[nk] -= sol[k]
             y[k] = (sol[pk] - sol[nk]) - v
