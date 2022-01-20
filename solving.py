@@ -1,6 +1,5 @@
 import math
 import pprint as pp
-import numbers
 import numpy as np
 #import scipy.optimize
 
@@ -42,18 +41,18 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
             return df(x)
         else:
             return  df(x) + dalfa
-    
+
     while True:
         if iterations > maxiter:
             return "Fail"
         iterations +=1
         y = fn(x)
         norm_y = np.linalg.norm(y)
-        dfx = dfn(x) 
+        dfx = dfn(x)
         dx = np.linalg.solve(dfx, -y)
-        if verbose: 
+        if verbose:
             print("iteration {0}, norm_y={1}, norm_dx={2} ----".format(iterations, norm_y,  np.linalg.norm(dx)))
-        
+
         a = 1
         k = 0
         while True:
@@ -99,9 +98,9 @@ def bisect(f, xl, xr):
         else:
             raise Exception("Bug?")
 
-            
-        
-    
+
+
+
 def scipy_solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None):
     x0 = xstart
     x = xstart
@@ -129,7 +128,7 @@ def scipy_solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None)
     res = scipy.optimize.fsolve(fn, x, fprime=dfn, full_output=True)
     print("@@@@@@@", type(res), res)
     (x, infodict, ier, mesg) = res
-    
+
     if ier == 1:
         return (x, infodict["fvec"], infodict["nfev"],None,0)
     else:

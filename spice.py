@@ -4,27 +4,27 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-from solving import solve as solve
+from solving import solve
 
 def explin(x: float, lcutoff: float, rcutoff:float):
     assert lcutoff  <= rcutoff, "cutoffs wrong"
-    if lcutoff <=  x <= rcutoff:
-        return math.exp(x)
+
     if x > rcutoff:
         return math.exp(rcutoff) +  (x-rcutoff) * math.exp(rcutoff)
-    if x < lcutoff:
+    elif x < lcutoff:
         return math.exp(lcutoff) +  (x-lcutoff) * math.exp(lcutoff)
-
+    else:
+        return math.exp(x)
 
 def dexplin(x:float, lcutoff:float, rcutoff:float):
     assert lcutoff  <= rcutoff, "cutoffs wrong"
-    if lcutoff <=  x <= rcutoff:
-        return math.exp(x)
+
     if x > rcutoff:
         return math.exp(rcutoff)
-    if x < lcutoff:
+    elif x < lcutoff:
         return  math.exp(lcutoff)
-
+    else:
+        return math.exp(x)
 class Variable:
     """a variable"""
     def __init__(self, name, default=None):
@@ -48,7 +48,7 @@ class Component:
         for p in self.ports():
             if p.name == name:
                 return p
-        raise Exception("Component {0} does not have port {1}".format(self.name, name))
+        raise Exception(f"Component {self.name} does not have port {name}")
 
     def get_val(self, var_or_num, variables):
         if isinstance(var_or_num, numbers.Number):
@@ -57,8 +57,7 @@ class Component:
             val = variables.get(var_or_num.name, None)
             if val is None:
                 if var_or_num.default is None:
-                    raise Exception("did not find value for var {0} in {1}"
-                                    .format(var_or_num, self.name))
+                    raise Exception(f"did not find value for var {var_or_num} in {self.name}")
                 return var_or_num.default
             return val
         raise Exception("bug")
@@ -171,11 +170,6 @@ class Diode(Node2):
     def current(self, v):
         return self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
 
-    def diff_conductance(self, v):
-        if v<0:
-            return 0
-        return self.Is * 1/self.Nut * dexplin(v/self.Nut, self.cut_off)
-
     def get_current(self, variables, vd):
         return self.Is * (explin(vd/self.Nut, self.lcut_off, self.rcut_off)-1)
 
@@ -240,7 +234,8 @@ class NPNTransistor(Component):
         return [self.B, self.C, self.E]
 
     def t1(self, vbe, vbc):
-        return explin(vbe/self.VT, self.lcutoff, self.rcutoff) - explin(vbc/self.VT, self.lcutoff, self.rcutoff)
+        return (explin(vbe/self.VT, self.lcutoff, self.rcutoff)
+                - explin(vbc/self.VT, self.lcutoff, self.rcutoff))
 
     def d_t1_vbe(self, vbe):
         return dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
@@ -442,7 +437,12 @@ class Network:
         if name in self.components:
             raise Exception("Name {0} already exists".format(name))
         if isinstance(comp, Diode):
-            d = Diode(self, name, comp.Is, comp.Nut, lcut_off = comp.lcut_off, rcut_off = comp.rcut_off)
+            d = Diode(self,
+                      name,
+                      comp.Is,
+                      comp.Nut,
+                      lcut_off = comp.lcut_off,
+                      rcut_off = comp.rcut_off)
             self.components[name] = d
             return d
         if isinstance(comp, NPNTransistor):
@@ -718,7 +718,7 @@ class Analysis:
 
     def __init__(self, netw):
         self.netw = netw
-        self._port_to_node = dict()
+        self._port_to_node = {}
         self.node_list = []
         self.voltage_list = []
         self.capa_list = []
@@ -739,29 +739,18 @@ class Analysis:
             if isinstance(comp, Capacitor):
                 self.capa_list.append(comp)
 
-
-
-    def node_ports(self, node):
-        return node.ports
-
-    def port_node(self, port):
-        return self._port_to_node[port]
-
     def node_index(self, node):
         return self.node_list.index(node)
 
     def port_index(self, port):
-        return self.node_index(self.port_node(port))
+        node = self._port_to_node[port]
+        return self.node_index(node)
 
     def voltage_index(self, voltage):
         return self.voltage_list.index(voltage) + len(self.node_list)
 
     def capa_index(self, capa):
         return self.capa_list.index(capa) + len(self.node_list) + len(self.voltage_list)
-
-    def voltage(self, solution_vec, port):
-        k = self.port_index(port)
-        return solution_vec[k]
 
     def process_diode_y(self, comp, sol, y, variables):
         kp = self.port_index(comp.p)
@@ -844,7 +833,7 @@ class Analysis:
 
         vbe0 = sol[kB] - sol[kE]
         vbc0 = sol[kB] - sol[kC]
-       
+
 
         D[kB][kB] += -tra.d_IB_vbe(vbe0)
         D[kB][kB] += -tra.d_IB_vbc(vbc0)
@@ -998,7 +987,7 @@ class Analysis:
                  start_voltages= None,
                  time =0 ):
         if variables is None:
-            variables = dict()
+            variables = {}
         n = len(self.node_list) + len(self.voltage_list) + len(self.capa_list)
         if start_solution_vec is None:
             if start_voltages is None:
@@ -1025,7 +1014,14 @@ class Analysis:
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             norm_y = np.linalg.norm(y)
-            return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
+            return Result(self.netw,
+                          self,
+                          iterations,
+                          sol,
+                          variables,
+                          y,
+                          norm_y,
+                          np.linalg.cond(dfx,'fro'))
 
         alfa = 0.5
 
@@ -1054,7 +1050,14 @@ class Analysis:
 
         (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
-        return Result(self.netw, self, iterations, sol, variables, y, norm_y, np.linalg.cond(dfx,'fro'))
+        return Result(self.netw,
+                      self,
+                      iterations,
+                      sol,
+                      variables,
+                      y,
+                      norm_y,
+                      np.linalg.cond(dfx,'fro'))
 
 
     def transient(self,
@@ -1069,7 +1072,7 @@ class Analysis:
                   start_voltages=None):
 
         capa_voltages = capa_voltages or {}
-        work_capa_voltages = dict()
+        work_capa_voltages = {}
         for comp in self.netw.components.values():
             if isinstance(comp, Capacitor):
                 if not comp.name in capa_voltages:
@@ -1086,13 +1089,13 @@ class Analysis:
         if isinstance(res, str):
             raise Exception("can not find inital solution")
 
-        
+
 
         solutions= []
         sol = res.solution_vec
         solutions.append((time, res.get_voltages(), res.get_currents()))
         time += timestep
-    
+
         for comp in self.netw.components.values():
             if isinstance(comp, Capacitor):
                 if not comp.name in capa_voltages:

@@ -45,7 +45,7 @@ def plot2(args):
     x = list(drange(-0.5,3.5, 0.01)    )
     ie = [t.IE(vb-ve, vb-vc) for vb in x]
     ib = [t.IB(vb-ve, vb-vc) for vb in x]
-    fig, ax = plt.subplots()  # Create a figure containing a single axes.
+    _, _ = plt.subplots()  # Create a figure containing a single axes.
     plt.plot(x,ie, color="black")
     plt.plot(x,ib, color="green")
     plt.show()
@@ -79,7 +79,7 @@ def plot4(args):
     iy = []
 
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
- 
+
     net = Network()
     vc = net.addV("vc", 2)
     vb = net.addV("vb", Variable("vb"))
@@ -113,7 +113,7 @@ def plot4(args):
     ax2.plot(x,z, color="green", label="I(B)")
     ax1.legend()
     ax2.legend()
-    
+
     fig.tight_layout()
     ax.plot(x, iy)
     ax.set_title("Iterations")
@@ -273,8 +273,8 @@ def saw1(args):
     p1.set_title("Voltage at capacitor, R={0}, CAPA={1}".format(r,capa))
     p1.plot(time, ca_p)
     plt.show()
-        
-        
+
+
 def emitterschaltung(args):
     #   https://www.elektronik-kompendium.de/sites/slt/0204302.htm
     import util
@@ -283,7 +283,7 @@ def emitterschaltung(args):
     vc = net.addV("vc", 10)
 
     ve = net.addV("ve", 0.1, lambda t: util.saw_tooth(10,t))
-                  
+
     ce = net.addCapa("ce", 100e-6)
     #ce = net.addR("ce", 1)
     ca = net.addCapa("ca", 10e-6)
@@ -303,7 +303,7 @@ def emitterschaltung(args):
     connect(r2.n, net.ground)
 
     connect(r1.n, tr.B)
-    
+
     connect(ve.p, ce.p)
     connect(ve.n, net.ground)
     connect(ce.n, tr.B)
@@ -342,9 +342,9 @@ def emitterschaltung(args):
     p4.plot(time, ca)
     p4.set_title("current out")
     fig.tight_layout()
-    
+
     plt.show()
-    
+
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
