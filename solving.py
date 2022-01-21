@@ -42,6 +42,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
         else:
             return  df(x) + dalfa
 
+
     while True:
         if iterations > maxiter:
             return "Fail"
@@ -51,44 +52,39 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
         dfx = dfn(x)
         dx = np.linalg.solve(dfx, -y)
         if verbose:
-            print("iteration {0}, norm_y={1}, norm_dx={2} ----".format(iterations, norm_y,  np.linalg.norm(dx)))
-
+            print(f"iteration {iterations}, norm_y={norm_y}, norm_dx={np.linalg.norm(dx)} ----")
+        xn = x + dx
+        yn =  fn(xn)
+        norm_y_n = np.linalg.norm(yn)
+        if close_enough(x, xn, abstol, reltol):
+            return (xn, yn, dfx, iterations, norm_y_n)
         a = 1
         k = 0
+
         while True:
+            # is there an improvement in the residual error?
+            if norm_y_n < abstol or norm_y_n/norm_y <= (1-a/4):
+                x = xn
+                break
             k = k + 1
             if k >= 20:
                 return "fail"
+            a = a/2
             xn = x + a * dx
             yn = fn(xn)
             norm_y_n = np.linalg.norm(yn)
-            if k >= 15 and verbose:
-                print("#", k,norm_y_n, norm_y_n/norm_y, 1-a/2)
-                print("++", xn)
-            # if everything was linear we would expect norm_y / norm_y = 1-a
-            if norm_y_n < abstol or norm_y_n/norm_y <= (1-a/4):
-                break
-            else:
-                a = a/2
-        if verbose:
-            print(("norm_y_n", norm_y_n))
-        if norm_y_n < abstol:
-            return (xn, yn, dfx, iterations, norm_y_n)
-        x = xn
 
 
 def bisect(f, xl, xr):
     assert xl < xr, "xl < xr required!"
     fr = f(xr)
     fl = f(xl)
-    print((fl, fr))
     assert f(xl) * f(xr) <0, "xl < xr required!"
     while True:
         xm = (xl + xr)/2
         if xm == xl or xm == xr:
             return xm
         fm = f(xm)
-        print((xm, xl, xr))
         if (fm <=0 and fl <=0) or (fm >=0 and fl >=0):
             xl = xm
             fl = fm

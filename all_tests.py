@@ -3,7 +3,7 @@ import unittest
 import pprint as pp
 from math import exp
 import numpy as np
-from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable, solve, PNPTransistor
+from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable, PNPTransistor
 
 import solving
 
@@ -68,7 +68,7 @@ class TestSolve(unittest.TestCase):
             df[1][1] = 1
             return df
 
-        (sol, y, dfx, iterations, norm_y) = solve(np.array([1,2]), f, Df, 1e-8, 1e-8)
+        (sol, y, dfx, iterations, norm_y) = solving.solve(np.array([1,2]), f, Df, 1e-8, 1e-8)
         self.assertAlmostEqual(sol[0], 0)
         self.assertAlmostEqual(sol[1], 0)
 
@@ -82,7 +82,7 @@ class TestSolve(unittest.TestCase):
             df[0][0] = 2 * x[0]
             return df
 
-        (sol, y, dfx, iterations, norm_y) = solve(np.array([1]), f, Df, 1e-8, 1e-8)
+        (sol, y, dfx, iterations, norm_y) = solving.solve(np.array([1]), f, Df, 1e-8, 1e-8)
         self.assertAlmostEqual(sol[0], 2)
 
 
@@ -107,11 +107,9 @@ class Test1(unittest.TestCase):
         connect(r1.n, net.ground)
         analy = Analysis(net)
         res = analy.analyze()
-        print(("res",res))
         self.assertAlmostEqual(res.get_current("r1.p"), 1)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
         self.assertAlmostEqual(res.y_norm, 0)
-        print(res.y)
 
     def test_current_simple2(self):
         #parallel current source
@@ -308,7 +306,7 @@ class TestTransistor(unittest.TestCase):
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
         self.assertAlmostEqual(res.get_current(t1.C)/res.get_current(t1.B),100,places=5)
-        print(res)
+
         self.assertAlmostEqual(res.y_norm, 0)
 
     def test_trans2(self):

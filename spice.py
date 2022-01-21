@@ -4,7 +4,7 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-from solving import solve
+import solving
 
 def explin(x: float, lcutoff: float, rcutoff:float):
     assert lcutoff  <= rcutoff, "cutoffs wrong"
@@ -1010,7 +1010,7 @@ class Analysis:
         def Df(x):
             return self.compute_D(x, time, capa_voltages, variables)
 
-        res = solve(solution_vec, f, Df, abstol, reltol, maxit)
+        res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             norm_y = np.linalg.norm(y)
@@ -1028,7 +1028,7 @@ class Analysis:
         for i in range(20):
             print(("energy factor ",i))
             alfa = (alfa + 1) / 2
-            res = solve(solution_vec, f, Df, abstol, reltol, maxit, x0 = solution_vec0, alfa=alfa)
+            res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit, x0 = solution_vec0, alfa=alfa)
             if not isinstance(res, str):
                 solution_vec = res[0]
                 break
@@ -1039,7 +1039,7 @@ class Analysis:
 
         while True:
             alfa = max(alfa / 1.1, 0)
-            res = solve(solution_vec, f, Df, abstol, reltol, maxit, x0 = solution_vec0, alfa=alfa)
+            res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit, x0 = solution_vec0, alfa=alfa)
             if isinstance(res, str):
                 print("alfa={0}".format(alfa))
                 return res
