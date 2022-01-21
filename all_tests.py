@@ -607,6 +607,70 @@ class TransientTest(unittest.TestCase):
         for (t,v,c) in res:
             self.assertAlmostEqual(v["rc.p"], v0 * waveform(t))
 
+    def test3(self):
+        import math
+
+        net = Network()
+        v0 = 10
+        ro = 1e1
+        indo =  10
+        curro = 1
+        r = net.addR("rc", ro)
+        ind = net.addInduc("ind", indo)
+        connect(r.p, ind.p)
+        connect(ind.n, r.n)
+        connect(r.n, net.ground)
+        ana = Analysis(net)
+        res = ana.transient(1,0.0005, induc_currents={"ind": curro})
+        #pp.pprint(res)
+        a = res[0][2]["ind.p"]
+        for (t,v,c) in res:
+            curr = c["ind.p"]
+            curr_expected = math.exp(-t*ro/indo)*curro
+            self.assertTrue(0.98 < curr/curr_expected <1.02)
+
+
+class TestInductor(unittest.TestCase):
+
+    def test1(self):
+        net = Network()
+        v0 = 10
+        vc = net.addV("vc", v0)
+        r1 = net.addR("r1", 75)
+        r2 = net.addR("r2", 25)
+        ind = net.addInduc("ind", 100)
+        connect(vc.p, r1.p)
+        connect(r1.n, ind.p)
+        connect(ind.n, r2.p)
+        connect(r2.n, vc.n)
+        connect(vc.n,net.ground)
+        ana = Analysis(net)
+        res = ana.analyze()
+        self.assertAlmostEqual(res.get_voltage(ind.p), res.get_voltage(ind.n))
+        self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r1.p))
+        self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r2.p))
+        self.assertAlmostEqual(res.get_voltage(ind.p), 2.5)
+
+    def test2(self):
+        net = Network()
+        v0 = 10
+        vc = net.addV("vc", v0)
+        r1 = net.addR("r1", 75)
+        r2 = net.addR("r2", 25)
+        ind = net.addInduc("ind", 100)
+        connect(vc.p, r1.p)
+        connect(r1.n, ind.p)
+        connect(ind.n, r2.p)
+        connect(r2.n, vc.n)
+        connect(vc.n,net.ground)
+        ana = Analysis(net)
+        res = ana.analyze(induc_currents={"ind": 0.09})
+        #self.assertAlmostEqual(res.get_voltage(ind.p), res.get_voltage(ind.n))
+        self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r1.p))
+        self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r2.p))
+        self.assertAlmostEqual(res.get_current(ind.p), 0.09)
+
+
 
 if __name__ == '__main__':
     unittest.main()
