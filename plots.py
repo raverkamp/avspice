@@ -345,6 +345,54 @@ def emitterschaltung(args):
 
     plt.show()
 
+def rlc(args):
+    net = Network()
+    i0 = 0.1
+    rv = 100
+    indu = 1
+    capa = 10e-6
+
+    r = net.addR("r1", rv)
+    ca = net.addCapa("ca", capa)
+    ind = net.addInduc("ind", indu)
+
+    connect(r.n, ca.p)
+    connect(ca.n, ind.p)
+    connect(ind.n, r.p)
+    connect(ind.n,net.ground)
+
+    ana = Analysis(net)
+    res = ana.transient(0.1,0.0001, induc_currents={"ind": i0}, capa_voltages={"ca":0} )
+
+    ip = []
+    iv = []
+    time = []
+    for (t,v,c) in res:
+        time.append(t)
+        ip.append(c["r1.p"])
+        iv.append(v["ind.p"] - v["ind.n"])
+
+    (fig, ax) = plt.subplots(1)
+    ax.plot(time,ip, label="current", color="blue")
+    f = 1/(math.sqrt(capa*indu) * 2 * math.pi)
+    ax.set_title(f"RLC r={rv}, c={capa}, l={indu}, freq={f}")
+    import  matplotlib.ticker
+    formatterx = matplotlib.ticker.EngFormatter("s")
+    formattery = matplotlib.ticker.EngFormatter("A")
+    ax.xaxis.set_major_formatter(formatterx)
+    ax.xaxis.set_minor_formatter(formatterx)
+    ax.yaxis.set_major_formatter(formattery)
+    ax.yaxis.set_minor_formatter(formattery)
+
+
+    ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
+    ax2.plot(time,iv,label="voltage across inductor", color="red")
+    formattery2 = matplotlib.ticker.EngFormatter("V")
+    ax2.yaxis.set_major_formatter(formattery2)
+    ax2.yaxis.set_minor_formatter(formattery2)
+    fig.legend()
+    plt.show()
+
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
@@ -365,6 +413,8 @@ def main():
         saw1(args)
     elif cmd == "emitter":
         emitterschaltung(args)
+    elif cmd == "rlc":
+        rlc(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
