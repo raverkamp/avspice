@@ -621,7 +621,7 @@ class TransientTest(unittest.TestCase):
         connect(ind.n, r.n)
         connect(r.n, net.ground)
         ana = Analysis(net)
-        res = ana.transient(1,0.0005, induc_currents={"ind": curro})
+        res = ana.transient(1,0.03, induc_currents={"ind": curro})
         #pp.pprint(res)
         a = res[0][2]["ind.p"]
         for (t,v,c) in res:
@@ -669,7 +669,6 @@ class TestInductor(unittest.TestCase):
         self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r1.p))
         self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r2.p))
         self.assertAlmostEqual(res.get_current(ind.p), 0.09)
-
 
 
 if __name__ == '__main__':
