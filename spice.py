@@ -29,6 +29,7 @@ class Variable:
     """a variable"""
     def __init__(self, name, default=None):
         self.name = name
+        assert default is None or isinstance(default, numbers.Number)
         self.default = default
 
     def __repr__(self):
@@ -140,11 +141,11 @@ class Voltage(Node2):
     def __init__(self, parent, name:str, volts:float, waveform = None):
         super().__init__(parent, name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
-        self.volts = volts
+        self._volts = volts
         self.waveform = waveform
 
     def voltage(self, time, variables):
-        v = self.get_val(self.volts, variables)
+        v = self.get_val(self._volts, variables)
         if self.waveform is None:
             return v
         else:
@@ -184,7 +185,11 @@ class Capacitor(Node2):
 
     def __init__(self, parent, name, capa):
         super().__init__(parent, name)
-        self.capa = capa
+        self._capa = capa
+
+    def get_capa(self, variables):
+        a = self.get_val(self._capa, variables)
+        return a
 
     def get_current(self, variables, vd):
         raise NotImplementedError("get_current for capacitor not implemented")
@@ -1195,7 +1200,7 @@ class Analysis:
             #res.display()
             for capa_name in work_capa_voltages:
                 comp = self.netw.get_object(capa_name)
-                capa = comp.capa
+                capa = comp.get_capa(variables)
                 current = res.get_current(comp.p)
                 work_capa_voltages[capa_name] += timestep*current/capa
 

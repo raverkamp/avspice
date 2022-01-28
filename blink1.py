@@ -7,7 +7,7 @@ from util import *
 
 from example_circuits import create_blinker
 
-    
+
 def blinker(args):
     net = create_blinker(transistor_gain=100, r_ca=100e-6)
     ana = Analysis(net)
@@ -30,13 +30,13 @@ def blinker(args):
 
     xs = []
     ca_v = []
-  
+
     t1b_v = []
     t2c = []
     t1c = []
     t1b = []
     t2b = []
-    
+
     it1b = []
     it1c = []
     it2c = []
@@ -113,7 +113,7 @@ def blinker(args):
     a3.plot(xs, t2b, label="t2b,t1c")
     a3.set_title("Voltages")
     a3.legend()
-    
+
     a4.plot(xs, it2c)
     a4.set_title("it2c")
 
@@ -125,7 +125,7 @@ def blinker(args):
 
     a7.set_title("CA current")
     a7.plot(xs,iC, label="CA current")
-    
+
     a7.legend()
 
     a8.plot(xs, ca_v, label="capa voltage")
@@ -134,7 +134,7 @@ def blinker(args):
     a9.set_title("log(cond)")
     a9.plot(xs, cond)
     a9.legend()
-    
+
     plt.ion()
     plt.show()
     input()
@@ -195,18 +195,27 @@ def pivot(res):
     for k in currs:
         currs[k] = np.array(currs[k])
 
-                            
+
     return (np.array(time),volts,currs)
-                            
+
 
 def blinker3(args):
-    net = create_blinker(transistor_gain=100, r_ca=100e-6)
+    net = create_blinker(transistor_gain=args.gain)
     ana = Analysis(net)
 
     base_vca = args.vca
 
-    res = ana.transient(3.56, 0.001, capa_voltages={"ca": base_vca},
-                        variables={"vc": 9},
+    variables = {"capa": args.capa, "vc": 9, "r_ca": args.r_ca}
+
+    l=[]
+    for (k,v) in sorted(variables.items(), key=lambda kv: kv[1]):
+        l.append(f"{k}={v}")
+    l.append(f"gain={args.gain}")
+    fig_title = ", ".join(l)
+
+
+    res = ana.transient(args.end, 0.01, capa_voltages={"ca": base_vca},
+                        variables=variables,
                         start_voltages= {
                           "t1.C": args.t1c,
                            "t1.B": args.t1b
@@ -235,21 +244,26 @@ def blinker3(args):
     a7.legend()
     a8.plot(time,currs["t2.B"],label="curr t2.B")
     a8.legend()
-    
+
+    a9.plot(time,currs["d1.p"],label="curr d1.B")
+    a9.legend()
+
+    fig.suptitle(fig_title)
+
     plt.show()
-                            
-    
-            
+
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    
+
     parser_b = subparsers.add_parser('b')
     parser_b.set_defaults(func=blinker)
     parser_b.add_argument('-t1c', type=float, default=0)
     parser_b.add_argument('-t1b', type=float, default=0)
     parser_b.add_argument('-vca', type=float, default=0)
-    
+
     parser_s = subparsers.add_parser('s')
     parser_s.set_defaults(func=blinker_static)
 
@@ -263,9 +277,12 @@ def main():
     parser_b3.add_argument('-t1c', type=float, default=0)
     parser_b3.add_argument('-t1b', type=float, default=0)
     parser_b3.add_argument('-vca', type=float, default=0)
-    
+    parser_b3.add_argument('-capa', type=float, default=10e-6)
+    parser_b3.add_argument('-r_ca', type=float, default=0.1)
+    parser_b3.add_argument('-gain', type=float, default=100)
+    parser_b3.add_argument('-end', type=float, default=3.6)
+
     args = parser.parse_args()
     args.func(args)
 
 sys.exit(main())
-

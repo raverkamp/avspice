@@ -2,21 +2,21 @@ from spice import *
 
 # transistor_gain is the gain of the tarnssistor
 # r_ca is resitor value in front of capacitor
-def create_blinker(transistor_gain=None, r_ca=1):
+def create_blinker(transistor_gain=None):
     # https://www.elektronik-labor.de/Lernpakete/Blinker.html
     # weiter unten
     # oder hier: https://www.elektronik-labor.de/Lernpakete/Kalender08/Kalender08.htm#_Toc197001462
     transistor_gain = 100 if transistor_gain is None else transistor_gain 
     tt = NPNTransistor(None, "", 1e-12, 25e-3, transistor_gain, 10) 
     net = Network()
-    vc = net.addV("vc",  Variable("vc")) #?
+    vc = net.addV("vc",  Variable("vc"))
     d1 = net.addD("d1", 1e-8, 25e-3)
     r1 = net.addR("r1", 27e3)
     r2 = net.addR("r2", 27e3)
     r3 = net.addR("r3", 1e3)
-    r_ca = net.addR("r_ca",r_ca)
+    r_ca = net.addR("r_ca",Variable("r_ca", 0.1))
 
-    ca = net.addCapa("ca", 10e-6)
+    ca = net.addCapa("ca", Variable("capa", 10e-6))
   #  ca = net.addR("ca", 10e6)
     t1 = net.addComp("t1",tt)
     t2 = net.addComp("t2",tt)
