@@ -177,3 +177,13 @@ Für Transient Analyse sind sie Teil der Differential Gleichung.
 
 Spulen genauso.
 
+2022-01-30_11:55
+Ich werde jetzt mal mit dem echten Spice einen dieser Oscilatoren simulieren.
+
+2022-01-30_12:27
+Die Bauteile(Modelle) muss man selber irgendwo finden.
+
+
+2022-01-30_14:06
+Ich habe für den den Oscilator mit meinem system un ngspice den Operating Point
+ausrechnen lassen. Es passt zusammen.

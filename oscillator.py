@@ -1,5 +1,6 @@
 """ just another blinker, but this time with an inductor"""
-
+import argparse
+import sys
 import matplotlib.pyplot as plt
 from spice import Network, NPNTransistor, connect, Analysis, pivot
 
@@ -65,7 +66,29 @@ def osci(transistor=None,capa=None, ind=None):
 
     plt.show()
 
-def main():
-    osci(tr_rav, capa= 10e-9, ind=1e-3)
+def osci_op(transistor=None,capa=None, ind=None):
+    net = create_circuit(transistor, capa, ind)
+    ana = Analysis(net)
+    res = ana.analyze()
+    res.display()
 
-main()
+def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    parser_t = subparsers.add_parser('t')
+    def transient(args):
+        osci(tr_rav, capa= 10e-9, ind=1e-3)
+    parser_t.set_defaults(func=transient)
+
+    parser_o = subparsers.add_parser('o')
+    def op(args):
+        osci_op(tr_rav, capa= 10e-9, ind=1e-3)
+
+    parser_o.set_defaults(func=op)
+        
+        
+
+    args = parser.parse_args()
+    args.func(args)
+
+sys.exit(main())

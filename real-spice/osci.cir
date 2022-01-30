@@ -1,0 +1,32 @@
+bipolar amplifier
+* file osci.cir
+
+.include models.mod
+
+VCC vcc 0 10
+
+R1C vq1 t1c 2k
+R1B vcc t1b 50k
+Q1 t1c t1b 0 TRAV
+VQ1 vcc vq1 0
+
+R2C vq2 t2c 2k
+R2B vcc t2b 50k
+Q2 t2c t2b 0 TRAV
+VQ2 vcc vq2 0 
+
+RX t1c t2b 22k
+
+Ca t2c t1b 10u
+
+.op
+*.tran 10u 10m
+
+.end
+
+
+.control
+run
+*gnuplot gp v(Ca)
+*.print v(t1c)
+.endc
