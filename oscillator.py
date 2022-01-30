@@ -3,9 +3,11 @@
 import matplotlib.pyplot as plt
 from spice import Network, NPNTransistor, connect, Analysis, pivot
 
+# my transistor model
+tr_rav = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
 
-def create_circuit(capacity, inductivity):
-    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+def create_circuit(transistor, capacity, inductivity):
+    tt = transistor
     net = Network()
     vc = net.addV("vc", 10)
     rc1 = net.addR("rc1",2e3)
@@ -44,8 +46,8 @@ def create_circuit(capacity, inductivity):
 
     return net
 
-def osci(capa=None, ind=None):
-    net = create_circuit(capa, ind)
+def osci(transistor=None,capa=None, ind=None):
+    net = create_circuit(transistor, capa, ind)
 
     ana = Analysis(net)
     res = ana.transient(80e-6,1e-8, capa_voltages={"capa":-0.4}, induc_currents={"ind":-1.8e-4})
@@ -64,6 +66,6 @@ def osci(capa=None, ind=None):
     plt.show()
 
 def main():
-    osci(capa= 10e-9, ind=1e-3)
+    osci(tr_rav, capa= 10e-9, ind=1e-3)
 
 main()
