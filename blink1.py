@@ -176,29 +176,6 @@ def try_random_start(args):
             print("{0} V = {1}   I={2}".format(s, res.get_voltage(s), res.get_current(s)))
 
 
-def pivot(res):
-    time = []
-    volts = {}
-    currs = {}
-    for (t,v,c) in res:
-        time.append(t)
-        for k in v:
-            if not k in volts:
-                volts[k] = []
-            volts[k].append(v[k])
-        for k in c:
-            if not k in currs:
-                currs[k] = []
-            currs[k].append(c[k])
-    for k in volts:
-        volts[k] = np.array(volts[k])
-    for k in currs:
-        currs[k] = np.array(currs[k])
-
-
-    return (np.array(time),volts,currs)
-
-
 def blinker3(args):
     net = create_blinker(transistor_gain=args.gain)
     ana = Analysis(net)
