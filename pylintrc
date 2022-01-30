@@ -147,7 +147,8 @@ disable=print-statement,
         too-many-statements,
         too-many-locals,
         too-many-branches,
-        too-many-instance-attributes
+        too-many-instance-attributes,
+        R1705 # : Unnecessary "elif" after "return" (no-else-return)
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
