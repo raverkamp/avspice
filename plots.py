@@ -362,7 +362,7 @@ def rlc(args):
     connect(ind.n,net.ground)
 
     ana = Analysis(net)
-    res = ana.transient(0.1,0.0001, induc_currents={"ind": i0}, capa_voltages={"ca":0} )
+    res = ana.transient(0.1,0.0001, induc_currents={"ind": 0}, capa_voltages={"ca":0} )
 
     ip = []
     iv = []
