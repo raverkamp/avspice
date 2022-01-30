@@ -51,7 +51,7 @@ def osci(transistor=None,capa=None, ind=None):
     net = create_circuit(transistor, capa, ind)
 
     ana = Analysis(net)
-    res = ana.transient(80e-6,1e-8, capa_voltages={"capa":-0.4}, induc_currents={"ind":-1.8e-4})
+    res = ana.transient(80e-6,1e-8, capa_voltages={"capa":-0.5}, induc_currents={"ind":-1.8e-4})
     (time,volts,currs) = pivot(res)
     (fig, (p1, p2, p3, p4)) = plt.subplots(4)
     p1.plot(time, currs["t2.E"], label="curr(t2.E)")

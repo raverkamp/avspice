@@ -1,4 +1,4 @@
-bipolar amplifier
+oscilator
 * file osci.cir
 
 .include models.mod
@@ -6,7 +6,7 @@ bipolar amplifier
 VCC vcc 0 10
 
 R1C vq1 t1c 2k
-R1B vcc t1b 50k
+R1B vcc t1b  50k
 Q1 t1c t1b 0 TRAV
 VQ1 vcc vq1 0
 
@@ -17,16 +17,23 @@ VQ2 vcc vq2 0
 
 RX t1c t2b 22k
 
-Ca t2c t1b 10u
+La t2c ca  1e-3 IC=-1.8e-4
+Ca ca t1b 10e-9 IC=-0.5
+
+
+*RBIAS1 t1b 0 5k
+*RBIAS2 t2b 0 4k
 
 .op
-*.tran 10u 10m
+.tran 1e-8 80e-6 uic
 
 .end
 
 
 .control
 run
-*gnuplot gp v(Ca)
+gnuplot gp c(Ca)
+gnuplot gp2 i(vq1)
+gnuplot gp3 i(vq2)
 *.print v(t1c)
 .endc
