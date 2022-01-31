@@ -1193,6 +1193,7 @@ class Analysis:
                       norm_y,
                       np.linalg.cond(dfx,'fro'))
 
+
     def solve_internal(self,
                        time,
                        maxit,
@@ -1221,9 +1222,6 @@ class Analysis:
                           np.linalg.cond(dfx,'fro'))
         return res
 
-
-
-
     def transient(self,
                   maxtime,
                   timestep,
@@ -1238,26 +1236,12 @@ class Analysis:
 
         capa_voltages = capa_voltages or {}
         induc_currents = induc_currents or {}
-        work_capa_voltages = {}
-        work_induc_currents = {}
-        for comp in self.netw.components.values():
-            if isinstance(comp, Capacitor):
-                if not comp.name in capa_voltages:
-                    pass # assumption capacitor is full
-                else:
-                    work_capa_voltages[comp.name] = capa_voltages[comp.name]
-            if isinstance(comp, Inductor):
-                if not comp.name in induc_currents:
-                    pass # assumption capacitor is full
-                else:
-                    work_induc_currents[comp.name] = induc_currents[comp.name]
-
 
         time = 0.0
         res = self.analyze(maxit=maxit,
                            start_solution_vec=start_solution_vec,
-                           capa_voltages=work_capa_voltages,
-                           induc_currents=work_induc_currents,
+                           capa_voltages=capa_voltages,
+                           induc_currents=induc_currents,
                            variables=variables,
                            start_voltages=start_voltages,
                            time=time,
@@ -1266,47 +1250,50 @@ class Analysis:
         if isinstance(res, str):
             raise Exception("can not find inital solution")
 
-
+        state_vec = self._compute_state_vec(capa_voltages, induc_currents)
 
         solutions= []
         sol = res.solution_vec
-        solutions.append((time, res.get_voltages(), res.get_currents()))
-        time += timestep
 
         for comp in self.netw.components.values():
             if isinstance(comp, Capacitor):
-                if not comp.name in capa_voltages:
+                k = self.state_index(comp)
+                if math.isnan(state_vec[k]):
                     v = res.get_voltage(comp.p) - res.get_voltage(comp.n)
-                    work_capa_voltages[comp.name] = v
+                    state_vec[k] = v
             if isinstance(comp, Inductor):
-                if not comp.name in induc_currents:
+                k = self.state_index(comp)
+                if math.isnan(state_vec[k]):
                     curr = res.get_current(comp.p)
-                    work_induc_currents[comp.name] = curr
+                    state_vec[k] = curr
 
         while time < maxtime:
-            #res.display()
-            for capa_name in work_capa_voltages:
-                comp = self.netw.get_object(capa_name)
-                capa = comp.get_capa(variables)
-                current = res.get_current(comp.p)
-                work_capa_voltages[capa_name] += timestep*current/capa
-
-            for induc_name in work_induc_currents:
-                comp = self.netw.get_object(induc_name)
-                indu = comp.induc
-                v = res.get_voltage(comp.p) - res.get_voltage(comp.n)
-                work_induc_currents[induc_name] += timestep*v/indu
-            res = self.analyze(maxit=maxit,
-                               start_solution_vec=sol,
-                               capa_voltages=work_capa_voltages,
-                               induc_currents=work_induc_currents,
-                               variables=variables,
-                               time=time)
-
+            res = self.solve_internal(time,
+                       maxit,
+                       sol,
+                       state_vec,
+                       variables,
+                       abstol,
+                       reltol)
             if isinstance(res, str):
                 raise Exception(f"fail at time {time}")
+
             solutions.append((time, res.get_voltages(), res.get_currents()))
             sol = res.solution_vec
+
+            for comp in self.netw.components.values():
+                if isinstance(comp, Capacitor):
+                    capa = comp.get_capa(variables)
+                    current = res.get_current(comp.p)
+                    k = self.state_index(comp)
+                    state_vec[k] += timestep*current/capa
+
+                if isinstance(comp, Inductor):
+                    indu = comp.induc
+                    v = res.get_voltage(comp.p) - res.get_voltage(comp.n)
+                    k = self.state_index(comp)
+                    state_vec[k] += timestep*v/indu
+
             time += timestep
         return solutions
 
