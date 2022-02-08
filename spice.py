@@ -454,7 +454,7 @@ class PNPTransistor(Component):
              f"{me}.d_IB_vbe({vbe})",
              f"{me}.d_IB_vbc({vbc})"),
 
-             (f"-{me}.d_IE_vbe({vbe}) + {me}.d_IE_vbc({vbc})",
+             (f"-{me}.d_IE_vbe({vbe}) - {me}.d_IE_vbc({vbc})",
               f"{me}.d_IE_vbe({vbe})",
               f"{me}.d_IE_vbc({vbc})"),
 
@@ -1352,7 +1352,8 @@ class Analysis:
 
         def Df(x):
             return c.dy(time, x, state_vec)
-            #return self._compute_D(x, time, state_vec, variables)
+            #return  self._compute_D(x, time, state_vec, variables)
+         
 
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
