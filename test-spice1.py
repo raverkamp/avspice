@@ -1,5 +1,5 @@
 import spice
-from spice import Network, connect, compute_nodes, Analysis, Diode, NPNTransistor
+from spice import Network, connect, compute_nodes, Analysis, Diode, NPNTransistor, PNPTransistor
 import argparse
 import pprint as pp
 
@@ -369,10 +369,53 @@ def test15():
     res = ana.analyze(maxit=30, charges={"ca": 100e-6 })
     print(res)
 
+def testcode():
+    net = Network()
+    vc = net.addV("vc", 2)
+    r = net.addR("r", 1e2)
+    dt = Diode(None, "", 1e-8, 25e-3, 10)
+    d=net.addComp("d",dt)
+    connect(vc.p, r.p)
+    connect(r.n, d.p)
+    connect(vc.n, d.n)
+    connect(vc.n, net.ground)
+    ana = Analysis(net)
+    a= ana.generate_code()
+    print(a)
 
+def testcode2():
+    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net = Network()
+    vc = net.addV("vc", 10)
+    rb = net.addR("r", 10e3)
+    t=net.addComp("t",tt)
+    connect(vc.p, rb.p)
+    connect(rb.n, t.B)
+    connect(vc.p, t.C)
+    connect(t.E, vc.n)
+    connect(net.ground, vc.n)
+    ana = Analysis(net)
+    a= ana.generate_code()
+    print(a)
 
+def testcode3():
+    tt = PNPTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    net = Network()
+    vc = net.addV("vc", 10)
+    rb = net.addR("r", 10e3)
+    t=net.addComp("t",tt)
+    connect(vc.n, rb.n)
+    connect(rb.p, t.B)
+    connect(vc.p, t.E)
+    connect(t.C, vc.n)
+    connect(net.ground, vc.n)
+    ana = Analysis(net)
+    a= ana.generate_code()
+    print(a)
+
+    
 def main():
 
-    test15()
+    testcode3()
 
 main()

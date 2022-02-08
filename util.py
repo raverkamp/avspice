@@ -1,5 +1,6 @@
-
+import math
 import sys
+
 def getargs():
     args = sys.argv
     if len(args) < 2:
@@ -30,3 +31,22 @@ def saw_tooth(freq,t):
         return 2 - t*2 
 
         
+def explin(x: float, lcutoff: float, rcutoff:float):
+    assert lcutoff  <= rcutoff, "cutoffs wrong"
+
+    if x > rcutoff:
+        return math.exp(rcutoff) +  (x-rcutoff) * math.exp(rcutoff)
+    elif x < lcutoff:
+        return math.exp(lcutoff) +  (x-lcutoff) * math.exp(lcutoff)
+    else:
+        return math.exp(x)
+
+def dexplin(x:float, lcutoff:float, rcutoff:float):
+    assert lcutoff  <= rcutoff, "cutoffs wrong"
+
+    if x > rcutoff:
+        return math.exp(rcutoff)
+    elif x < lcutoff:
+        return  math.exp(lcutoff)
+    else:
+        return math.exp(x)

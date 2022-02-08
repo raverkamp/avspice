@@ -5,26 +5,10 @@ import pprint as pp
 import numbers
 import numpy as np
 import solving
+import ncomponents
 
-def explin(x: float, lcutoff: float, rcutoff:float):
-    assert lcutoff  <= rcutoff, "cutoffs wrong"
+from util import explin, dexplin
 
-    if x > rcutoff:
-        return math.exp(rcutoff) +  (x-rcutoff) * math.exp(rcutoff)
-    elif x < lcutoff:
-        return math.exp(lcutoff) +  (x-lcutoff) * math.exp(lcutoff)
-    else:
-        return math.exp(x)
-
-def dexplin(x:float, lcutoff:float, rcutoff:float):
-    assert lcutoff  <= rcutoff, "cutoffs wrong"
-
-    if x > rcutoff:
-        return math.exp(rcutoff)
-    elif x < lcutoff:
-        return  math.exp(lcutoff)
-    else:
-        return math.exp(x)
 class Variable:
     """a variable"""
     def __init__(self, name, default=None):
@@ -136,6 +120,9 @@ class Current(Node2):
     def get_current(self, variables, vd):
         return self.get_val(self.amp, variables)
 
+    def code(self,cname):
+        return ([], ([],f"{self.amp}"))
+
 class Voltage(Node2):
     """voltage source"""
     def __init__(self, parent, name:str, volts:float, waveform = None):
@@ -157,6 +144,11 @@ class Voltage(Node2):
     def get_current(self, variables, vd):
         raise NotImplementedError("get_current for voltage source not implemented")
 
+    def code(self, name, variables):
+        v = self.get_val(self._volts, variables)
+        init = [f"self.{name} = NVoltage({v})"]
+        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+        return (init, voltage)
 
 class Diode(Node2):
     """solid state diode"""
@@ -167,6 +159,12 @@ class Diode(Node2):
 
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
+
+    def code(self, cname, dvname):
+        init = [f"self.{cname} = NDiode({self.Is},{self.Nut},{self.lcut_off},{self.rcut_off})"]
+        curr = ([], f"self.{cname}.current({dvname})")
+        dcurr = ([], f"self.{cname}.diff_current({dvname})")
+        return (init, curr, dcurr)
 
     def current(self, v):
         return self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
@@ -309,6 +307,35 @@ class NPNTransistor(Component):
     def get_current3(self, variables, vbe, vbc):
         return (self.IB(vbe, vbc),  -self.IE(vbe, vbc), self.IC(vbe, vbc))
 
+    def code(self, name, vb, ve, vc):
+        prefix = name
+        me = "self." + prefix + "_"
+        initt = [f"{me} = NNPNTransistor({self.IS}, {self.VT}, {self.beta_F}, {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
+        vbe = f"{prefix}_vbe"
+        vbc = f"{prefix}_vbc"
+
+        cinit =[f"{vbe} = {vb}- {ve}",
+                f"{vbc} = {vb}- {vc}"]
+        curr = (f"-{me}.IB({vbe}, {vbc})",
+                f"{me}.IE({vbe}, {vbc})",
+                f"-{me}.IC({vbe}, {vbc})")
+
+        dinit = cinit
+
+        d = ((f"-{me}.d_IB_vbe({vbe})- {me}.d_IB_vbc({vbc})",
+             f"{me}.d_IB_vbe({vbe})",
+             f"{me}.d_IB_vbc({vbc})"),
+
+             (f"{me}.d_IE_vbe({vbe}) + {me}.d_IE_vbc({vbc})",
+              f"-{me}.d_IE_vbe({vbe})",
+              f"-{me}.d_IE_vbc({vbc})"),
+
+             (f"-{me}.d_IC_vbe({vbe}) - {me}.d_IC_vbc({vbc})",
+              f"{me}.d_IC_vbe({vbe})",
+              f"{me}.d_IC_vbc({vbc})"))
+
+        return (initt, (cinit, curr), (dinit,d))
+
 
 class PNPTransistor(Component):
 
@@ -337,7 +364,7 @@ class PNPTransistor(Component):
     """
 
     def __init__(self, parent: 'Network', name:str, IS:float, VT:float, beta_F:float, beta_R:float,
-                 cutoff:float =40):
+                 cutoff:float=40):
         super().__init__(parent, name)
         self.IS = IS
         self.VT = VT
@@ -407,6 +434,36 @@ class PNPTransistor(Component):
 
     def get_current3(self, variables, vbe, vbc):
         return (self.IB(vbe, vbc),  self.IE(vbe, vbc), self.IC(vbe, vbc))
+
+    def code(self, name, vb, ve, vc):
+        prefix = name
+        me = "self." + prefix + "_"
+        initt = [f"{me} = NPNPTransistor({self.IS}, {self.VT}, {self.beta_F}, {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
+        vbe = f"{prefix}_vbe"
+        vbc = f"{prefix}_vbc"
+
+        cinit =[f"{vbe} = {vb}- {ve}",
+                f"{vbc} = {vb}- {vc}"]
+        curr = (f"-{me}.IB({vbe}, {vbc})",
+                f"-{me}.IE({vbe}, {vbc})",
+                f"-{me}.IC({vbe}, {vbc})")
+
+        dinit = cinit
+
+        d = ((f"-{me}.d_IB_vbe({vbe})- {me}.d_IB_vbc({vbc})",
+             f"{me}.d_IB_vbe({vbe})",
+             f"{me}.d_IB_vbc({vbc})"),
+
+             (f"-{me}.d_IE_vbe({vbe}) + {me}.d_IE_vbc({vbc})",
+              f"{me}.d_IE_vbe({vbe})",
+              f"{me}.d_IE_vbc({vbc})"),
+
+             (f"-{me}.d_IC_vbe({vbe}) - {me}.d_IC_vbc({vbc})",
+              f"{me}.d_IC_vbe({vbe})",
+              f"{me}.d_IC_vbc({vbc})"))
+
+        return (initt, (cinit, curr), (dinit,d))
+
 
 class Network:
     """ this class describes the toplogy of an electrical network
@@ -1055,6 +1112,156 @@ class Analysis:
         y[k] = sol[k]
         return y
 
+    def generate_code(self, variables):
+        init = []
+        n = self._equation_size()
+        # this does not work
+        #        init.append("from ncomponents import NDiode, NNPNTransistor, NPNPTransistor, NVoltage")
+        init.append("def bla():")
+        init.append("   return Computer()")
+        init.append("")
+        init.append("class Computer:")
+        init.append("    def __init__(self):")
+        def add_to_init(l):
+            for x in l:
+                init.append("        " + x)
+        add_to_init(["pass"])
+        add_to_init(["from ncomponents import NDiode, NNPNTransistor, NPNPTransistor, NVoltage"])
+        y_code = []
+        y_code.append("    def y(self, time, sol, state_vec):")
+        def add_to_y_code(l):
+            for x in l:
+                y_code.append("        " + x)
+        add_to_y_code(["import numpy as np"])
+        add_to_y_code([f"res = np.zeros({n})"])
+
+        dy_code = []
+        dy_code.append("    def dy(self, time, sol, state_vec):")
+        def add_to_dy_code(l):
+            for x in l:
+                dy_code.append("        " + x)
+        add_to_dy_code(["import numpy as np"])
+        add_to_dy_code([f"res = np.zeros(({n},{n}))"])
+
+        ysum=[]
+        for i in range(n):
+            ysum.append(list())
+        dysum=[]
+        for i in range(n):
+            x = []
+            for j in range(n):
+                x.append(list())
+            dysum.append(x)
+
+        counter = 0
+        for comp in self.netw.components.values():
+            cname = comp.name + str(counter)
+            
+            if isinstance(comp, Node2):
+                kp = self.port_index(comp.p)
+                kn = self.port_index(comp.n)
+            if isinstance(comp, Node):
+                pass
+            elif isinstance(comp, Voltage):
+                (vinit, (pre , expr)) = comp.code(cname, variables)
+                add_to_init(vinit)
+                k = self.voltage_index(comp)
+                add_to_y_code(pre)
+                ysum[kp].append(f"sol[{k}]")
+                ysum[kn].append(f"(-sol[{k}])")
+                ysum[k].append(f"(sol[{kp}] - sol[{kn}]) - ({expr})")
+                dysum[kp][k].append("1")
+                dysum[kn][k].append("-1")
+                dysum[k][kp].append("1")
+                dysum[k][kn].append("-1")
+
+            elif isinstance(comp, Current):
+                kp = self.port_index(comp.p)
+                kn = self.port_index(comp.n)
+                (cinit, (pre, expr)) = comp.code(cname)
+                add_to_init(cinit)
+                add_to_y_code(pre)
+                ysum[kp].append(f"({expr})")
+                ysum[kn].append(f"(-({expr}))")
+
+            elif isinstance(comp, Resistor):
+                G = 1/ comp.get_ohm(variables)
+                name = f"current_{comp.name}"
+                add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
+                ysum[kp].append(f"(-{name})")
+                ysum[kn].append(f"{name}")
+
+                dysum[kp][kp].append(f"(-{G})")
+                dysum[kp][kn].append(f"{G}")
+                dysum[kn][kp].append(f"{G}")
+                dysum[kn][kn].append(f"(-{G})")
+
+            elif isinstance(comp, Diode):
+                (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
+                add_to_init(init_d)
+                add_to_y_code(cinit)
+                add_to_dy_code(dinit)
+                ysum[kp].append(f"(-{curr})")
+                ysum[kn].append(f"({curr})")
+
+                dysum[kp][kp].append(f"(-{dcurr})")
+                dysum[kp][kn].append(f"{dcurr}")
+                dysum[kn][kp].append(f"{dcurr}")
+                dysum[kn][kn].append(f"(-{dcurr})")
+
+            elif isinstance(comp, (NPNTransistor, PNPTransistor)):
+                kb = self.port_index(comp.B)
+                ke = self.port_index(comp.E)
+                kc = self.port_index(comp.C)
+                (init_t, (cinit, (cb,ce,cc)),
+                         (dinit,((dbb, dbe, dbc),
+                                 (deb, dee, dec),
+                                 (dcb, dce, dcc)))) = comp.code(cname,f"sol[{kb}]", f"sol[{ke}]", f"sol[{kc}]")
+                assert init_t
+                add_to_init(init_t)
+                add_to_y_code(cinit)
+                ysum[kb].append(f"({cb})")
+                ysum[ke].append(f"({ce})")
+                ysum[kc].append(f"({cc})")
+
+                add_to_dy_code(dinit)
+
+                dysum[kb][kb].append(f"({dbb})")
+                dysum[kb][ke].append(f"({dbe})")
+                dysum[kb][kc].append(f"({dbc})")
+
+                dysum[ke][kb].append(f"({deb})")
+                dysum[ke][ke].append(f"({dee})")
+                dysum[ke][kc].append(f"({dec})")
+
+                dysum[kc][kb].append(f"({dcb})")
+                dysum[kc][ke].append(f"({dce})")
+                dysum[kc][kc].append(f"({dcc})")
+
+            else:
+                raise Exception("unknown component")
+
+        for i in range(n):
+            if i == 0: # skip current equation for ground, force voltage to be 0
+                add_to_y_code(["res[0]=sol[0]"])
+                add_to_dy_code(["res[0][0]=1"])
+            else:
+                add_to_y_code([f"res[{i}]=" + " + ".join(ysum[i])])
+                for j in range(n):
+                    if len(dysum[i][j])>0:
+                        add_to_dy_code([f"res[{i}][{j}]=" + " + ".join(dysum[i][j])])
+        add_to_y_code(["return res",""])
+        add_to_dy_code(["return res"])
+        add_to_init([""])
+        code = "\n".join(init + y_code + dy_code)
+        print(code)
+        d = {}
+        d2 = {}
+        exec(code,d)
+        bla = d["bla"]
+        computer = bla()
+        return computer
+
 
     def _compute_D(self, sol, time, state_vec, variables):
         n = self._equation_size()
@@ -1136,12 +1343,16 @@ class Analysis:
 
         state_vec = self._compute_state_vec(capa_voltages, induc_currents)
 
-
+        print(variables)
+        c = self.generate_code(variables)
+        
         def f(x):
-            return self._compute_y(x, time, state_vec, variables)
+            return c.y(time, x, state_vec)
+            #return self._compute_y(x, time, state_vec, variables)
 
         def Df(x):
-            return self._compute_D(x, time, state_vec, variables)
+            return c.dy(time, x, state_vec)
+            #return self._compute_D(x, time, state_vec, variables)
 
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
