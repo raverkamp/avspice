@@ -42,13 +42,14 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
         else:
             return  df(x) + dalfa
 
+    y = fn(x)
+    norm_y = np.linalg.norm(y)
 
     while True:
         if iterations > maxiter:
             return "Fail"
         iterations +=1
-        y = fn(x)
-        norm_y = np.linalg.norm(y)
+        
         dfx = dfn(x)
         dx = np.linalg.solve(dfx, -y)
         if verbose:
@@ -56,11 +57,12 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
         xn = x + dx
         yn =  fn(xn)
         norm_y_n = np.linalg.norm(yn)
+        
         if close_enough(x, xn, abstol, reltol):
             return (xn, yn, dfx, iterations, norm_y_n)
         a = 1
         k = 0
-
+        
         while True:
             # is there an improvement in the residual error?
             if norm_y_n < abstol or norm_y_n/norm_y <= (1-a/4):
@@ -73,6 +75,9 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
             xn = x + a * dx
             yn = fn(xn)
             norm_y_n = np.linalg.norm(yn)
+        x = xn
+        y = yn
+        norm_y = norm_y_n
 
 
 def bisect(f, xl, xr):

@@ -1131,16 +1131,17 @@ class Analysis:
         return state_vec
 
     def analyze(self,
-                 maxit=20,
-                 start_solution_vec=None,
-                 abstol= 1e-8,
-                 reltol= 1e-6,
-                 variables=None,
-                 capa_voltages=None,
-                 induc_currents=None,
-                 start_voltages=None,
-                 time =0,
-                 transient=False):
+                maxit=20,
+                start_solution_vec=None,
+                abstol= 1e-8,
+                reltol= 1e-6,
+                variables=None,
+                capa_voltages=None,
+                induc_currents=None,
+                start_voltages=None,
+                time =0,
+                transient=False,
+                compute_cond=False):
         if variables is None:
             variables = {}
         n = self._equation_size()
@@ -1176,6 +1177,10 @@ class Analysis:
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
+            if compute_cond:
+                cond =  np.linalg.cond(dfx,'fro')
+            else:
+                cond=None
             norm_y = np.linalg.norm(y)
             return Result(self.netw,
                           self,
@@ -1184,7 +1189,7 @@ class Analysis:
                           variables,
                           y,
                           norm_y,
-                          np.linalg.cond(dfx,'fro'))
+                          cond)
 
         alfa = 0.5
 
@@ -1214,6 +1219,10 @@ class Analysis:
 
         (sol, y, dfx, iterations, norm_y) = res
         norm_y = np.linalg.norm(y)
+        if compute_cond:
+            cond =  np.linalg.cond(dfx,'fro')
+        else:
+            cond=None
         return Result(self.netw,
                       self,
                       iterations,
@@ -1221,7 +1230,7 @@ class Analysis:
                       variables,
                       y,
                       norm_y,
-                      np.linalg.cond(dfx,'fro'))
+                      cond)
 
 
     def solve_internal(self,
@@ -1229,10 +1238,10 @@ class Analysis:
                        maxit,
                        start_sol,
                        state_vec,
-                       variables,
                        abstol,
                        reltol,
-                       c):
+                       c,
+                       compute_cond):
 
         def f(x):
             return c.y(time, x, state_vec)
@@ -1244,14 +1253,18 @@ class Analysis:
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             norm_y = np.linalg.norm(y)
+            if compute_cond:
+                cond =  np.linalg.cond(dfx,'fro')
+            else:
+                cond=None
             return Result(self.netw,
                           self,
                           iterations,
                           sol,
-                          variables,
+                          None,
                           y,
                           norm_y,
-                          np.linalg.cond(dfx,'fro'))
+                          cond)
         return res
 
     def transient(self,
@@ -1264,7 +1277,8 @@ class Analysis:
                   variables=None,
                   capa_voltages=None,
                   induc_currents=None,
-                  start_voltages=None):
+                  start_voltages=None,
+                  compute_cond=False):
 
         capa_voltages = capa_voltages or {}
         induc_currents = induc_currents or {}
@@ -1279,7 +1293,8 @@ class Analysis:
                            time=time,
                            abstol=abstol,
                            reltol=reltol,
-                           transient=True)
+                           transient=True,
+                           compute_cond=compute_cond)
         if isinstance(res, str):
             raise Exception("can not find inital solution")
 
@@ -1305,10 +1320,10 @@ class Analysis:
                     maxit,
                     sol,
                     state_vec,
-                    variables,
                     abstol,
                     reltol,
-                    c)
+                    c,
+                    compute_cond)
             if isinstance(res, str):
                 raise Exception(f"fail at time {time}")
 
