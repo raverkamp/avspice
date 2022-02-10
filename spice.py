@@ -183,7 +183,7 @@ class SawVoltage(Voltage):
         voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
         return (init, voltage)
 
-    
+
 class Diode(Node2):
     """solid state diode"""
     def __init__(self, parent, name, Is, Nut, lcut_off = -40, rcut_off=40):
@@ -550,7 +550,7 @@ class Network:
         self.components[name] = v
         return v
 
-    
+
     def addN(self,name):
         """add a node"""
         if name in self.components:
@@ -916,254 +916,12 @@ class Analysis:
     def state_size(self):
         return len(self.capa_list) + len(self.induc_list)
 
-    def _process_diode_y(self, comp, sol, y, variables):
-        kp = self.port_index(comp.p)
-        kn = self.port_index(comp.n)
-        dv = sol[kp] - sol[kn]
-        curr = comp.current(dv)
-        y[kp] -= curr
-        y[kn] += curr
-
-    def _process_diode_D(self, comp, sol, D, variables):
-        kp = self.port_index(comp.p)
-        kn = self.port_index(comp.n)
-        dv = sol[kp] - sol[kn]
-        diff = comp.diff_curr(dv)
-        D[kp][kp] -= diff
-        D[kp][kn] += diff
-        D[kn][kp] += diff
-        D[kn][kn] -= diff
-
-
-    def _process_npn_transistor_y(self, tra, sol, y, variables):
-        kB = self.port_index(tra.B)
-        kE = self.port_index(tra.E)
-        kC = self.port_index(tra.C)
-
-        vbe0 = sol[kB] - sol[kE]
-        vbc0 = sol[kB] - sol[kC]
-
-        ie = tra.IE(vbe0, vbc0)
-        ib = tra.IB(vbe0, vbc0)
-        ic = tra.IC(vbe0, vbc0)
-
-        y[kE]+= ie
-        y[kB]-= ib
-        y[kC]-= ic
-
-    def _process_npn_transistor_D(self, tra, sol, D, variables):
-        kB = self.port_index(tra.B)
-        kE = self.port_index(tra.E)
-        kC = self.port_index(tra.C)
-
-        vbe0 = sol[kB] - sol[kE]
-        vbc0 = sol[kB] - sol[kC]
-
-        D[kB][kB] += -tra.d_IB_vbe(vbe0)
-        D[kB][kB] += -tra.d_IB_vbc(vbc0)
-        D[kB][kE] += tra.d_IB_vbe(vbe0)
-        D[kB][kC] += tra.d_IB_vbc(vbc0)
-
-        D[kC][kB] -= tra.d_IC_vbe(vbe0)
-        D[kC][kB] -= tra.d_IC_vbc(vbc0)
-        D[kC][kE] += tra.d_IC_vbe(vbe0)
-        D[kC][kC] += tra.d_IC_vbc(vbc0)
-
-        D[kE][kB] += tra.d_IE_vbe(vbe0)
-        D[kE][kB] += tra.d_IE_vbc(vbc0)
-        D[kE][kE] -= tra.d_IE_vbe(vbe0)
-        D[kE][kC] -= tra.d_IE_vbc(vbc0)
-
-    def _process_pnp_transistor_y(self, tra, sol, y, variables):
-        kB = self.port_index(tra.B)
-        kE = self.port_index(tra.E)
-        kC = self.port_index(tra.C)
-
-        vbe0 = sol[kB] - sol[kE]
-        vbc0 = sol[kB] - sol[kC]
-
-        ie = tra.IE(vbe0, vbc0)
-        ib = tra.IB(vbe0, vbc0)
-        ic = tra.IC(vbe0, vbc0)
-
-        y[kE]-= ie
-        y[kB]-= ib
-        y[kC]-= ic
-
-    def _process_pnp_transistor_D(self, tra, sol, D, variables):
-        kB = self.port_index(tra.B)
-        kE = self.port_index(tra.E)
-        kC = self.port_index(tra.C)
-
-        vbe0 = sol[kB] - sol[kE]
-        vbc0 = sol[kB] - sol[kC]
-
-
-        D[kB][kB] += -tra.d_IB_vbe(vbe0)
-        D[kB][kB] += -tra.d_IB_vbc(vbc0)
-        D[kB][kE] += tra.d_IB_vbe(vbe0)
-        D[kB][kC] += tra.d_IB_vbc(vbc0)
-
-        D[kC][kB] -= tra.d_IC_vbe(vbe0)
-        D[kC][kB] -= tra.d_IC_vbc(vbc0)
-        D[kC][kE] += tra.d_IC_vbe(vbe0)
-        D[kC][kC] += tra.d_IC_vbc(vbc0)
-
-        D[kE][kB] -= tra.d_IE_vbe(vbe0)
-        D[kE][kB] -= tra.d_IE_vbc(vbc0)
-        D[kE][kE] += tra.d_IE_vbe(vbe0)
-        D[kE][kC] += tra.d_IE_vbc(vbc0)
-
-
-    def _process_voltage_y(self, time: float, vol: Voltage, sol, y, variables):
-        k = self.voltage_index(vol)
-        kp = self.port_index(vol.p)
-        kn = self.port_index(vol.n)
-        y[kp] += sol[k]
-        y[kn] -= sol[k]
-        y[k] = (sol[kp] - sol[kn]) - vol.voltage(time, variables)
-
-    def _process_voltage_D(self, time: float, vol: Voltage, sol, D, variables):
-        k = self.voltage_index(vol)
-        kp = self.port_index(vol.p)
-        kn = self.port_index(vol.n)
-        D[kp][k]+=1
-        D[kn][k]-=1
-        D[k][kp] +=1
-        D[k][kn] -=1
-
-    def _process_current_source_y(self, cs:  Current, sol, y, variables):
-        cur = cs.get_amp(variables)
-        y[self.port_index(cs.p)] += cur
-        y[self.port_index(cs.n)] -= cur
-
-    def _process_current_source_D(self, cs: Current, sol, D, variables):
-        # currents are constant
-        pass
-
-    def _process_resistor_y(self, resi, sol, y, variables):
-        G = 1/ resi.get_ohm(variables)
-        pk = self.port_index(resi.p)
-        nk = self.port_index(resi.n)
-        current = (sol[pk] - sol[nk]) * G
-        y[pk] -= current
-        y[nk] += current
-
-    def _process_resistor_D(self, resi, sol, D, variables):
-        pk = self.port_index(resi.p)
-        nk = self.port_index(resi.n)
-        G = 1/ resi.get_ohm(variables)
-        D[pk][pk] -= G
-        D[pk][nk] += G
-        D[nk][pk] += G
-        D[nk][nk] -= G
-
-    def _process_capacitor_y(self, c, sol, y, state_vec, variables):
-        k = self.capa_index(c)
-        pk = self.port_index(c.p)
-        nk = self.port_index(c.n)
-
-        sn = self.state_index(c)
-        v = state_vec[sn]
-
-        if not math.isnan(v):
-            y[pk] += sol[k]
-            y[nk] -= sol[k]
-            y[k] = (sol[pk] - sol[nk]) - v
-        else:
-            y[k] = 0
-
-    def _process_capacitor_D(self, c, sol, D, state_vec, variables):
-        k = self.capa_index(c)
-        pk = self.port_index(c.p)
-        nk = self.port_index(c.n)
-        sn = self.state_index(c)
-        v = state_vec[sn]
-
-        if not math.isnan(v):
-            D[pk][k] += 1
-            D[nk][k] += -1
-            D[k][pk] +=1
-            D[k][nk] -=1
-        else:
-            D[k][k] = 1
-
-    def _process_inductor_y(self, c, sol, y, state_vec, variables):
-        k = self.induc_index(c)
-        pk = self.port_index(c.p)
-        nk = self.port_index(c.n)
-
-        sn = self.state_index(c)
-        curr = state_vec[sn]
-
-        if not math.isnan(curr):
-            # the current current through the inductor
-            y[pk] -= sol[k] # leaves node
-            y[nk] += sol[k]  # enters node
-            # sol[k] is voltage difference
-            y[k] = sol[k] - curr
-        else:
-            # sol[k] is the current through the inductor
-            # both nodes have the same voltage level
-            y[k] = (sol[pk] - sol[nk])
-
-            y[pk] -=  sol[k] # current leaves node
-            y[nk] += sol[k] # current enters node
-
-
-    def _process_inductor_D(self, c, sol, D, state_vec, variables):
-        k = self.induc_index(c)
-        pk = self.port_index(c.p)
-        nk = self.port_index(c.n)
-
-        sn = self.state_index(c)
-        curr = state_vec[sn]
-
-        if not math.isnan(curr):
-            D[pk][k] += -1
-            D[nk][k] += 1
-            D[k][k] += 1
-        else:
-            D[k][pk] = 1
-            D[k][nk] = -1
-            D[pk][k] = -1
-            D[nk][k] = 1
 
     def _equation_size(self):
         return (len(self.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list)
                 + len(self.induc_list))
-
-    def x_compute_y(self, sol, time, state_vec, variables):
-        n = self._equation_size()
-        y = np.zeros(n)
-        for comp in self.netw.components.values():
-            if isinstance(comp, Node):
-                pass
-            elif isinstance(comp, Voltage):
-                self._process_voltage_y(time, comp, sol, y, variables)
-            elif isinstance(comp, Current):
-                self._process_current_source_y(comp, sol, y, variables)
-            elif isinstance(comp, Resistor):
-                self._process_resistor_y(comp, sol, y, variables)
-            elif isinstance(comp, Diode):
-                self._process_diode_y(comp, sol, y, variables)
-            elif isinstance(comp, NPNTransistor):
-                self._process_npn_transistor_y(comp, sol, y, variables)
-            elif isinstance(comp, PNPTransistor):
-                self._process_pnp_transistor_y(comp, sol, y, variables)
-            elif isinstance(comp, Capacitor):
-                self._process_capacitor_y(comp, sol, y, state_vec, variables)
-            elif isinstance(comp, Inductor):
-                self._process_inductor_y(comp, sol, y, state_vec, variables)
-            else:
-                raise Exception(f"unknown component type of {comp}")
-
-        # no euqation for ground, make sure its voltage is 0
-        k  = self.node_index(self.ground)
-        y[k] = sol[k]
-        return y
 
     def generate_code(self, variables, transient):
         init = []
@@ -1353,38 +1111,6 @@ class Analysis:
         computer = bla()
         return computer
 
-
-    def x_compute_D(self, sol, time, state_vec, variables):
-        n = self._equation_size()
-        D = np.zeros((n,n))
-        for comp in self.netw.components.values():
-            if isinstance(comp, Node):
-                pass
-            elif isinstance(comp, Voltage):
-                self._process_voltage_D(time, comp, sol, D, variables)
-            elif isinstance(comp, Current):
-                self._process_current_source_D(comp, sol, D, variables)
-            elif isinstance(comp, Resistor):
-                self._process_resistor_D(comp, sol, D, variables)
-            elif isinstance(comp, Diode):
-                self._process_diode_D(comp, sol, D, variables)
-            elif isinstance(comp, NPNTransistor):
-                self._process_npn_transistor_D(comp, sol, D, variables)
-            elif isinstance(comp, PNPTransistor):
-                self._process_pnp_transistor_D(comp, sol, D, variables)
-            elif isinstance(comp, Capacitor):
-                self._process_capacitor_D(comp, sol, D, state_vec, variables)
-            elif isinstance(comp, Inductor):
-                self._process_inductor_D(comp, sol, D, state_vec, variables)
-            else:
-                raise Exception(f"unknown component type of {comp}")
-
-        # no euqation for ground, make sure its votage is 0
-        k  = self.node_index(self.ground)
-        D[k] = np.zeros(n)
-        D[k][k] = 1
-        return D
-
     def _compute_state_vec(self, capa_voltages, induc_currents):
         state_vec = np.zeros(self.state_size())
 
@@ -1442,11 +1168,9 @@ class Analysis:
 
         def f(x):
             return c.y(time, x, state_vec)
-            #return self._compute_y(x, time, state_vec, variables)
 
         def Df(x):
             return c.dy(time, x, state_vec)
-            #return  self._compute_D(x, time, state_vec, variables)
 
 
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
@@ -1512,17 +1236,9 @@ class Analysis:
 
         def f(x):
             return c.y(time, x, state_vec)
-            #return self._compute_y(x, time, state_vec, variables)
 
         def Df(x):
             return c.dy(time, x, state_vec)
-            #return  self._compute_D(x, time, state_vec, variables)
-
-#        def f(x):
-#            return self._compute_y(x, time, state_vec, variables)
-
-  #      def Df(x):
-  #          return self._compute_D(x, time, state_vec, variables)
 
         res = solving.solve(start_sol, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
