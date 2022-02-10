@@ -253,7 +253,7 @@ def saw1(args):
     net = Network()
     r = 100000
     capa = 10e-6
-    vc = net.addV("vc", 1, lambda t: util.saw_tooth(1,t)+1)
+    vc = net.addSawV("vc", 1, 1)
     r1 = net.addR("r1", r)
     ca = net.addCapa("ca", capa)
     connect(vc.p, r1.p)
@@ -262,7 +262,8 @@ def saw1(args):
     connect(vc.n, net.ground)
 
     ana = Analysis(net)
-    res = ana.transient(9,0.0001)
+    res = ana.transient(9,0.0001, capa_voltages={"ca":0})
+    return
     time = []
     ca_p = []
     for (t,v,c) in res:
@@ -282,7 +283,7 @@ def emitterschaltung(args):
     net = Network()
     vc = net.addV("vc", 10)
 
-    ve = net.addV("ve", 0.1, lambda t: util.saw_tooth(10,t))
+    ve = net.addSawV("ve", 0.1, 10)
 
     ce = net.addCapa("ce", 100e-6)
     #ce = net.addR("ce", 1)
@@ -319,7 +320,7 @@ def emitterschaltung(args):
     connect(rl.n, net.ground)
 
     ana = Analysis(net)
-    res = ana.transient(0.4,0.00001)
+    res = ana.transient(0.4,0.00001, capa_voltages={"ca":0, "ce":0})
     time = []
     va = []
     ca = []
@@ -362,7 +363,7 @@ def rlc(args):
     connect(ind.n,net.ground)
 
     ana = Analysis(net)
-    res = ana.transient(0.1,0.0001, induc_currents={"ind": 0}, capa_voltages={"ca":0} )
+    res = ana.transient(0.1,0.0001, induc_currents={"ind": 1}, capa_voltages={"ca":0} )
 
     ip = []
     iv = []

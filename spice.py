@@ -5,8 +5,7 @@ import pprint as pp
 import numbers
 import numpy as np
 import solving
-import ncomponents
-
+import util
 from util import explin, dexplin
 
 class Variable:
@@ -125,18 +124,14 @@ class Current(Node2):
 
 class Voltage(Node2):
     """voltage source"""
-    def __init__(self, parent, name:str, volts:float, waveform = None):
+    def __init__(self, parent, name:str, volts:float):
         super().__init__(parent, name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self._volts = volts
-        self.waveform = waveform
 
     def voltage(self, time, variables):
         v = self.get_val(self._volts, variables)
-        if self.waveform is None:
-            return v
-        else:
-            return self.waveform(time) * v
+        return v
 
     def __repr__(self):
         return f"<Voltage {self.name}>"
@@ -150,6 +145,45 @@ class Voltage(Node2):
         voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
         return (init, voltage)
 
+class SineVoltage(Voltage):
+
+    def __init__(self, parent, name:str, volts:float, frequency: float):
+        super().__init__(parent, name, volts)
+        self._frequency = frequency
+
+    def voltage(self, time, variables):
+        v = self.get_val(self._volts, variables)
+        return v * math.sin(2 * math.pi * self._frequency)
+
+    def get_current(self, variables, vd):
+        raise NotImplementedError("get_current for voltage source not implemented")
+
+    def code(self, name, variables):
+        v = self.get_val(self._volts, variables)
+        init = [f"self.{name} = NSineVoltage({v}, {self._frequency})"]
+        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+        return (init, voltage)
+
+class SawVoltage(Voltage):
+
+    def __init__(self, parent, name:str, volts:float, frequency: float):
+        super().__init__(parent, name, volts)
+        self._frequency = frequency
+
+    def voltage(self, time, variables):
+        v = self.get_val(self._volts, variables)
+        return v * util.saw_tooth(1,time)
+
+    def get_current(self, variables, vd):
+        raise NotImplementedError("get_current for voltage source not implemented")
+
+    def code(self, name, variables):
+        v = self.get_val(self._volts, variables)
+        init = [f"self.{name} = NSawVoltage({v}, {self._frequency})"]
+        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+        return (init, voltage)
+
+    
 class Diode(Node2):
     """solid state diode"""
     def __init__(self, parent, name, Is, Nut, lcut_off = -40, rcut_off=40):
@@ -310,7 +344,8 @@ class NPNTransistor(Component):
     def code(self, name, vb, ve, vc):
         prefix = name
         me = "self." + prefix + "_"
-        initt = [f"{me} = NNPNTransistor({self.IS}, {self.VT}, {self.beta_F}, {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
+        initt = [f"{me} = NNPNTransistor({self.IS}, {self.VT},"
+                 +f" {self.beta_F}, {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
         vbe = f"{prefix}_vbe"
         vbc = f"{prefix}_vbc"
 
@@ -438,7 +473,8 @@ class PNPTransistor(Component):
     def code(self, name, vb, ve, vc):
         prefix = name
         me = "self." + prefix + "_"
-        initt = [f"{me} = NPNPTransistor({self.IS}, {self.VT}, {self.beta_F}, {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
+        initt = [f"{me} = NPNPTransistor({self.IS}, {self.VT}, {self.beta_F},"
+                 + f" {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
         vbe = f"{prefix}_vbe"
         vbc = f"{prefix}_vbc"
 
@@ -490,14 +526,31 @@ class Network:
         self.components[name] = c
         return c
 
-    def addV(self, name, volts, waveform=None):
+    def addV(self, name, volts):
         """add a voltage source"""
         if name in self.components:
             raise Exception(f"Name {name} already exists")
-        v = Voltage(self, name, volts, waveform)
+        v = Voltage(self, name, volts)
         self.components[name] = v
         return v
 
+    def addSineV(self, name, volts, frequency):
+        """add a voltage source"""
+        if name in self.components:
+            raise Exception(f"Name {name} already exists")
+        v = SineVoltage(self, name, volts, frequency)
+        self.components[name] = v
+        return v
+
+    def addSawV(self, name, volts, frequency):
+        """add a voltage source"""
+        if name in self.components:
+            raise Exception(f"Name {name} already exists")
+        v = SawVoltage(self, name, volts, frequency)
+        self.components[name] = v
+        return v
+
+    
     def addN(self,name):
         """add a node"""
         if name in self.components:
@@ -1082,7 +1135,7 @@ class Analysis:
                 + len(self.capa_list)
                 + len(self.induc_list))
 
-    def _compute_y(self, sol, time, state_vec, variables):
+    def x_compute_y(self, sol, time, state_vec, variables):
         n = self._equation_size()
         y = np.zeros(n)
         for comp in self.netw.components.values():
@@ -1112,11 +1165,9 @@ class Analysis:
         y[k] = sol[k]
         return y
 
-    def generate_code(self, variables):
+    def generate_code(self, variables, transient):
         init = []
         n = self._equation_size()
-        # this does not work
-        #        init.append("from ncomponents import NDiode, NNPNTransistor, NPNPTransistor, NVoltage")
         init.append("def bla():")
         init.append("   return Computer()")
         init.append("")
@@ -1126,7 +1177,9 @@ class Analysis:
             for x in l:
                 init.append("        " + x)
         add_to_init(["pass"])
-        add_to_init(["from ncomponents import NDiode, NNPNTransistor, NPNPTransistor, NVoltage"])
+        # the import has to be here, placing it add the start of the string/code does not work
+        add_to_init(["from ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
+                     + "NVoltage, NSineVoltage, NSawVoltage"])
         y_code = []
         y_code.append("    def y(self, time, sol, state_vec):")
         def add_to_y_code(l):
@@ -1145,18 +1198,18 @@ class Analysis:
 
         ysum=[]
         for i in range(n):
-            ysum.append(list())
+            ysum.append([])
         dysum=[]
         for i in range(n):
             x = []
             for j in range(n):
-                x.append(list())
+                x.append([])
             dysum.append(x)
 
         counter = 0
         for comp in self.netw.components.values():
             cname = comp.name + str(counter)
-            
+
             if isinstance(comp, Node2):
                 kp = self.port_index(comp.p)
                 kn = self.port_index(comp.n)
@@ -1213,11 +1266,13 @@ class Analysis:
                 kb = self.port_index(comp.B)
                 ke = self.port_index(comp.E)
                 kc = self.port_index(comp.C)
+
                 (init_t, (cinit, (cb,ce,cc)),
                          (dinit,((dbb, dbe, dbc),
                                  (deb, dee, dec),
-                                 (dcb, dce, dcc)))) = comp.code(cname,f"sol[{kb}]", f"sol[{ke}]", f"sol[{kc}]")
-                assert init_t
+                                 (dcb, dce, dcc)))) = \
+                     comp.code(cname,f"sol[{kb}]", f"sol[{ke}]", f"sol[{kc}]")
+
                 add_to_init(init_t)
                 add_to_y_code(cinit)
                 ysum[kb].append(f"({cb})")
@@ -1238,6 +1293,43 @@ class Analysis:
                 dysum[kc][ke].append(f"({dce})")
                 dysum[kc][kc].append(f"({dcc})")
 
+            elif isinstance(comp, Capacitor):
+                k = self.capa_index(comp)
+                sn = self.state_index(comp)
+                if transient:
+                    ysum[kp].append(f"sol[{k}]")
+                    ysum[kn].append(f"-(sol[{k}])")
+                    ysum[k].append(f"sol[{kp}] - sol[{kn}] - state_vec[{sn}]")
+
+                    dysum[kp][k].append("1")
+                    dysum[kn][k].append("-1")
+                    dysum[k][kp].append("1")
+                    dysum[k][kn].append("(-1)")
+                else:
+                    ysum[k].append("sol[{k}]")
+                    dysum[k][k].append("1")
+            elif isinstance(comp, Inductor):
+                k = self.induc_index(comp)
+                sn = self.state_index(comp)
+                if transient:
+                    ysum[kp].append(f"(-sol[{k}])")
+                    ysum[kn].append(f"sol[{k}]")
+                    ysum[k].append(f"sol[{k}] - state_vec[{sn}]")
+
+                    dysum[kp][k].append("(-1)")
+                    dysum[kn][k].append("1")
+                    dysum[k][k].append("1")
+                else:
+                    # sol[k] is the current through the inductor
+                    # both nodes have the same voltage level
+                    ysum[k].append(f"sol[{kp}]- sol[{kn}]")
+                    ysum[kp].append(f"-sol[{k}]") # current leaves node
+                    ysum[kn].append(f"(sol[{k}])") # current enters node
+
+                    dysum[k][kp].append("1")
+                    dysum[k][kn].append("(-1)")
+                    dysum[kp][k].append("(-1)")
+                    dysum[kn][k].append("1")
             else:
                 raise Exception("unknown component")
 
@@ -1254,16 +1346,15 @@ class Analysis:
         add_to_dy_code(["return res"])
         add_to_init([""])
         code = "\n".join(init + y_code + dy_code)
-        print(code)
+        #print(code)
         d = {}
-        d2 = {}
         exec(code,d)
         bla = d["bla"]
         computer = bla()
         return computer
 
 
-    def _compute_D(self, sol, time, state_vec, variables):
+    def x_compute_D(self, sol, time, state_vec, variables):
         n = self._equation_size()
         D = np.zeros((n,n))
         for comp in self.netw.components.values():
@@ -1303,13 +1394,13 @@ class Analysis:
                 if capa_voltages and  comp.name in capa_voltages:
                     state_vec[k] = capa_voltages[comp.name]
                 else:
-                    state_vec[k] = math.nan
+                    raise Exception(f"no voltage given for capacitor {comp.name}")
             if isinstance(comp, Inductor):
                 k = self.state_index(comp)
                 if induc_currents and comp.name in induc_currents:
                     state_vec[k] = induc_currents[comp.name]
                 else:
-                    state_vec[k] = math.nan
+                    raise Exception(f"no  current given for inductor {comp.name}")
 
         return state_vec
 
@@ -1322,7 +1413,8 @@ class Analysis:
                  capa_voltages=None,
                  induc_currents=None,
                  start_voltages=None,
-                 time =0 ):
+                 time =0,
+                 transient=False):
         if variables is None:
             variables = {}
         n = self._equation_size()
@@ -1341,11 +1433,13 @@ class Analysis:
 
         solution_vec = solution_vec0
 
-        state_vec = self._compute_state_vec(capa_voltages, induc_currents)
+        if transient:
+            state_vec = self._compute_state_vec(capa_voltages, induc_currents)
+        else:
+            state_vec = None
 
-        print(variables)
-        c = self.generate_code(variables)
-        
+        c = self.generate_code(variables,transient)
+
         def f(x):
             return c.y(time, x, state_vec)
             #return self._compute_y(x, time, state_vec, variables)
@@ -1353,7 +1447,7 @@ class Analysis:
         def Df(x):
             return c.dy(time, x, state_vec)
             #return  self._compute_D(x, time, state_vec, variables)
-         
+
 
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
@@ -1413,12 +1507,22 @@ class Analysis:
                        state_vec,
                        variables,
                        abstol,
-                       reltol):
+                       reltol,
+                       c):
+
         def f(x):
-            return self._compute_y(x, time, state_vec, variables)
+            return c.y(time, x, state_vec)
+            #return self._compute_y(x, time, state_vec, variables)
 
         def Df(x):
-            return self._compute_D(x, time, state_vec, variables)
+            return c.dy(time, x, state_vec)
+            #return  self._compute_D(x, time, state_vec, variables)
+
+#        def f(x):
+#            return self._compute_y(x, time, state_vec, variables)
+
+  #      def Df(x):
+  #          return self._compute_D(x, time, state_vec, variables)
 
         res = solving.solve(start_sol, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
@@ -1458,7 +1562,8 @@ class Analysis:
                            start_voltages=start_voltages,
                            time=time,
                            abstol=abstol,
-                           reltol=reltol)
+                           reltol=reltol,
+                           transient=True)
         if isinstance(res, str):
             raise Exception("can not find inital solution")
 
@@ -1478,15 +1583,16 @@ class Analysis:
                 if math.isnan(state_vec[k]):
                     curr = res.get_current(comp.p)
                     state_vec[k] = curr
-
+        c = self.generate_code(variables,True)
         while time < maxtime:
             res = self.solve_internal(time,
-                       maxit,
-                       sol,
-                       state_vec,
-                       variables,
-                       abstol,
-                       reltol)
+                    maxit,
+                    sol,
+                    state_vec,
+                    variables,
+                    abstol,
+                    reltol,
+                    c)
             if isinstance(res, str):
                 raise Exception(f"fail at time {time}")
 

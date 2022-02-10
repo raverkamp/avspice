@@ -2,8 +2,10 @@
 import unittest
 import pprint as pp
 from math import exp
+import math
 import numpy as np
-from spice import Network, connect, Analysis, Diode, NPNTransistor, explin, dexplin, Variable, PNPTransistor
+from spice import Network, connect, Analysis, Diode, NPNTransistor,\
+       explin, dexplin, Variable, PNPTransistor
 
 import solving
 
@@ -376,8 +378,9 @@ class TestTransistor(unittest.TestCase):
         connect(v.n, net.ground)
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
-        self.assertTrue(not isinstance(res, str), "could not find solution: {0}".format(res))
-        self.assertTrue(0.8 <= res.get_current(t1.B)/(6/20e3) <= 1.2, "wrong base current: {0}".format(res.get_current(t1.B)))
+        self.assertTrue(not isinstance(res, str), "could not find solution: {res}")
+        self.assertTrue(0.8 <= res.get_current(t1.B)/(6/20e3) <= 1.2,
+                        f"wrong base current: {res.get_current(t1.B)}")
         self.assertAlmostEqual(-res.get_current(t1.E)/beta_f,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
 
@@ -403,8 +406,9 @@ class TestTransistor(unittest.TestCase):
         connect(v.n, net.ground)
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
-        self.assertTrue(not isinstance(res, str), "could not find solution: {0}".format(res))
-        self.assertTrue(0.8 <= res.get_current(t1.B)/(6/20e3) <= 1.2, "wrong base current: {0}".format(res.get_current(t1.B)))
+        self.assertTrue(not isinstance(res, str), "could not find solution: {res}")
+        self.assertTrue(0.8 <= res.get_current(t1.B)/(6/20e3) <= 1.2, \
+                        f"wrong base current: {res.get_current(t1.B)}")
         self.assertAlmostEqual(res.get_current(t1.E)/beta_r,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
 
@@ -423,7 +427,7 @@ class PNPTransistorTests(unittest.TestCase):
                 ic = tt.IC(vbe, vbc)
                 ib = tt.IB(vbe, vbc)
 
-                print(ie, ic, ib)
+                #print(ie, ic, ib)
 
                 self.assertAlmostEqual(ie+ ic + ib,0)
 
@@ -453,7 +457,7 @@ class PNPTransistorTests(unittest.TestCase):
                 ic = tt.IC(vbe, vbc)
                 ib = tt.IB(vbe, vbc)
 
-                print(ie, ic, ib)
+                #print(ie, ic, ib)
 
                 self.assertAlmostEqual(ie+ ic + ib,0)
 
@@ -500,10 +504,7 @@ class PNPTransistorTests(unittest.TestCase):
         connect(net.ground, v.n)
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
-        if isinstance(res, str):
-            raise Exception(res)
-        #print("current = {0}, dvolt) = {1}".format(res.get_current("r.p"), res.get_voltage("t1.E")))
-        #print(" bisect i={0}, v={1}".format((v0-vv)/r0, vv))
+        self.assertTrue(not isinstance(res,str), f"no solution: {res}")
         self.assertAlmostEqual(res.get_current("r.p"), (v0-vv)/r0)
 
     def test_trans_fw(self):
@@ -532,8 +533,7 @@ class PNPTransistorTests(unittest.TestCase):
         connect(v.n, net.ground)
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
-        if isinstance(res, str):
-            raise Exception(res)
+        self.assertTrue(not isinstance(res,str), f"no solution {res}")
         self.assertAlmostEqual(-res.get_current(t1.E)/beta_f,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
 
@@ -564,8 +564,9 @@ class PNPTransistorTests(unittest.TestCase):
         connect(v.n, net.ground)
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
-        if isinstance(res, str):
-            raise Exception(res)
+
+        self.assertTrue(not isinstance(res,str), f"no solution {res}")
+
         self.assertAlmostEqual(res.get_current(t1.E)/beta_r,res.get_current(t1.B),places=5)
         self.assertAlmostEqual(res.y_norm, 0)
 
@@ -588,8 +589,7 @@ class ResultDisplayTest(unittest.TestCase):
         connect(t1.E, net.ground)
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
-        if isinstance(res, str):
-            raise Exception(res)
+        self.assertTrue(not isinstance(res,str), f"no solution {res}")
 
         res.display()
 
@@ -615,20 +615,14 @@ class TransientTest(unittest.TestCase):
         # assumption capacitor is empty and will be loaded
         res = ana.transient(timespan,0.01, capa_voltages={"ca" : 0})
 
-        import math
         ve = res[-1][1]["ca.p"]
         ve_expected = v0 *(1-math.exp(-timespan/(r*capa)))
         self.assertTrue(0.98 < ve/ve_expected <1.02)
 
     def test2(self):
-        import math
-
-        def waveform(t):
-            return math.sin(t* 2* math.pi)
-
         net = Network()
         v0 = 10
-        vc = net.addV("vc", v0, waveform= waveform)
+        vc = net.addSineV("vc", v0, 1)
         rc = net.addR("rc", 100)
         connect(vc.p, rc.p)
         connect(rc.n, vc.n)
@@ -637,10 +631,9 @@ class TransientTest(unittest.TestCase):
         res = ana.transient(1,0.005)
 
         for (t,v,c) in res:
-            self.assertAlmostEqual(v["rc.p"], v0 * waveform(t))
+            self.assertAlmostEqual(v["rc.p"], v0 * math.sin(2* math.pi * t))
 
     def test3(self):
-        import math
 
         net = Network()
         v0 = 10
@@ -696,7 +689,7 @@ class TestInductor(unittest.TestCase):
         connect(r2.n, vc.n)
         connect(vc.n,net.ground)
         ana = Analysis(net)
-        res = ana.analyze(induc_currents={"ind": 0.09})
+        res = ana.analyze(induc_currents={"ind": 0.09},transient=True)
         #self.assertAlmostEqual(res.get_voltage(ind.p), res.get_voltage(ind.n))
         self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r1.p))
         self.assertAlmostEqual(res.get_current(ind.p), res.get_current(r2.p))

@@ -1,5 +1,6 @@
 import math
 from util import explin, dexplin
+import util
 """ numerical components"""
 
 
@@ -12,6 +13,34 @@ class NVoltage:
     def voltage(self, time):
         return self.v
 
+class NSineVoltage:
+
+    def __init__(self, v, f):
+        self.v = v
+        self.f = f
+
+
+    def voltage(self, time):
+        return self.v * math.sin(2 * math.pi * self.f * time)
+
+class NSawVoltage:
+
+    def __init__(self, v, f):
+        self.v = v
+        self.f = f
+
+    def voltage(self, time):
+        return self.v * util.saw_tooth(self.f * time)
+
+class NSawVoltage:
+    
+    def __init__(self,v,f):
+        self.v = v
+        self.f = f
+
+    def voltage(self, time):
+        return self.v *  util.saw_tooth(self.f,time)
+    
 class NDiode:
     """solid state diode"""
     def __init__(self, Is, Nut, lcut_off = -40, rcut_off=40):
@@ -28,7 +57,7 @@ class NDiode:
         return self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
 
 class NNPNTransistor:
-    
+
     """NPN transistor"""
 
     def __init__(self, IS:float, VT:float, beta_F:float, beta_R:float,
@@ -97,12 +126,12 @@ class NPNPTransistor:
     def __init__(self, IS:float, VT:float, beta_F:float, beta_R:float,
                  lcutoff:float = -40,
                  rcutoff:float = 40):
-       
+
         self.IS = IS
         self.VT = VT
         self.beta_F = beta_F
         self.beta_R = beta_R
-       
+
         self.lcutoff = lcutoff
         self.rcutoff = rcutoff
 
