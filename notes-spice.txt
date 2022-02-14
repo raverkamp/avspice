@@ -192,3 +192,6 @@ ausrechnen lassen. Es passt zusammen.
 Ich stelle fest die Oszilation die ich in der Simulation von oszi sehe
 haben nichts mit dem Transistoren zu tun, es sind einfach die Schwingungen in
 der C-L Kette.
+
+2022-02-13_10:14
+Das meiste ist auf Code Generierung umgstellt.

@@ -263,7 +263,7 @@ def saw1(args):
 
     ana = Analysis(net)
     res = ana.transient(9,0.0001, capa_voltages={"ca":0})
-    return
+
     time = []
     ca_p = []
     for (t,v,c) in res:

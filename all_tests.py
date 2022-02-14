@@ -5,7 +5,10 @@ from math import exp
 import math
 import numpy as np
 from spice import Network, connect, Analysis, Diode, NPNTransistor,\
-       explin, dexplin, Variable, PNPTransistor
+    Variable, PNPTransistor
+from util import  explin, dexplin
+
+import ncomponents
 
 import solving
 
@@ -269,7 +272,7 @@ class TestTransistor(unittest.TestCase):
     """test for transistor"""
 
     def test_transistor_formulas(self):
-        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        tt = ncomponents.NNPNTransistor(1e-12, 25e-3, 100, 10, -40, 40)
         # this worked: vbe = 0.15, vbc = -3
         for vbe in [x/10 -3.0 for x in range(0,60)]:
             for vbc in [x/10 -3.0 for x in range(0,60)]:
@@ -279,7 +282,7 @@ class TestTransistor(unittest.TestCase):
                 self.assertAlmostEqual(ic+ib-ie,0)
 
     def test_transistor_formulas_2(self):
-        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        tt = ncomponents.NNPNTransistor(1e-12, 25e-3, 100, 10, -40, 40)
         # this worked: vbe = 0.15, vbc = -3
         for v in [x/10 -3.0 for x in range(0,60)]:
             ie = tt.IE(v, -v)
@@ -294,7 +297,7 @@ class TestTransistor(unittest.TestCase):
         re = net.addR("re", 10)
         rb = net.addR("rb", 10e3)
         rc = net.addR("rc", 10)
-        tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        tt = NPNTransistor(None, "",1e-12, 25e-3, 100, 10)
         t1 = net.addComp("T1", tt)
 
         connect(vc.p, rc.p)
@@ -417,7 +420,7 @@ class PNPTransistorTests(unittest.TestCase):
     """test for PNPtransistor"""
 
     def test_formulas(self):
-        tt = PNPTransistor(None, "", 1e-12, 25e-3, 100, 10)
+        tt = ncomponents.NPNPTransistor(1e-12, 25e-3, 100, 10, -40, 40)
 
 
         for vbc in [-0.3, -0.1, 0, 0.1, 0.3]:
@@ -446,7 +449,6 @@ class PNPTransistorTests(unittest.TestCase):
         self.assertGreater(ic,0)
 
     def test_nformulas(self):
-        import ncomponents
         tt = ncomponents.NPNPTransistor(1e-12, 25e-3, 100, 10)
 
 
@@ -479,13 +481,13 @@ class PNPTransistorTests(unittest.TestCase):
     def test_trans_diode(self):
         beta_f = 100
         beta_r = 20
-        tt = PNPTransistor(None, "", 1e-12, 25e-3, beta_f, beta_r)
-
+        tt = PNPTransistor(None, "",1e-12, 25e-3, beta_f, beta_r)
+        ntt = ncomponents.NPNPTransistor(1e-12, 25e-3, beta_f, beta_r, -40, 40)
         v0 = 6
         r0 = 20e3
 
         def f(vm):
-            ib = -tt.IB(-vm, -vm)
+            ib = -ntt.IB(-vm, -vm)
             ir = (v0 -vm) / r0
             return ib -ir
 

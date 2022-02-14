@@ -6,7 +6,6 @@ import numbers
 import numpy as np
 import solving
 import util
-from util import explin, dexplin
 
 class Variable:
     """a variable"""
@@ -72,9 +71,6 @@ class Node2(Component):
     def ports(self):
         return [self.p, self.n]
 
-    def get_current(self, variables, vd):
-        raise NotImplementedError("get_current method not implemented")
-
 class Node(Component):
     """a node, just a port in the network"""
     def __init__(self, parent, name):
@@ -100,10 +96,6 @@ class Resistor(Node2):
     def __repr__(self):
         return f"<Resistor {self.name}>"
 
-    def get_current(self,variables, vd):
-        return vd / self.get_ohm(variables)
-
-
 class Current(Node2):
     """current source"""
     def __init__(self, parent, name, amp):
@@ -114,9 +106,6 @@ class Current(Node2):
         return f"<Current {self.name}>"
 
     def get_amp(self, variables):
-        return self.get_val(self.amp, variables)
-
-    def get_current(self, variables, vd):
         return self.get_val(self.amp, variables)
 
     def code(self,cname):
@@ -136,9 +125,6 @@ class Voltage(Node2):
     def __repr__(self):
         return f"<Voltage {self.name}>"
 
-    def get_current(self, variables, vd):
-        raise NotImplementedError("get_current for voltage source not implemented")
-
     def code(self, name, variables):
         v = self.get_val(self._volts, variables)
         init = [f"self.{name} = NVoltage({v})"]
@@ -155,9 +141,6 @@ class SineVoltage(Voltage):
         v = self.get_val(self._volts, variables)
         return v * math.sin(2 * math.pi * self._frequency)
 
-    def get_current(self, variables, vd):
-        raise NotImplementedError("get_current for voltage source not implemented")
-
     def code(self, name, variables):
         v = self.get_val(self._volts, variables)
         init = [f"self.{name} = NSineVoltage({v}, {self._frequency})"]
@@ -173,9 +156,6 @@ class SawVoltage(Voltage):
     def voltage(self, time, variables):
         v = self.get_val(self._volts, variables)
         return v * util.saw_tooth(1,time)
-
-    def get_current(self, variables, vd):
-        raise NotImplementedError("get_current for voltage source not implemented")
 
     def code(self, name, variables):
         v = self.get_val(self._volts, variables)
@@ -200,15 +180,6 @@ class Diode(Node2):
         dcurr = ([], f"self.{cname}.diff_current({dvname})")
         return (init, curr, dcurr)
 
-    def current(self, v):
-        return self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
-
-    def get_current(self, variables, vd):
-        return self.Is * (explin(vd/self.Nut, self.lcut_off, self.rcut_off)-1)
-
-    def diff_curr(self, dv):
-        return self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
-
     def __repr__(self):
         return f"<Diode {self.name}>"
 
@@ -223,9 +194,6 @@ class Capacitor(Node2):
         a = self.get_val(self._capa, variables)
         return a
 
-    def get_current(self, variables, vd):
-        raise NotImplementedError("get_current for capacitor not implemented")
-
     def __repr__(self):
         return f"<Capacitor {self.name}>"
 
@@ -236,9 +204,6 @@ class Inductor(Node2):
     def __init__(self, parent, name, induc):
         super().__init__(parent, name)
         self.induc = induc
-
-    def get_current(self, variables, vd):
-        raise NotImplementedError("get_current for inductor not implemented")
 
     def __repr__(self):
         return f"<Inductor {self.name}>"
@@ -287,59 +252,6 @@ class NPNTransistor(Component):
 
     def ports(self):
         return [self.B, self.C, self.E]
-
-    def t1(self, vbe, vbc):
-        return (explin(vbe/self.VT, self.lcutoff, self.rcutoff)
-                - explin(vbc/self.VT, self.lcutoff, self.rcutoff))
-
-    def d_t1_vbe(self, vbe):
-        return dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
-
-    def d_t1_vbc(self, vbc):
-        return -dexplin(vbc/self.VT, self.lcutoff, self.rcutoff) / self.VT
-
-    def t2(self, vbc):
-        return 1/self.beta_R *(explin(vbc/self.VT, self.lcutoff, self.rcutoff)-1)
-
-    def d_t2_vbc(self, vbc):
-        return 1/self.beta_R * dexplin(vbc/self.VT, self.lcutoff, self.rcutoff) /self.VT
-
-    def t3(self, vbe):
-        return 1/self.beta_F *(explin(vbe/self.VT, self.lcutoff, self.rcutoff)-1)
-
-    def d_t3_vbe(self, vbe):
-        return 1/self.beta_F * dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
-
-    def IC(self, vbe, vbc):
-        return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
-
-    def d_IC_vbe(self, vbe):
-        return self.IS * self.d_t1_vbe(vbe)
-
-    def d_IC_vbc(self, vbc):
-        return self.IS * (self.d_t1_vbc(vbc) - self.d_t2_vbc(vbc))
-
-    def IB(self, vbe, vbc):
-        return self.IS * (self.t2(vbc) + self.t3(vbe))
-
-    def d_IB_vbe(self, vbe):
-        return self.IS * self.d_t3_vbe(vbe)
-
-    def d_IB_vbc(self, vbc):
-        return self.IS * self.d_t2_vbc(vbc)
-
-
-    def IE(self, vbe, vbc):
-        return self.IS * (self.t1(vbe, vbc) + self.t3(vbe))
-
-    def d_IE_vbe(self, vbe):
-        return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
-
-    def d_IE_vbc(self, vbc):
-        return self.IS * self.d_t1_vbc(vbc)
-
-    def get_current3(self, variables, vbe, vbc):
-        return (self.IB(vbe, vbc),  -self.IE(vbe, vbc), self.IC(vbe, vbc))
 
     def code(self, name, vb, ve, vc):
         prefix = name
@@ -414,61 +326,6 @@ class PNPTransistor(Component):
 
     def ports(self):
         return [self.B, self.C, self.E]
-
-    def t1(self, vbe, vbc):
-        return (explin(-vbe/self.VT, self.lcutoff, self.rcutoff)
-                - explin(-vbc/self.VT, self.lcutoff, self.rcutoff))
-
-    def d_t1_vbe(self, vbe):
-        return -dexplin(-vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
-
-    def d_t1_vbc(self, vbc):
-        return dexplin(-vbc/self.VT, self.lcutoff, self.rcutoff) / self.VT
-
-    def t2(self, vbc):
-        return 1/self.beta_R *(explin(-vbc/self.VT, self.lcutoff, self.rcutoff)-1)
-
-    def d_t2_vbc(self, vbc):
-        return -1/self.beta_R * dexplin(-vbc/self.VT, self.lcutoff, self.rcutoff) /self.VT
-
-    def t3(self, vbe):
-        return 1/self.beta_F *(explin(-vbe/self.VT, self.lcutoff, self.rcutoff)-1)
-
-    def d_t3_vbe(self, vbe):
-        return -1/self.beta_F * dexplin(-vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
-
-    #---
-    def IC(self, vbe, vbc):
-        return self.IS*(self.t2(vbc) - self.t1(vbe, vbc))
-
-    def d_IC_vbe(self, vbe):
-        return -self.IS * self.d_t1_vbe(vbe)
-
-    def d_IC_vbc(self, vbc):
-        return self.IS * (self.d_t2_vbc(vbc) - self.d_t1_vbc(vbc))
-
-
-    def IB(self, vbe, vbc):
-        return -self.IS * (self.t2(vbc) + self.t3(vbe))
-
-    def d_IB_vbe(self, vbe):
-        return -self.IS * self.d_t3_vbe(vbe)
-
-    def d_IB_vbc(self, vbc):
-        return -self.IS * self.d_t2_vbc(vbc)
-
-
-    def IE(self, vbe, vbc):
-        return self.IS * (self.t1(vbe, vbc) + self.t3(vbe))
-
-    def d_IE_vbe(self, vbe):
-        return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
-
-    def d_IE_vbc(self, vbc):
-        return self.IS * self.d_t1_vbc(vbc)
-
-    def get_current3(self, variables, vbe, vbc):
-        return (self.IB(vbe, vbc),  self.IE(vbe, vbc), self.IC(vbe, vbc))
 
     def code(self, name, vb, ve, vc):
         prefix = name
@@ -742,7 +599,7 @@ def compute_nodes(nw):
 
 class Result:
     """result of an analysis run"""
-    def __init__(self, network, analysis, iterations, solution_vec, variables, y, y_norm, mat_cond):
+    def __init__(self, network, analysis, iterations, solution_vec, y, y_norm, mat_cond, currents):
         self.analysis = analysis
         self.network = network
         self.solution_vec = solution_vec
@@ -752,42 +609,9 @@ class Result:
         self.mat_cond = mat_cond
         self.y = y
         self.y_norm = y_norm
-        for c in network.components.values():
-            if isinstance(c, Capacitor):
-                k = self.analysis.capa_index(c)
-                cu = solution_vec[k]
-                self.currents[c.p] = -cu
-                self.currents[c.n] = cu
-            elif isinstance(c, Voltage):
-                k = self.analysis.voltage_index(c)
-                cu = solution_vec[k]
-                self.currents[c.p] = -cu
-                self.currents[c.n] = cu
-            elif isinstance(c, Inductor):
-                k = self.analysis.induc_index(c)
-                cu = solution_vec[k]
-                self.currents[c.p] = cu
-                self.currents[c.n] = -cu
-            elif isinstance(c, Node2):
-                kp = self.analysis.port_index(c.p)
-                kn = self.analysis.port_index(c.n)
-                vd = self.solution_vec[kp] - self.solution_vec[kn]
-                i = c.get_current(variables, vd)
-                self.currents[c.p] = i
-                self.currents[c.n] = -i
-            elif isinstance(c, (NPNTransistor, PNPTransistor)):
-                vb = self.get_voltage(c.B)
-                ve = self.get_voltage(c.E)
-                vc = self.get_voltage(c.C)
-                (ib, ie, ic) = c.get_current3(variables, vb - ve, vb- vc)
-                self.currents[c.B] = ib
-                self.currents[c.E] = ie
-                self.currents[c.C] = ic
-            elif  c == self.network.ground:
-                pass
-            else:
-                raise Exception(f"unknown component:{c}")
+        self.currents = currents
 
+        for c in network.components.values():
             for port in c.ports():
                 k = self.analysis.port_index(port)
                 self.voltages[port] = solution_vec[k]
@@ -799,10 +623,7 @@ class Result:
         return res
 
     def get_currents(self):
-        res = {}
-        for (p,c) in self.currents.items():
-            res[p.pname()] = c
-        return res
+        return self.currents
 
     def __repr__(self):
         return repr({"voltages": self.voltages, "currents": self.currents})
@@ -830,9 +651,10 @@ class Result:
             raise Exception(f"not a port or node or name thereof: {name_or_comp}")
         return c
 
-    def get_current(self, name_or_comp):
-        c = self._port(name_or_comp)
-        return self.currents[c]
+    def get_current(self, port):
+        if isinstance(port, Port):
+            port  = port.pname()
+        return self.currents[port]
 
     def has_current(self, name_or_comp):
         c = self._port(name_or_comp)
@@ -874,6 +696,8 @@ class Analysis:
         self.solution_vec = None
         self.node_list = compute_nodes(self.netw)
         self.ground = self.node_list[0]
+        self.curr_port_list = []
+
 
         for node in self.node_list:
             for port in node.ports:
@@ -886,6 +710,7 @@ class Analysis:
                 self.capa_list.append(comp)
             if isinstance(comp, Inductor):
                 self.induc_list.append(comp)
+            self.curr_port_list.extend(comp.ports())
 
     def node_index(self, node):
         return self.node_list.index(node)
@@ -922,6 +747,9 @@ class Analysis:
                 + len(self.voltage_list)
                 + len(self.capa_list)
                 + len(self.induc_list))
+
+    def curr_index(self, p):
+        return self.curr_port_list.index(p)
 
     def generate_code(self, variables, transient):
         init = []
@@ -964,6 +792,15 @@ class Analysis:
                 x.append([])
             dysum.append(x)
 
+        # the method to compute the final current
+        cur_code  = []
+        cur_code.append("    def currents(self, time, sol, state_vec):")
+        def add_to_cur_code(l):
+            for x in l:
+                cur_code.append("        " + x)
+        add_to_cur_code(["import numpy as np"])
+        add_to_cur_code([f"res = np.zeros({len(self.curr_port_list)})"])
+
         counter = 0
         for comp in self.netw.components.values():
             cname = comp.name + str(counter)
@@ -986,6 +823,9 @@ class Analysis:
                 dysum[k][kp].append("1")
                 dysum[k][kn].append("-1")
 
+                add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
+                                 f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+
             elif isinstance(comp, Current):
                 kp = self.port_index(comp.p)
                 kn = self.port_index(comp.n)
@@ -994,6 +834,10 @@ class Analysis:
                 add_to_y_code(pre)
                 ysum[kp].append(f"({expr})")
                 ysum[kn].append(f"(-({expr}))")
+
+                add_to_cur_code(pre)
+                add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -({expr})",
+                                 f"res[{self.curr_index(comp.n)}] = {expr}"])
 
             elif isinstance(comp, Resistor):
                 G = 1/ comp.get_ohm(variables)
@@ -1007,6 +851,10 @@ class Analysis:
                 dysum[kn][kp].append(f"{G}")
                 dysum[kn][kn].append(f"(-{G})")
 
+                add_to_cur_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}",
+                                  f"res[{self.curr_index(comp.p)}] = ({name})",
+                                  f"res[{self.curr_index(comp.n)}] =  -({name})"])
+
             elif isinstance(comp, Diode):
                 (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
                 add_to_init(init_d)
@@ -1019,6 +867,10 @@ class Analysis:
                 dysum[kp][kn].append(f"{dcurr}")
                 dysum[kn][kp].append(f"{dcurr}")
                 dysum[kn][kn].append(f"(-{dcurr})")
+
+                add_to_cur_code(cinit)
+                add_to_cur_code([f"res[{self.curr_index(comp.p)}] = {curr}",
+                                  f"res[{self.curr_index(comp.n)}] =  -({curr})"])
 
             elif isinstance(comp, (NPNTransistor, PNPTransistor)):
                 kb = self.port_index(comp.B)
@@ -1051,6 +903,11 @@ class Analysis:
                 dysum[kc][ke].append(f"({dce})")
                 dysum[kc][kc].append(f"({dcc})")
 
+                add_to_cur_code(cinit)
+                add_to_cur_code([f"res[{self.curr_index(comp.B)}] = -({cb})",
+                                  f"res[{self.curr_index(comp.E)}] =  -({ce})",
+                                  f"res[{self.curr_index(comp.C)}] =  -({cc})"])
+
             elif isinstance(comp, Capacitor):
                 k = self.capa_index(comp)
                 sn = self.state_index(comp)
@@ -1063,9 +920,13 @@ class Analysis:
                     dysum[kn][k].append("-1")
                     dysum[k][kp].append("1")
                     dysum[k][kn].append("(-1)")
+                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -(sol[{k}])",
+                                     f"res[{self.curr_index(comp.n)}] = sol[{k}]"])
                 else:
                     ysum[k].append("sol[{k}]")
                     dysum[k][k].append("1")
+                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
+                                     f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
             elif isinstance(comp, Inductor):
                 k = self.induc_index(comp)
                 sn = self.state_index(comp)
@@ -1077,6 +938,9 @@ class Analysis:
                     dysum[kp][k].append("(-1)")
                     dysum[kn][k].append("1")
                     dysum[k][k].append("1")
+
+                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = state_vec[{sn}]",
+                                     f"res[{self.curr_index(comp.n)}] = -state_vec[{sn}]"])
                 else:
                     # sol[k] is the current through the inductor
                     # both nodes have the same voltage level
@@ -1088,6 +952,9 @@ class Analysis:
                     dysum[k][kn].append("(-1)")
                     dysum[kp][k].append("(-1)")
                     dysum[kn][k].append("1")
+
+                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
+                                     f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
             else:
                 raise Exception("unknown component")
 
@@ -1101,9 +968,10 @@ class Analysis:
                     if len(dysum[i][j])>0:
                         add_to_dy_code([f"res[{i}][{j}]=" + " + ".join(dysum[i][j])])
         add_to_y_code(["return res",""])
-        add_to_dy_code(["return res"])
+        add_to_dy_code(["return res",""])
+        add_to_cur_code(["return res"])
         add_to_init([""])
-        code = "\n".join(init + y_code + dy_code)
+        code = "\n".join(init + y_code + dy_code + cur_code)
         #print(code)
         d = {}
         exec(code,d)
@@ -1129,6 +997,15 @@ class Analysis:
                     raise Exception(f"no  current given for inductor {comp.name}")
 
         return state_vec
+
+    def _compute_currents(self, bla, time, sol, state_vec):
+        res = {}
+        cv = bla.currents(time, sol,state_vec)
+        for comp in self.netw.components.values():
+            for p in comp.ports():
+                res[p.pname()] = cv[self.curr_index(p)]
+        return res
+
 
     def analyze(self,
                 maxit=20,
@@ -1182,14 +1059,15 @@ class Analysis:
             else:
                 cond=None
             norm_y = np.linalg.norm(y)
+            currents = self._compute_currents(c,time, sol, state_vec)
             return Result(self.netw,
                           self,
                           iterations,
                           sol,
-                          variables,
                           y,
                           norm_y,
-                          cond)
+                          cond,
+                          currents)
 
         alfa = 0.5
 
@@ -1223,14 +1101,15 @@ class Analysis:
             cond =  np.linalg.cond(dfx,'fro')
         else:
             cond=None
+        currents = self._compute_currents(c, time, sol, state_vec)
         return Result(self.netw,
                       self,
                       iterations,
                       sol,
-                      variables,
                       y,
                       norm_y,
-                      cond)
+                      cond,
+                      currents)
 
 
     def solve_internal(self,
@@ -1252,19 +1131,19 @@ class Analysis:
         res = solving.solve(start_sol, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
-            norm_y = np.linalg.norm(y)
             if compute_cond:
                 cond =  np.linalg.cond(dfx,'fro')
             else:
                 cond=None
+            currents = self._compute_currents(c, time, sol, state_vec)
             return Result(self.netw,
                           self,
                           iterations,
                           sol,
-                          None,
                           y,
                           norm_y,
-                          cond)
+                          cond,
+                          currents)
         return res
 
     def transient(self,
