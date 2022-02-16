@@ -677,8 +677,7 @@ class Result:
             comp = self.network.get_object(cname)
             if not isinstance(comp, Node):
                 for port in comp.ports():
-                    if self.has_current(port):
-                        print(port.pname() + " " + str(self.get_current(port)))
+                    print(port.pname() + " " + str(self.get_current(port)))
 
 class Analysis:
     """captures all data for analysis"""
@@ -923,7 +922,7 @@ class Analysis:
                     add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -(sol[{k}])",
                                      f"res[{self.curr_index(comp.n)}] = sol[{k}]"])
                 else:
-                    ysum[k].append("sol[{k}]")
+                    ysum[k].append(f"sol[{k}]")
                     dysum[k][k].append("1")
                     add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
                                      f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
@@ -972,7 +971,7 @@ class Analysis:
         add_to_cur_code(["return res"])
         add_to_init([""])
         code = "\n".join(init + y_code + dy_code + cur_code)
-        #print(code)
+        print(code)
         d = {}
         exec(code,d)
         bla = d["bla"]
