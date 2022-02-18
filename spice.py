@@ -839,8 +839,6 @@ class Analysis:
                                     f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
 
             elif isinstance(comp, Current):
-                kp = self.port_index(comp.p)
-                kn = self.port_index(comp.n)
                 (cinit, (pre, expr)) = comp.code(cname)
                 cg.add_to_init(cinit)
                 cg.add_to_y_code(pre)
