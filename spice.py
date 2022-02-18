@@ -679,6 +679,65 @@ class Result:
                 for port in comp.ports():
                     print(port.pname() + " " + str(self.get_current(port)))
 
+class CodeGenerator:
+    def __init__(self, n, n_curr_ports):
+        self.n = n
+        self.n_curr_ports = n_curr_ports
+        self.init = [
+            "def bla():",
+            "   return Computer()",
+            "",
+            "class Computer:",
+            "    def __init__(self):",
+            "        from ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
+                    + "NVoltage, NSineVoltage, NSawVoltage"]
+        self.y_code = ["    def y(self, time, sol, state_vec):",
+                       "        import numpy as np",
+                       f"        res = np.zeros({self.n})"]
+
+        self.dy_code = ["    def dy(self, time, sol, state_vec):",
+                        "        import numpy as np",
+                        f"        res = np.zeros(({self.n},{self.n}))"]
+        self.cur_code  = ["    def currents(self, time, sol, state_vec):",
+                          "        import numpy as np",
+                          f"        res = np.zeros({self.n_curr_ports})"]
+        self.ysum=[]
+        for i in range(self.n):
+            self.ysum.append([])
+        self.dysum=[]
+        for i in range(self.n):
+            x = []
+            for j in range(n):
+                x.append([])
+            self.dysum.append(x)
+
+    def add_ysum(self, k, e):
+        self.ysum[k].append(e)
+
+    def add_dysum(self, k, j, e):
+        self.dysum[k][j].append(e)
+
+    def add_to_method(self, m, lines_or_str):
+        if isinstance(lines_or_str, str):
+            l=[lines_or_str]
+        else:
+            l=lines_or_str
+        for x in l:
+            assert isinstance(x, str)
+            m.append("        " + x)
+
+    def add_to_init(self,l):
+        self.add_to_method(self.init, l)
+
+    def add_to_y_code(self, l):
+        self.add_to_method(self.y_code, l)
+
+    def add_to_dy_code(self, l):
+        self.add_to_method(self.dy_code, l)
+
+    def add_to_cur_code(self, l):
+        self.add_to_method(self.cur_code, l)
+
 class Analysis:
     """captures all data for analysis"""
 
@@ -751,54 +810,8 @@ class Analysis:
         return self.curr_port_list.index(p)
 
     def generate_code(self, variables, transient):
-        init = []
+        cg = CodeGenerator(self._equation_size(), len(self.curr_port_list))
         n = self._equation_size()
-        init.append("def bla():")
-        init.append("   return Computer()")
-        init.append("")
-        init.append("class Computer:")
-        init.append("    def __init__(self):")
-        def add_to_init(l):
-            for x in l:
-                init.append("        " + x)
-        add_to_init(["pass"])
-        # the import has to be here, placing it add the start of the string/code does not work
-        add_to_init(["from ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
-                     + "NVoltage, NSineVoltage, NSawVoltage"])
-        y_code = []
-        y_code.append("    def y(self, time, sol, state_vec):")
-        def add_to_y_code(l):
-            for x in l:
-                y_code.append("        " + x)
-        add_to_y_code(["import numpy as np"])
-        add_to_y_code([f"res = np.zeros({n})"])
-
-        dy_code = []
-        dy_code.append("    def dy(self, time, sol, state_vec):")
-        def add_to_dy_code(l):
-            for x in l:
-                dy_code.append("        " + x)
-        add_to_dy_code(["import numpy as np"])
-        add_to_dy_code([f"res = np.zeros(({n},{n}))"])
-
-        ysum=[]
-        for i in range(n):
-            ysum.append([])
-        dysum=[]
-        for i in range(n):
-            x = []
-            for j in range(n):
-                x.append([])
-            dysum.append(x)
-
-        # the method to compute the final current
-        cur_code  = []
-        cur_code.append("    def currents(self, time, sol, state_vec):")
-        def add_to_cur_code(l):
-            for x in l:
-                cur_code.append("        " + x)
-        add_to_cur_code(["import numpy as np"])
-        add_to_cur_code([f"res = np.zeros({len(self.curr_port_list)})"])
 
         counter = 0
         for comp in self.netw.components.values():
@@ -811,64 +824,64 @@ class Analysis:
                 pass
             elif isinstance(comp, Voltage):
                 (vinit, (pre , expr)) = comp.code(cname, variables)
-                add_to_init(vinit)
+                cg.add_to_init(vinit)
                 k = self.voltage_index(comp)
-                add_to_y_code(pre)
-                ysum[kp].append(f"sol[{k}]")
-                ysum[kn].append(f"(-sol[{k}])")
-                ysum[k].append(f"(sol[{kp}] - sol[{kn}]) - ({expr})")
-                dysum[kp][k].append("1")
-                dysum[kn][k].append("-1")
-                dysum[k][kp].append("1")
-                dysum[k][kn].append("-1")
+                cg.add_to_y_code(pre)
+                cg.add_ysum(kp, f"sol[{k}]")
+                cg.add_ysum(kn, f"(-sol[{k}])")
+                cg.add_ysum(k,f"(sol[{kp}] - sol[{kn}]) - ({expr})")
+                cg.add_dysum(kp, k, "1")
+                cg.add_dysum(kn, k, "-1")
+                cg.add_dysum(k, kp, "1")
+                cg.add_dysum(k, kn, "-1")
 
-                add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
-                                 f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+                cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
+                                    f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
 
             elif isinstance(comp, Current):
                 kp = self.port_index(comp.p)
                 kn = self.port_index(comp.n)
                 (cinit, (pre, expr)) = comp.code(cname)
-                add_to_init(cinit)
-                add_to_y_code(pre)
-                ysum[kp].append(f"({expr})")
-                ysum[kn].append(f"(-({expr}))")
+                cg.add_to_init(cinit)
+                cg.add_to_y_code(pre)
+                cg.add_ysum(kp, f"({expr})")
+                cg.add_ysum(kn, f"(-({expr}))")
 
-                add_to_cur_code(pre)
-                add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -({expr})",
+                cg.add_to_cur_code(pre)
+                cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -({expr})",
                                  f"res[{self.curr_index(comp.n)}] = {expr}"])
 
             elif isinstance(comp, Resistor):
                 G = 1/ comp.get_ohm(variables)
                 name = f"current_{comp.name}"
-                add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
-                ysum[kp].append(f"(-{name})")
-                ysum[kn].append(f"{name}")
+                cg.add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
+                cg.add_ysum(kp, f"(-{name})")
+                cg.add_ysum(kn, f"{name}")
 
-                dysum[kp][kp].append(f"(-{G})")
-                dysum[kp][kn].append(f"{G}")
-                dysum[kn][kp].append(f"{G}")
-                dysum[kn][kn].append(f"(-{G})")
+                cg.add_dysum(kp, kp, f"(-{G})")
+                cg.add_dysum(kp, kn, f"{G}")
+                cg.add_dysum(kn, kp, f"{G}")
+                cg.add_dysum(kn, kn, f"(-{G})")
 
-                add_to_cur_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}",
-                                  f"res[{self.curr_index(comp.p)}] = ({name})",
-                                  f"res[{self.curr_index(comp.n)}] =  -({name})"])
+                cg.add_to_cur_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}",
+                                    f"res[{self.curr_index(comp.p)}] = ({name})",
+                                    f"res[{self.curr_index(comp.n)}] =  -({name})"])
 
             elif isinstance(comp, Diode):
                 (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
-                add_to_init(init_d)
-                add_to_y_code(cinit)
-                add_to_dy_code(dinit)
-                ysum[kp].append(f"(-{curr})")
-                ysum[kn].append(f"({curr})")
+                cg.add_to_init(init_d)
+                cg.add_to_y_code(cinit)
+                cg.add_to_dy_code(dinit)
+                cg.add_ysum(kp, f"(-{curr})")
+                cg.add_ysum(kn, f"({curr})")
 
-                dysum[kp][kp].append(f"(-{dcurr})")
-                dysum[kp][kn].append(f"{dcurr}")
-                dysum[kn][kp].append(f"{dcurr}")
-                dysum[kn][kn].append(f"(-{dcurr})")
+                cg.add_dysum(kp, kp, f"(-{dcurr})")
+                cg.add_dysum(kp, kn, f"{dcurr}")
+                cg.add_dysum(kn, kp, f"{dcurr}")
+                cg.add_dysum(kn, kn, f"(-{dcurr})")
 
-                add_to_cur_code(cinit)
-                add_to_cur_code([f"res[{self.curr_index(comp.p)}] = {curr}",
+                cg.add_to_cur_code(cinit)
+                cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = {curr}",
                                   f"res[{self.curr_index(comp.n)}] =  -({curr})"])
 
             elif isinstance(comp, (NPNTransistor, PNPTransistor)):
@@ -882,28 +895,28 @@ class Analysis:
                                  (dcb, dce, dcc)))) = \
                      comp.code(cname,f"sol[{kb}]", f"sol[{ke}]", f"sol[{kc}]")
 
-                add_to_init(init_t)
-                add_to_y_code(cinit)
-                ysum[kb].append(f"({cb})")
-                ysum[ke].append(f"({ce})")
-                ysum[kc].append(f"({cc})")
+                cg.add_to_init(init_t)
+                cg.add_to_y_code(cinit)
+                cg.add_ysum(kb, f"({cb})")
+                cg.add_ysum(ke, f"({ce})")
+                cg.add_ysum(kc, f"({cc})")
 
-                add_to_dy_code(dinit)
+                cg.add_to_dy_code(dinit)
 
-                dysum[kb][kb].append(f"({dbb})")
-                dysum[kb][ke].append(f"({dbe})")
-                dysum[kb][kc].append(f"({dbc})")
+                cg.add_dysum(kb, kb, f"({dbb})")
+                cg.add_dysum(kb, ke, f"({dbe})")
+                cg.add_dysum(kb, kc, f"({dbc})")
 
-                dysum[ke][kb].append(f"({deb})")
-                dysum[ke][ke].append(f"({dee})")
-                dysum[ke][kc].append(f"({dec})")
+                cg.add_dysum(ke, kb, f"({deb})")
+                cg.add_dysum(ke, ke, f"({dee})")
+                cg.add_dysum(ke, kc, f"({dec})")
 
-                dysum[kc][kb].append(f"({dcb})")
-                dysum[kc][ke].append(f"({dce})")
-                dysum[kc][kc].append(f"({dcc})")
+                cg.add_dysum(kc, kb, f"({dcb})")
+                cg.add_dysum(kc, ke, f"({dce})")
+                cg.add_dysum(kc, kc, f"({dcc})")
 
-                add_to_cur_code(cinit)
-                add_to_cur_code([f"res[{self.curr_index(comp.B)}] = -({cb})",
+                cg.add_to_cur_code(cinit)
+                cg.add_to_cur_code([f"res[{self.curr_index(comp.B)}] = -({cb})",
                                   f"res[{self.curr_index(comp.E)}] =  -({ce})",
                                   f"res[{self.curr_index(comp.C)}] =  -({cc})"])
 
@@ -911,67 +924,68 @@ class Analysis:
                 k = self.capa_index(comp)
                 sn = self.state_index(comp)
                 if transient:
-                    ysum[kp].append(f"sol[{k}]")
-                    ysum[kn].append(f"-(sol[{k}])")
-                    ysum[k].append(f"sol[{kp}] - sol[{kn}] - state_vec[{sn}]")
+                    cg.add_ysum(kp, f"sol[{k}]")
+                    cg.add_ysum(kn, f"-(sol[{k}])")
+                    cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - state_vec[{sn}]")
 
-                    dysum[kp][k].append("1")
-                    dysum[kn][k].append("-1")
-                    dysum[k][kp].append("1")
-                    dysum[k][kn].append("(-1)")
-                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -(sol[{k}])",
-                                     f"res[{self.curr_index(comp.n)}] = sol[{k}]"])
+                    cg.add_dysum(kp, k, "1")
+                    cg.add_dysum(kn, k, "-1")
+                    cg.add_dysum(k, kp, "1")
+                    cg.add_dysum(k, kn, "(-1)")
+                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -(sol[{k}])",
+                                        f"res[{self.curr_index(comp.n)}] = sol[{k}]"])
                 else:
-                    ysum[k].append(f"sol[{k}]")
-                    dysum[k][k].append("1")
-                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
-                                     f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+                    cg.add_ysum(k, f"sol[{k}]")
+                    cg.add_dysum(k, k, "1")
+                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
+                                        f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
             elif isinstance(comp, Inductor):
                 k = self.induc_index(comp)
                 sn = self.state_index(comp)
                 if transient:
-                    ysum[kp].append(f"(-sol[{k}])")
-                    ysum[kn].append(f"sol[{k}]")
-                    ysum[k].append(f"sol[{k}] - state_vec[{sn}]")
+                    cg.add_ysum(kp, f"(-sol[{k}])")
+                    cg.add_ysum(kn, f"sol[{k}]")
+                    cg.add_ysum(k, f"sol[{k}] - state_vec[{sn}]")
 
-                    dysum[kp][k].append("(-1)")
-                    dysum[kn][k].append("1")
-                    dysum[k][k].append("1")
+                    cg.add_dysum(kp, k, "(-1)")
+                    cg.add_dysum(kn, k, "1")
+                    cg.add_dysum(k, k, "1")
 
-                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = state_vec[{sn}]",
-                                     f"res[{self.curr_index(comp.n)}] = -state_vec[{sn}]"])
+                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = state_vec[{sn}]",
+                                        f"res[{self.curr_index(comp.n)}] = -state_vec[{sn}]"])
                 else:
                     # sol[k] is the current through the inductor
                     # both nodes have the same voltage level
-                    ysum[k].append(f"sol[{kp}]- sol[{kn}]")
-                    ysum[kp].append(f"-sol[{k}]") # current leaves node
-                    ysum[kn].append(f"(sol[{k}])") # current enters node
+                    cg.add_ysum(k, f"sol[{kp}]- sol[{kn}]")
+                    cg.add_ysum(kp, f"-sol[{k}]") # current leaves node
+                    cg.add_ysum(kn, f"(sol[{k}])") # current enters node
 
-                    dysum[k][kp].append("1")
-                    dysum[k][kn].append("(-1)")
-                    dysum[kp][k].append("(-1)")
-                    dysum[kn][k].append("1")
+                    cg.add_dysum(k, kp, "1")
+                    cg.add_dysum(k, kn, "(-1)")
+                    cg.add_dysum(kp, k, "(-1)")
+                    cg.add_dysum(kn, k, "1")
 
-                    add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
-                                     f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
+                                        f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
             else:
                 raise Exception("unknown component")
 
         for i in range(n):
             if i == 0: # skip current equation for ground, force voltage to be 0
-                add_to_y_code(["res[0]=sol[0]"])
-                add_to_dy_code(["res[0][0]=1"])
+                cg.add_to_y_code(["res[0]=sol[0]"])
+                cg.add_to_dy_code(["res[0][0]=1"])
             else:
-                add_to_y_code([f"res[{i}]=" + " + ".join(ysum[i])])
+                cg.add_to_y_code([f"res[{i}]=" + " + ".join(cg.ysum[i])])
                 for j in range(n):
-                    if len(dysum[i][j])>0:
-                        add_to_dy_code([f"res[{i}][{j}]=" + " + ".join(dysum[i][j])])
-        add_to_y_code(["return res",""])
-        add_to_dy_code(["return res",""])
-        add_to_cur_code(["return res"])
-        add_to_init([""])
-        code = "\n".join(init + y_code + dy_code + cur_code)
-        print(code)
+                    if len(cg.dysum[i][j])>0:
+                        cg.add_to_dy_code([f"res[{i}][{j}]=" + " + ".join(cg.dysum[i][j])])
+        cg.add_to_y_code(["return res",""])
+        cg.add_to_dy_code(["return res",""])
+        cg.add_to_cur_code(["return res"])
+        cg.add_to_init([""])
+        l =  cg.init + cg.y_code + cg.dy_code + cg.cur_code
+        code = "\n".join(l)
+        #        print(code)
         d = {}
         exec(code,d)
         bla = d["bla"]

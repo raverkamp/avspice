@@ -7,13 +7,14 @@ from util import *
 
 import math
 
+from ncomponents import NNPNTransistor
 
 
 
 def plot1(args):
     # das passt alles nicht
     # oder doch: Basis Spannug sollte über der vom Kollektor liegen
-    t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    t = NNPNTransistor(1e-12, 25e-3, 100, 10, -40, 40)
     vbl = [0, 0.1, 0.2, 0.3,0.4]
     k = math.ceil(math.sqrt(len(vbl)))
     (f,plts) = plt.subplots(k,k)
@@ -38,7 +39,7 @@ def plot1(args):
     input()
 
 def plot2(args):
-    t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    t = NNPNTransistor(1e-12, 25e-3, 100, 10, -40, 40)
 
     vc = 2
     ve = 0
@@ -57,7 +58,7 @@ def plot3(args):
     parser.add_argument('cutoff', type=float)
 
     args = parser.parse_args(args)
-    t = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    t = NNPNTransistor(1e-12, 25e-3, 100, 10, -40, 40)
     x = list(drange(-0.5, 3.5, 0.01))
     vc = args.cpot
     ve = 0
