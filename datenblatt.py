@@ -4,24 +4,18 @@ from spice import *
 import argparse
 import sys
 from util import *
-
+import ncomponents
 import math
 
 
 def kennlinie(args):
     print(("kennlinie", args))
-    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
     net = Network()
-    t1 = net.addComp("T1", tt)
-    vc = net.addV("vc", Variable("vc"))
-    vb = net.addV("cb", 1)
-    rb = net.addR("rb", Variable("rb"))
-    connect(t1.C, vc.p)
-    connect(t1.E, net.ground)
-    connect(vc.n, net.ground)
-    connect(vb.p, rb.p)
-    connect(rb.n, t1.B)
-    connect(vb.n, net.ground)
+    t1 = net.add_component("t1", tt, ("B", "v", "0")) 
+    net.addV("vc", Variable("vc"), "v", "0")
+    net.addV("cb", 1, "vb", "0")
+    net.addR("rb", Variable("rb"), "vb", "B")
     
     ana = Analysis(net)
     ce_voltages = list(drange(0, 10, 0.01))
@@ -35,7 +29,7 @@ def kennlinie(args):
             if isinstance(res, str):
                 break
             x.append(v)
-            y.append(res.get_current(t1.C))
+            y.append(res.get_current("t1.C"))
             sol = res.solution_vec
         ax.plot(x,y,label=("IC for IB={0}".format(i)))
     ax.legend()
