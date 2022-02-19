@@ -6,6 +6,7 @@ import numbers
 import numpy as np
 import solving
 import util
+import collections
 
 class Variable:
     """a variable"""
@@ -19,19 +20,12 @@ class Variable:
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
-    def __init__(self, parent, name):
+    def __init__(self, name):
         self.name = name
-        self.parent = parent
 
-    def ports(self):
+    def get_ports(self):
         """return the ports of this component"""
         raise NotImplementedError("ports method not implemented")
-
-    def get_port(self, name):
-        for p in self.ports():
-            if p.name == name:
-                return p
-        raise Exception(f"Component {self.name} does not have port {name}")
 
     def get_val(self, var_or_num, variables):
         if isinstance(var_or_num, numbers.Number):
@@ -45,49 +39,19 @@ class Component:
             return val
         raise Exception("bug")
 
-class Port:
-    """ components are connected via their ports"""
-
-    def __init__(self, component:Component, name:str):
-        self.component = component
-        self.name = name
-
-    def __repr__(self):
-        return f"<Port {self.component.name}.{self.name}>"
-
-    def pname(self):
-        """printable name of the port"""
-        return self.component.name + "." + self.name
-
-
 class Node2(Component):
     """a component with just two ports"""
 
-    def __init__(self, parent: 'Network', name:str):
-        super().__init__(parent, name)
-        self.p = Port(self, "p")
-        self.n = Port(self, "n")
+    def __init__(self, name:str):
+        super().__init__(name)
 
-    def ports(self):
-        return [self.p, self.n]
-
-class Node(Component):
-    """a node, just a port in the network"""
-    def __init__(self, parent, name):
-        super().__init__(parent, name)
-        self.port = Port(self, "port")
-
-    def ports(self):
-        return [self.port]
-
-    def __repr__(self):
-        return f"<Node {self.name}>"
-
+    def get_ports(self):
+        return ["p", "n"]
 
 class Resistor(Node2):
     """resistor"""
-    def __init__(self, parent, name, ohm):
-        super().__init__(parent, name)
+    def __init__(self, name, ohm):
+        super().__init__(name)
         self._ohm = ohm
 
     def get_ohm(self, variables):
@@ -98,8 +62,8 @@ class Resistor(Node2):
 
 class Current(Node2):
     """current source"""
-    def __init__(self, parent, name, amp):
-        super().__init__(parent, name)
+    def __init__(self, name, amp):
+        super().__init__(name)
         self.amp = amp
 
     def __repr__(self):
@@ -113,8 +77,8 @@ class Current(Node2):
 
 class Voltage(Node2):
     """voltage source"""
-    def __init__(self, parent, name:str, volts:float):
-        super().__init__(parent, name)
+    def __init__(self, name:str, volts):
+        super().__init__(name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self._volts = volts
 
@@ -133,8 +97,8 @@ class Voltage(Node2):
 
 class SineVoltage(Voltage):
 
-    def __init__(self, parent, name:str, volts:float, frequency: float):
-        super().__init__(parent, name, volts)
+    def __init__(self, name:str, volts:float, frequency: float):
+        super().__init__(name, volts)
         self._frequency = frequency
 
     def voltage(self, time, variables):
@@ -149,8 +113,8 @@ class SineVoltage(Voltage):
 
 class SawVoltage(Voltage):
 
-    def __init__(self, parent, name:str, volts:float, frequency: float):
-        super().__init__(parent, name, volts)
+    def __init__(self, name:str, volts:float, frequency: float):
+        super().__init__(name, volts)
         self._frequency = frequency
 
     def voltage(self, time, variables):
@@ -166,8 +130,8 @@ class SawVoltage(Voltage):
 
 class Diode(Node2):
     """solid state diode"""
-    def __init__(self, parent, name, Is, Nut, lcut_off = -40, rcut_off=40):
-        super().__init__(parent, name)
+    def __init__(self, name, Is, Nut, lcut_off = -40, rcut_off=40):
+        super().__init__(name)
         self.Is = Is
         self.Nut = Nut
 
@@ -186,8 +150,8 @@ class Diode(Node2):
 class Capacitor(Node2):
     """ a capacitor"""
 
-    def __init__(self, parent, name, capa):
-        super().__init__(parent, name)
+    def __init__(self, name, capa):
+        super().__init__(name)
         self._capa = capa
 
     def get_capa(self, variables):
@@ -201,8 +165,8 @@ class Capacitor(Node2):
 class Inductor(Node2):
     """ a Spule" """
 
-    def __init__(self, parent, name, induc):
-        super().__init__(parent, name)
+    def __init__(self, name, induc):
+        super().__init__(name)
         self.induc = induc
 
     def __repr__(self):
@@ -235,23 +199,19 @@ class NPNTransistor(Component):
 
     """
 
-    def __init__(self, parent: 'Network', name:str, IS:float, VT:float, beta_F:float, beta_R:float,
+    def __init__(self, name:str, IS:float, VT:float, beta_F:float, beta_R:float,
                  cutoff:float =40):
-        super().__init__(parent, name)
+        super().__init__(name)
         self.IS = IS
         self.VT = VT
         self.beta_F = beta_F
         self.beta_R = beta_R
-        self.B = Port(self,"B")
-        self.C = Port(self,"C")
-        self.E = Port(self,"E")
 
         self.lcutoff = -cutoff
         self.rcutoff = cutoff
 
-
-    def ports(self):
-        return [self.B, self.C, self.E]
+    def get_ports(self):
+        return ("B", "C", "E")
 
     def code(self, name, vb, ve, vc):
         prefix = name
@@ -310,22 +270,19 @@ class PNPTransistor(Component):
     PNP!
     """
 
-    def __init__(self, parent: 'Network', name:str, IS:float, VT:float, beta_F:float, beta_R:float,
+    def __init__(self, name:str, IS:float, VT:float, beta_F:float, beta_R:float,
                  cutoff:float=40):
-        super().__init__(parent, name)
+        super().__init__(name)
         self.IS = IS
         self.VT = VT
         self.beta_F = beta_F
         self.beta_R = beta_R
-        self.B = Port(self,"B")
-        self.C = Port(self,"C")
-        self.E = Port(self,"E")
 
         self.lcutoff = -cutoff
         self.rcutoff = cutoff
 
-    def ports(self):
-        return [self.B, self.C, self.E]
+    def get_ports(self):
+        return ("B", "C", "E")
 
     def code(self, name, vb, ve, vc):
         prefix = name
@@ -357,151 +314,63 @@ class PNPTransistor(Component):
 
         return (initt, (cinit, curr), (dinit,d))
 
+Part =  collections.namedtuple("Part", ("name","component", "connections"))
 
 class Network:
     """ this class describes the toplogy of an electrical network
         It only contains the topology"""
 
     def __init__(self):
-        self.connections = []
-        self.ground = Node(self, "ground")
-        self.components = { self.ground.name : self.ground}
+        self.parts = []
+        self.node_list = ["0"]
+        self.part_dict = {}
 
-    def addR(self, name:str, ohm:float):
-        """ add a resistor """
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        r = Resistor(self, name , ohm)
-        self.components[name] = r
-        return r
+    def add_component(self, name:str, comp: Component, nodes):
+        ports = comp.get_ports()
+        assert len(ports) == len(nodes)
+        if name in self.part_dict:
+            raise Exception(f"part with name {name} already exists")
+        for node in nodes:
+            assert isinstance(node, str)
+            if not node in self.node_list:
+                self.node_list.append(node)
+        part = Part(name, comp, nodes)
+        self.parts.append(part)
+        self.part_dict[name] = part
 
-    def addC(self, name, amp):
+    def addR(self, name, ohm, p, n):
         """add a curent source"""
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        c = Current(self, name, amp)
-        self.components[name] = c
-        return c
+        c = Resistor(name, ohm)
+        self.add_component(name, c, (p, n))
 
-    def addV(self, name, volts):
-        """add a voltage source"""
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        v = Voltage(self, name, volts)
-        self.components[name] = v
-        return v
+    def addC(self, name, amp, p, n):
+        """add a curent source"""
+        c = Current(name, amp)
+        self.add_component(name, c, (p, n))
 
-    def addSineV(self, name, volts, frequency):
-        """add a voltage source"""
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        v = SineVoltage(self, name, volts, frequency)
-        self.components[name] = v
-        return v
+    def addV(self, name, volts, p , n):
+        v = Voltage(name, volts)
+        self.add_component(name, v, (p,n))
 
-    def addSawV(self, name, volts, frequency):
-        """add a voltage source"""
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        v = SawVoltage(self, name, volts, frequency)
-        self.components[name] = v
-        return v
+    def addSineV(self, name, volts, frequency, p ,n):
+        v = SineVoltage(name, volts, frequency)
+        self.add_component(name, v, (p, n))
 
+    def addSawV(self, name, volts, frequency, p, n):
+        v = SawVoltage(name, volts, frequency)
+        self.add_component(name, v, (p, n))
 
-    def addN(self,name):
-        """add a node"""
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        node = Node(self, name)
-        self.components[name] = node
-        return node
+    def addD(self, name, Is, Nut, p, n):
+        d = Diode(name, Is, Nut)
+        self.add_component(name, d, (p, n))
 
-    def addD(self, name, Is, Nut):
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        d = Diode(self, name, Is, Nut)
-        self.components[name] = d
-        return d
+    def addCapa(self, name, capa, p, n):
+        c = Capacitor(name, capa)
+        self.add_component(name, c, (p, n))
 
-    def addComp(self, name, comp):
-        if name in self.components:
-            raise Exception(f"Name {name} already exists")
-        if isinstance(comp, Diode):
-            d = Diode(self,
-                      name,
-                      comp.Is,
-                      comp.Nut,
-                      lcut_off = comp.lcut_off,
-                      rcut_off = comp.rcut_off)
-            self.components[name] = d
-            return d
-        if isinstance(comp, NPNTransistor):
-            t = NPNTransistor(self, name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
-            self.components[name] = t
-            return t
-        if isinstance(comp, PNPTransistor):
-            t = PNPTransistor(self, name, comp.IS, comp.VT, comp.beta_F, comp.beta_R)
-            self.components[name] = t
-            return t
-        raise Exception(f"addComp not supported for {comp}")
-
-    def addCapa(self, name, capa):
-        if name in self.components:
-            raise Exception("fName {name} already exists")
-        c = Capacitor(self, name, capa)
-        self.components[name] = c
-        return c
-
-    def addInduc(self, name, induc):
-        if name in self.components:
-            raise Exception("Name {name} already exists")
-        indu = Inductor(self, name, induc)
-        self.components[name] = indu
-        return indu
-
-    def addConnection(self, p1, p2):
-        """connect two ports"""
-        if isinstance(p2, Node):
-            p2 = p2.port
-        if isinstance(p1, Node):
-            p1 = p1.port
-
-        c1 = p1.component
-        c2 = p2.component
-        if c1.parent != self or c2.parent != self:
-            raise Exception("wrong network for addConnection")
-
-        self.connections.append((p1, p2))
-
-    def get_object(self, name):
-        l = name.split(".")
-        name = l[0]
-        if not name in self.components:
-            raise Exception(f"unknown component: {name}")
-        c = self.components[name]
-        if len(l) == 1:
-            return c
-        if len(l) == 2:
-            return c.get_port(l[1])
-        raise Exception(f"too many components in name {name}")
-
-    def get_capacitors(self):
-        res = []
-        for c in self.components.values():
-            if isinstance(c,Capacitor):
-                res.append(c)
-        return res
-
-
-
-
-def connect(p1,p2):
-    """connect two ports or nodes"""
-    if isinstance(p1, Node):
-        compo = p1
-    else:
-        compo = p1.component
-    compo.parent.addConnection(p1,p2)
+    def addInduc(self, name, induc, p, n):
+        indu = Inductor(name, induc)
+        self.add_component(name, indu, (p, n))
 
 class XNode():
     """node class for analysis"""
@@ -512,91 +381,6 @@ class XNode():
     def __repr__(self):
         return f"<XNode {self.name}: {self.ports}>"
 
-def mk_xnode(nodes):
-    """create an XNode for the given ports and derive a name"""
-
-    def key(x):
-        if isinstance(x.component, Node):
-            return "a" +  x.component.name
-        return "b" + x.component.name
-
-    l = list(nodes)
-    l.sort(key=key)
-    if isinstance(l[0].component, Node):
-        s = None
-        for x in l:
-            if not isinstance(x.component, Node):
-                break
-            if s:
-                s= s+ "/" + x.component.name
-            else:
-                s= x.component.name
-    else:
-        s = None
-        for p in l:
-
-            if s:
-                s= s+ "/" + p.pname()
-            else:
-                s= p.pname()
-    return XNode(s, nodes)
-
-
-def compute_nodes(nw):
-    """ compute the nodes for a network, i.e. connected ports"""
-
-    allports = set()
-    for comp in nw.components.values():
-        for port in comp.ports():
-            allports.add(port)
-
-    ## adjancency
-    adj = {}
-    adj[nw.ground.port] = []
-
-    def add(p1, p2):
-        if p1 in adj:
-            adj[p1].append(p2)
-        else:
-            adj[p1] = [p2]
-
-    for (x, y) in nw.connections:
-        add(x, y)
-        add(y, x)
-
-    done = set()
-    nodes = []
-    todo = [nw.ground.port]
-    while todo:
-        port = todo.pop()
-        if port in done:
-            continue
-
-        stack = [port]
-        node = set()
-        done.add(port)
-        allports.remove(port)
-        while stack:
-            x = stack.pop()
-            for p in x.component.ports():
-                if not p in done:
-                    todo.append(p)
-            node.add(x)
-            if not x in adj:
-                raise Exception(f"{x} is not connected")
-            for p1 in adj[x]:
-                if p1 in done:
-                    continue
-                stack.append(p1)
-                allports.remove(p1)
-                done.add(p1)
-        # per algorithm ground is the first node
-        nodes.append(mk_xnode(node))
-    if allports:
-        pp.pprint(allports)
-        raise Exception(f"some ports are not connected to ground: {allports}")
-    return nodes
-
 class Result:
     """result of an analysis run"""
     def __init__(self, network, analysis, iterations, solution_vec, y, y_norm, mat_cond, currents):
@@ -604,23 +388,25 @@ class Result:
         self.network = network
         self.solution_vec = solution_vec
         self.voltages = {}
-        self.currents = {}
         self.iterations = iterations
         self.mat_cond = mat_cond
         self.y = y
         self.y_norm = y_norm
         self.currents = currents
 
-        for c in network.components.values():
-            for port in c.ports():
-                k = self.analysis.port_index(port)
-                self.voltages[port] = solution_vec[k]
+        for part in network.parts:
+            ports = part.component.get_ports()
+            nodes =  part.connections
+            assert len(ports) == len(nodes)
+            for i in range(len(ports)):
+                port = ports[i]
+                node = nodes[i]
+                k = self.analysis.node_index(node)
+                port_name = part.name +"."  + port
+                self.voltages[port_name] = solution_vec[k]
 
     def get_voltages(self):
-        res = {}
-        for (p,v) in self.voltages.items():
-            res[p.pname()] = v
-        return res
+        return self.voltages
 
     def get_currents(self):
         return self.currents
@@ -628,56 +414,23 @@ class Result:
     def __repr__(self):
         return repr({"voltages": self.voltages, "currents": self.currents})
 
-    def get_voltage(self, name_or_object):
-        port = self._port(name_or_object)
-        k = self.analysis.port_index(port)
-        return self.solution_vec[k]
-
-    def get_avoltage(self, name_or_object):
-        c = None
-        if isinstance(name_or_object, str):
-            c = self.network.get_object(name_or_object)
-        if not isinstance(c, Node2):
-            raise Exception(f"{name_or_object} is not a Node2 or name for one")
-        return self.voltages[c.p] - self.voltages[c.n]
-
-    def _port(self, name_or_comp):
-        c = None
-        if isinstance(name_or_comp, str):
-            c = self.network.get_object(name_or_comp)
-        else:
-            c = name_or_comp
-        if not isinstance(c, Port):
-            raise Exception(f"not a port or node or name thereof: {name_or_comp}")
-        return c
+    def get_voltage(self, portname):
+        return self.voltages[portname]
 
     def get_current(self, port):
-        if isinstance(port, Port):
-            port  = port.pname()
         return self.currents[port]
 
-    def has_current(self, name_or_comp):
-        c = self._port(name_or_comp)
-        return c in self.currents
-
     def display(self):
-        ports = []
-        compos = []
-        for comp in self.network.components.values():
-            compos.append(comp.name)
-            for port in comp.ports():
-                ports.append(port.pname())
-        ports.sort()
+        x = list(self.voltages.items())
+        x.sort
         print("--- Voltages ---")
-        for port in ports:
-            print(port + " " + str(self.get_voltage(port)))
-        compos.sort()
+        for (k,v) in x:
+            print(k + " " + str(v))
         print(" --- currents ---")
-        for cname in compos:
-            comp = self.network.get_object(cname)
-            if not isinstance(comp, Node):
-                for port in comp.ports():
-                    print(port.pname() + " " + str(self.get_current(port)))
+        x = list(self.currents.items())
+        x.sort()
+        for (k,v) in x:
+            print(k + " " + str(v))
 
 class CodeGenerator:
     def __init__(self, n, n_curr_ports):
@@ -741,91 +494,78 @@ class CodeGenerator:
 class Analysis:
     """captures all data for analysis"""
 
-    def __init__(self, netw):
-        self.netw = netw
-        self._port_to_node = {}
-        self.node_list = []
+    def __init__(self, network):
+        self.network = network
         self.voltage_list = []
         self.capa_list = []
-        self.induc_list = []
-        self.ground = None
-        self.mat = None
-        self.r = None
-        self.solution_vec = None
-        self.node_list = compute_nodes(self.netw)
-        self.ground = self.node_list[0]
+        self.induc_list  = []
         self.curr_port_list = []
 
+        for part in self.network.parts:
+            if isinstance(part.component, Voltage):
+                self.voltage_list.append(part)
+            if isinstance(part.component, Capacitor):
+                self.capa_list.append(part)
+            if isinstance(part.component, Inductor):
+                self.induc_list.append(part)
+            for port in part.component.get_ports():
+                self.curr_port_list.append((part.name, port))
 
-        for node in self.node_list:
-            for port in node.ports:
-                self._port_to_node[port] = node
-
-        for comp in self.netw.components.values():
-            if isinstance(comp, Voltage):
-                self.voltage_list.append(comp)
-            if isinstance(comp, Capacitor):
-                self.capa_list.append(comp)
-            if isinstance(comp, Inductor):
-                self.induc_list.append(comp)
-            self.curr_port_list.extend(comp.ports())
 
     def node_index(self, node):
-        return self.node_list.index(node)
-
-    def port_index(self, port):
-        node = self._port_to_node[port]
-        return self.node_index(node)
+        return self.network.node_list.index(node)
 
     def voltage_index(self, voltage):
-        return self.voltage_list.index(voltage) + len(self.node_list)
+        return self.voltage_list.index(voltage) + len(self.network.node_list)
 
     def capa_index(self, capa):
-        return self.capa_list.index(capa) + len(self.node_list) + len(self.voltage_list)
+        return self.capa_list.index(capa) + len(self.network.node_list) + len(self.voltage_list)
 
     def induc_index(self, induc):
         return (self.induc_list.index(induc)
-                + len(self.node_list)
+                + len(self.network.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list))
 
-    def state_index(self, x):
-        if isinstance(x, Capacitor):
-            return self.capa_list.index(x)
-        if isinstance(x, Inductor):
-            return self.induc_list.index(x) + len(self.capa_list)
-        raise Exception(f"no state index for component {x}")
+    def state_index(self, part):
+        if isinstance(part.component, Capacitor):
+            return self.capa_list.index(part)
+        if isinstance(part.component, Inductor):
+            return self.induc_list.index(part) + len(self.capa_list)
+        raise Exception(f"no state index for component {part}")
 
     def state_size(self):
         return len(self.capa_list) + len(self.induc_list)
 
 
     def _equation_size(self):
-        return (len(self.node_list)
+        return (len(self.network.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list)
                 + len(self.induc_list))
 
-    def curr_index(self, p):
-        return self.curr_port_list.index(p)
+    def curr_index(self, partname, port):
+        return self.curr_port_list.index((partname, port))
 
     def generate_code(self, variables, transient):
         cg = CodeGenerator(self._equation_size(), len(self.curr_port_list))
         n = self._equation_size()
 
         counter = 0
-        for comp in self.netw.components.values():
-            cname = comp.name + str(counter)
-
+        for part in self.network.parts:
+            comp = part.component
+            cname = part.name + str(counter)
+            nodes = part.connections
             if isinstance(comp, Node2):
-                kp = self.port_index(comp.p)
-                kn = self.port_index(comp.n)
-            if isinstance(comp, Node):
-                pass
-            elif isinstance(comp, Voltage):
+                kp = self.node_index(nodes[0])
+                kn = self.node_index(nodes[1])
+                curr_index_p  = self.curr_index(part.name, "p")
+                curr_index_n  = self.curr_index(part.name, "n")
+
+            if isinstance(comp, Voltage):
                 (vinit, (pre , expr)) = comp.code(cname, variables)
                 cg.add_to_init(vinit)
-                k = self.voltage_index(comp)
+                k = self.voltage_index(part)
                 cg.add_to_y_code(pre)
                 cg.add_ysum(kp, f"sol[{k}]")
                 cg.add_ysum(kn, f"(-sol[{k}])")
@@ -835,8 +575,8 @@ class Analysis:
                 cg.add_dysum(k, kp, "1")
                 cg.add_dysum(k, kn, "-1")
 
-                cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
-                                    f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+                cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
+                                    f"res[{curr_index_n}] = -(sol[{k}])"])
 
             elif isinstance(comp, Current):
                 (cinit, (pre, expr)) = comp.code(cname)
@@ -846,8 +586,8 @@ class Analysis:
                 cg.add_ysum(kn, f"(-({expr}))")
 
                 cg.add_to_cur_code(pre)
-                cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -({expr})",
-                                 f"res[{self.curr_index(comp.n)}] = {expr}"])
+                cg.add_to_cur_code([f"res[{curr_index_p}] = -({expr})",
+                                 f"res[{curr_index_n}] = {expr}"])
 
             elif isinstance(comp, Resistor):
                 G = 1/ comp.get_ohm(variables)
@@ -862,8 +602,8 @@ class Analysis:
                 cg.add_dysum(kn, kn, f"(-{G})")
 
                 cg.add_to_cur_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}",
-                                    f"res[{self.curr_index(comp.p)}] = ({name})",
-                                    f"res[{self.curr_index(comp.n)}] =  -({name})"])
+                                    f"res[{curr_index_p}] = ({name})",
+                                    f"res[{curr_index_n}] =  -({name})"])
 
             elif isinstance(comp, Diode):
                 (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
@@ -879,13 +619,13 @@ class Analysis:
                 cg.add_dysum(kn, kn, f"(-{dcurr})")
 
                 cg.add_to_cur_code(cinit)
-                cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = {curr}",
-                                  f"res[{self.curr_index(comp.n)}] =  -({curr})"])
+                cg.add_to_cur_code([f"res[{curr_index_p}] = {curr}",
+                                  f"res[{curr_index_n}] =  -({curr})"])
 
             elif isinstance(comp, (NPNTransistor, PNPTransistor)):
-                kb = self.port_index(comp.B)
-                ke = self.port_index(comp.E)
-                kc = self.port_index(comp.C)
+                kb = self.node_index(nodes[0])
+                ke = self.node_index(nodes[2])
+                kc = self.node_index(nodes[1])
 
                 (init_t, (cinit, (cb,ce,cc)),
                          (dinit,((dbb, dbe, dbc),
@@ -914,13 +654,18 @@ class Analysis:
                 cg.add_dysum(kc, kc, f"({dcc})")
 
                 cg.add_to_cur_code(cinit)
-                cg.add_to_cur_code([f"res[{self.curr_index(comp.B)}] = -({cb})",
-                                  f"res[{self.curr_index(comp.E)}] =  -({ce})",
-                                  f"res[{self.curr_index(comp.C)}] =  -({cc})"])
+
+                curr_index_B  = self.curr_index(part.name, "B")
+                curr_index_E  = self.curr_index(part.name, "E")
+                curr_index_C  = self.curr_index(part.name, "C")
+                
+                cg.add_to_cur_code([f"res[{curr_index_B}] = -({cb})",
+                                  f"res[{curr_index_E}] =  -({ce})",
+                                  f"res[{curr_index_C}] =  -({cc})"])
 
             elif isinstance(comp, Capacitor):
-                k = self.capa_index(comp)
-                sn = self.state_index(comp)
+                k = self.capa_index(part)
+                sn = self.state_index(part)
                 if transient:
                     cg.add_ysum(kp, f"sol[{k}]")
                     cg.add_ysum(kn, f"-(sol[{k}])")
@@ -930,16 +675,16 @@ class Analysis:
                     cg.add_dysum(kn, k, "-1")
                     cg.add_dysum(k, kp, "1")
                     cg.add_dysum(k, kn, "(-1)")
-                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = -(sol[{k}])",
-                                        f"res[{self.curr_index(comp.n)}] = sol[{k}]"])
+                    cg.add_to_cur_code([f"res[{curr_index_p}] = -(sol[{k}])",
+                                        f"res[{curr_index_n}] = sol[{k}]"])
                 else:
                     cg.add_ysum(k, f"sol[{k}]")
                     cg.add_dysum(k, k, "1")
-                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
-                                        f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+                    cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
+                                        f"res[{curr_index_n}] = -(sol[{k}])"])
             elif isinstance(comp, Inductor):
-                k = self.induc_index(comp)
-                sn = self.state_index(comp)
+                k = self.induc_index(part)
+                sn = self.state_index(part)
                 if transient:
                     cg.add_ysum(kp, f"(-sol[{k}])")
                     cg.add_ysum(kn, f"sol[{k}]")
@@ -949,8 +694,8 @@ class Analysis:
                     cg.add_dysum(kn, k, "1")
                     cg.add_dysum(k, k, "1")
 
-                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = state_vec[{sn}]",
-                                        f"res[{self.curr_index(comp.n)}] = -state_vec[{sn}]"])
+                    cg.add_to_cur_code([f"res[{curr_index_p}] = state_vec[{sn}]",
+                                        f"res[{curr_index_n}] = -state_vec[{sn}]"])
                 else:
                     # sol[k] is the current through the inductor
                     # both nodes have the same voltage level
@@ -963,8 +708,8 @@ class Analysis:
                     cg.add_dysum(kp, k, "(-1)")
                     cg.add_dysum(kn, k, "1")
 
-                    cg.add_to_cur_code([f"res[{self.curr_index(comp.p)}] = sol[{k}]",
-                                        f"res[{self.curr_index(comp.n)}] = -(sol[{k}])"])
+                    cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
+                                        f"res[{curr_index_n}] = -(sol[{k}])"])
             else:
                 raise Exception("unknown component")
 
@@ -993,17 +738,17 @@ class Analysis:
     def _compute_state_vec(self, capa_voltages, induc_currents):
         state_vec = np.zeros(self.state_size())
 
-        for comp in self.netw.components.values():
-            if isinstance(comp, Capacitor):
-                k = self.state_index(comp)
-                if capa_voltages and  comp.name in capa_voltages:
-                    state_vec[k] = capa_voltages[comp.name]
+        for part in self.network.parts:
+            if isinstance(part.component, Capacitor):
+                k = self.state_index(part)
+                if capa_voltages and  part.name in capa_voltages:
+                    state_vec[k] = capa_voltages[part.name]
                 else:
                     raise Exception(f"no voltage given for capacitor {comp.name}")
-            if isinstance(comp, Inductor):
-                k = self.state_index(comp)
-                if induc_currents and comp.name in induc_currents:
-                    state_vec[k] = induc_currents[comp.name]
+            if isinstance(part.component, Inductor):
+                k = self.state_index(part)
+                if induc_currents and part.name in induc_currents:
+                    state_vec[k] = induc_currents[part.name]
                 else:
                     raise Exception(f"no  current given for inductor {comp.name}")
 
@@ -1012,9 +757,8 @@ class Analysis:
     def _compute_currents(self, bla, time, sol, state_vec):
         res = {}
         cv = bla.currents(time, sol,state_vec)
-        for comp in self.netw.components.values():
-            for p in comp.ports():
-                res[p.pname()] = cv[self.curr_index(p)]
+        for  (name, port) in self.curr_port_list:
+            res[name + "." +port] = cv[self.curr_index(name, port)]
         return res
 
 
@@ -1039,7 +783,7 @@ class Analysis:
             else:
                 solution_vec0 = np.zeros(n)
                 for vk in start_voltages:
-                    p = self.netw.get_object(vk)
+                    p = self.network.get_object(vk)
                     #                    p = self._port(vk)
                     n = self.port_index(p)
                     solution_vec0[n] = start_voltages[vk]
@@ -1071,7 +815,7 @@ class Analysis:
                 cond=None
             norm_y = np.linalg.norm(y)
             currents = self._compute_currents(c,time, sol, state_vec)
-            return Result(self.netw,
+            return Result(self.network,
                           self,
                           iterations,
                           sol,
@@ -1147,7 +891,7 @@ class Analysis:
             else:
                 cond=None
             currents = self._compute_currents(c, time, sol, state_vec)
-            return Result(self.netw,
+            return Result(self.network,
                           self,
                           iterations,
                           sol,
@@ -1193,16 +937,17 @@ class Analysis:
         solutions= []
         sol = res.solution_vec
 
-        for comp in self.netw.components.values():
+        for part in self.network.parts:
+            comp =  part.component
             if isinstance(comp, Capacitor):
-                k = self.state_index(comp)
+                k = self.state_index(part)
                 if math.isnan(state_vec[k]):
-                    v = res.get_voltage(comp.p) - res.get_voltage(comp.n)
+                    v = res.get_voltage(f"{part.name}.p") - res.get_voltage(f"{part.name}.n")
                     state_vec[k] = v
             if isinstance(comp, Inductor):
-                k = self.state_index(comp)
+                k = self.state_index(part)
                 if math.isnan(state_vec[k]):
-                    curr = res.get_current(comp.p)
+                    curr = res.get_current(f"{part.name}.p")
                     state_vec[k] = curr
         c = self.generate_code(variables,True)
         while time < maxtime:
@@ -1220,17 +965,18 @@ class Analysis:
             solutions.append((time, res.get_voltages(), res.get_currents()))
             sol = res.solution_vec
 
-            for comp in self.netw.components.values():
+            for part in self.network.parts:
+                comp =  part.component
                 if isinstance(comp, Capacitor):
                     capa = comp.get_capa(variables)
-                    current = res.get_current(comp.p)
-                    k = self.state_index(comp)
+                    current = res.get_current(f"{part.name}.p")
+                    k = self.state_index(part)
                     state_vec[k] += timestep*current/capa
 
                 if isinstance(comp, Inductor):
                     indu = comp.induc
-                    v = res.get_voltage(comp.p) - res.get_voltage(comp.n)
-                    k = self.state_index(comp)
+                    v = res.get_voltage(f"{part.name}.p") - res.get_voltage(f"{part.name}.n")
+                    k = self.state_index(part)
                     state_vec[k] += timestep*v/indu
 
             time += timestep
