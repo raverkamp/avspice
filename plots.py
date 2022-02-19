@@ -214,53 +214,15 @@ def emitter(args):
     print(z)
     plt.show()
 
-def capa(args):
-    net = Network()
-    vc = net.addV("vc", 2)
-    r = net.addR("r", 1e4)
-    c = net.addCapa("ca", 100e-6)
-    connect(vc.p, c.p)
-    connect(c.n, r.p)
-    connect(r.n, vc.n)
-    connect(vc.n, net.ground)
-    ana = Analysis(net)
-    ch = 0
-
-    xs = []
-    ys = []
-    vcp = []
-    vcn = []
-    s = 0.2
-    x = 0
-    while x < 10:
-        res = ana.analyze(maxit=30, charges={"ca": ch })
-        ica = res.get_current(c.p)
-        ch += s * ica
-        x += s
-        xs.append(x)
-        ys.append(ch)
-        vcp.append(res.get_voltage("ca.p"))
-        vcn.append(res.get_voltage("ca.n"))
-    fig, (a1,a2) = plt.subplots(2)
-    a1.set_title("charge")
-    a1.plot(xs,ys, color="blue")
-    a2.set_title("voltage1 ,vcp blue, vcn red")
-    a2.plot(xs, vcp, color="blue")
-    a2.plot(xs, vcn, color="red")
-    plt.show()
 
 def saw1(args):
     import util
     net = Network()
     r = 100000
     capa = 10e-6
-    vc = net.addSawV("vc", 1, 1)
-    r1 = net.addR("r1", r)
-    ca = net.addCapa("ca", capa)
-    connect(vc.p, r1.p)
-    connect(r1.n, ca.p)
-    connect(ca.n, vc.n)
-    connect(vc.n, net.ground)
+    net.addSawV("vc", 1, 1, "v", "0")
+    net.addR("r1", r, "v","ca")
+    net.addCapa("ca", capa, "ca", "0")
 
     ana = Analysis(net)
     res = ana.transient(9,0.0001, capa_voltages={"ca":0})
@@ -280,48 +242,26 @@ def saw1(args):
 def emitterschaltung(args):
     #   https://www.elektronik-kompendium.de/sites/slt/0204302.htm
     import util
-    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
     net = Network()
-    vc = net.addV("vc", 10)
+    net.addV("vc", 10, "vcc", "0")
+    net.addSawV("ve", 0.1, 10, "ve", "0")
 
-    ve = net.addSawV("ve", 0.1, 10)
+    net.add_component("tr", tt, ("B", "C","0"))
 
-    ce = net.addCapa("ce", 100e-6)
+    net.addCapa("ce", 100e-6,"ve","B")
     #ce = net.addR("ce", 1)
-    ca = net.addCapa("ca", 10e-6)
+    net.addCapa("ca", 1e-6, "C", "last")
 
-    r1 = net.addR("r1", 10e3)
-    r2 = net.addR("r2", 0.5e3)
+    net.addR("r1", 10e3, "vcc", "B")
+    net.addR("r2", 0.5e3, "B", "0")
 
-    rc = net.addR("rc",1000)
+    net.addR("rc",1000, "vcc", "C")
 
-    tr = net.addComp("tr", tt)
-
-    rl = net.addR("rl", 100)
-
-    connect(vc.p, r1.p)
-    connect(vc.n, net.ground)
-    connect(r1.n, r2.p)
-    connect(r2.n, net.ground)
-
-    connect(r1.n, tr.B)
-
-    connect(ve.p, ce.p)
-    connect(ve.n, net.ground)
-    connect(ce.n, tr.B)
-
-    connect(rc.p, vc.p)
-    connect(rc.n, tr.C)
-
-    connect(tr.E, net.ground)
-
-    connect(tr.C, ca.p)
-
-    connect(ca.n, rl.p)
-    connect(rl.n, net.ground)
+    rl = net.addR("rl", 100, "last", "0")
 
     ana = Analysis(net)
-    res = ana.transient(0.4,0.00001, capa_voltages={"ca":0, "ce":0})
+    res = ana.transient(0.4,0.0001, capa_voltages={"ca":0, "ce":0})
     time = []
     va = []
     ca = []
@@ -354,14 +294,9 @@ def rlc(args):
     indu = 1
     capa = 10e-6
 
-    r = net.addR("r1", rv)
-    ca = net.addCapa("ca", capa)
-    ind = net.addInduc("ind", indu)
-
-    connect(r.n, ca.p)
-    connect(ca.n, ind.p)
-    connect(ind.n, r.p)
-    connect(ind.n,net.ground)
+    net.addR("r1", rv, "1", "2")
+    net.addCapa("ca", capa, "2", "0")
+    net.addInduc("ind", indu, "0", "1")
 
     ana = Analysis(net)
     res = ana.transient(0.1,0.0001, induc_currents={"ind": 1}, capa_voltages={"ca":0} )
@@ -395,6 +330,29 @@ def rlc(args):
     fig.legend()
     plt.show()
 
+def tricky(args):
+    capa = 1000e-6
+    net = Network()
+    tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
+    net.add_component("t", tt, ("B", "C", "0"))
+    net.addV("v", 9, "v", "0")
+    net.addR("r1", 100, "v", "C")
+    net.addR("r2", 5e3, "C", "B")
+    net.addCapa("ca", capa, "B", "0")
+        
+    ana = Analysis(net)
+    res = ana.transient(0.6,0.0001, capa_voltages={"ca":0.0} )
+    (time,volts,currs) = pivot(res)
+    (fig, (a1, a2, a3)) = plt.subplots(3)
+    a1.set_title("curr(t.E)")
+    a1.plot(time, currs["t.E"])
+    a2.set_title("curr(ca)")
+    a2.plot(time, currs["ca.p"])
+    a3.set_title("volts(B)")
+    a3.plot(time, volts["t.B"])
+    fig.legend()
+    plt.show()
+
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
@@ -409,14 +367,14 @@ def main():
         plot5(args)
     elif cmd == "e":
         emitter(args)
-    elif cmd == "c":
-        capa(args)
     elif cmd == "saw":
         saw1(args)
     elif cmd == "emitter":
         emitterschaltung(args)
     elif cmd == "rlc":
         rlc(args)
+    elif cmd == "tricky":
+        tricky(args)
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 

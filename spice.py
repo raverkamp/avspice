@@ -808,7 +808,6 @@ class Analysis:
         def Df(x):
             return c.dy(time, x, state_vec)
 
-
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
