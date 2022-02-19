@@ -195,3 +195,7 @@ der C-L Kette.
 
 2022-02-13_10:14
 Das meiste ist auf Code Generierung umgstellt.
+
+2022-02-19_11:14
+Ich habe das Network Format auf das Spice Modell umgestellt.
+Knoten werden explizit benannt, und Bauteile mit diesen verbunden.

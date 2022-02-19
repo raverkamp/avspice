@@ -4,19 +4,21 @@ from spice import *
 import argparse
 import sys
 from util import *
+import ncomponents
 
 import math
 
 import argparse
 
 
-npntransistor = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+nnpntransistor = ncomponents.NNPNTransistor(1e-12, 25e-3, 100, 10,-40, 40)
 
+npntransistor = NPNTransistor("", 1e-12, 25e-3, 100, 10)
 
 
 def plot1(args):
 
-    t = npntransistor
+    t = nnpntransistor
     fig, (ax1, ax2) = plt.subplots(2)
     vbs = list(drange(0.2, 0.5, 0.01))
     ve = 0
@@ -64,18 +66,11 @@ def plot2(args):
     tt = npntransistor
  
     net = Network()
-    v = net.addV("vc", 5)
-    vb = net.addV("vb", Variable("vb"))
-    rc = net.addR("rc", 100)
-    rb = net.addR("rb", 1e3)
-    t1 = net.addComp("T1", tt)
-    connect(v.p, rc.p)
-    connect(rc.n, t1.C)
-    connect(v.n, net.ground)
-    connect(vb.p, rb.p)
-    connect(rb.n, t1.B)
-    connect(vb.n, net.ground)
-    connect(t1.E, net.ground)
+    net.addV("vc", 5, "v", "0")
+    net.addV("vb", Variable("vb"), "vb","0")
+    net.addR("rc", 100, "v", "C")
+    net.addR("rb", 1e3, "vb", "B")
+    net.add_component("t1", tt, ("B", "C", "0"))
     ana = Analysis(net)
     
     for vb in x:
@@ -87,8 +82,8 @@ def plot2(args):
             iy.appned(None)
             sol = None
         else:
-            y.append(res.get_current(rc.p))
-            z.append(res.get_current(rb.p))
+            y.append(res.get_current("rc.p"))
+            z.append(res.get_current("rb.p"))
             iy.append(res.iterations)
             sol = res.solution_vec
     fig, (ax1, ax2) = plt.subplots(2)
