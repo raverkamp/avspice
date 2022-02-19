@@ -510,7 +510,12 @@ class Analysis:
                 self.induc_list.append(part)
             for port in part.component.get_ports():
                 self.curr_port_list.append((part.name, port))
-
+        self.port_node_indexes = {}
+        for node in self.network.node_list:
+            self.port_node_indexes[node] =  self.node_index(node)
+        for part in self.network.parts:
+            for (port, node) in zip(part.component.get_ports(), part.connections):
+                self.port_node_indexes[f"{part.name}.{port}"] = self.node_index(node)
 
     def node_index(self, node):
         return self.network.node_list.index(node)
@@ -783,9 +788,7 @@ class Analysis:
             else:
                 solution_vec0 = np.zeros(n)
                 for vk in start_voltages:
-                    p = self.network.get_object(vk)
-                    #                    p = self._port(vk)
-                    n = self.port_index(p)
+                    n = self.port_node_indexes[vk]
                     solution_vec0[n] = start_voltages[vk]
         else:
             solution_vec0 = start_solution_vec

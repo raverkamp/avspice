@@ -9,7 +9,7 @@ from example_circuits import create_blinker
 
 
 def blinker(args):
-    net = create_blinker(transistor_gain=100, r_ca=100e-6)
+    net = create_blinker(transistor_gain=100)
     ana = Analysis(net)
 
     base_vca = args.vca   #0.397 #-5 # -8.25
@@ -194,8 +194,9 @@ def blinker3(args):
     res = ana.transient(args.end, 0.01, capa_voltages={"ca": base_vca},
                         variables=variables,
                         start_voltages= {
-                          "t1.C": args.t1c,
-                           "t1.B": args.t1b
+                            "t1.C": args.t1c,
+                            "t1.B": args.t1b,
+                            "t2.C": args.t2c
                         })
 
     (time,volts,currs) = pivot(res)
@@ -253,6 +254,7 @@ def main():
     parser_b3.set_defaults(func=blinker3)
     parser_b3.add_argument('-t1c', type=float, default=0)
     parser_b3.add_argument('-t1b', type=float, default=0)
+    parser_b3.add_argument('-t2c', type=float, default=0)
     parser_b3.add_argument('-vca', type=float, default=0)
     parser_b3.add_argument('-capa', type=float, default=10e-6)
     parser_b3.add_argument('-r_ca', type=float, default=0.1)
