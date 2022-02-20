@@ -11,14 +11,13 @@ def create_blinker(transistor_gain=None):
     net = Network()
     net.addV("vc",  Variable("vc"), "v", "0")
     net.addD("d1", 1e-8, 25e-3, "v", "da")
-    net.addR("r1", 27e3, "r1p", "t1b")
-    net.addR("r2", 27e3,"v", "r1p")
+    net.addR("r1", 27e3, "t1c", "t1b")
+    net.addR("r2", 27e3,"v", "t1c")
     net.addR("r3", 1e3, "da", "t2c")
-    net.addR("r_ca",Variable("r_ca", 0.1), "t2c", "cap")
 
-    ca = net.addCapa("ca", Variable("capa", 10e-6), "cap", "t1b")
+    ca = net.addCapa("ca", Variable("capa", 10e-6), "t2c", "t1b")
   #  ca = net.addR("ca", 10e6)
-    net.add_component("t1",tt, ("t1b", "r1p", "0"))
-    net.add_component("t2",tt, ("r1p", "t2c", "0"))
+    net.add_component("t1",tt, ("t1b", "t1c", "0"))
+    net.add_component("t2",tt, ("t1c", "t2c", "0"))
     return net
     

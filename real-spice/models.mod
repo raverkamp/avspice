@@ -11,3 +11,6 @@
 
                
                                  
+*   net.addD("d1", 1e-8, 25e-3, "v", "da")
+.model DRAV D(IS=1e-8)                       
+                        

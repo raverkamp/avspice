@@ -199,3 +199,12 @@ Das meiste ist auf Code Generierung umgstellt.
 2022-02-19_11:14
 Ich habe das Network Format auf das Spice Modell umgestellt.
 Knoten werden explizit benannt, und Bauteile mit diesen verbunden.
+
+
+2022-02-20_14:32
+
+Ich simuliere den Blinker mit ngspice.  Die zaheln stimmen nicht völlig überin.
+OP Analyse passt in etwa. Aber auch im Spice Modell habe ich nach 3.31 Sekunden
+grosse Sprünge. Muss ich impplizit integrieren?
+
+

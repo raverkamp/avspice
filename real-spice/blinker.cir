@@ -1,0 +1,36 @@
+.include models.mod
+
+VCC vcc 0 9
+R1 vcc t1c 27k
+*R2 t1c t1b 27k
+R2 t1c t1b 27k
+Q1 t1c t1b 0 TRAV
+
+D1 diode r3 DRAV
+
+R3 r3 t2c 1k
+Q2 t2c t1c  0 TRAV
+
+
+VCapa t2c capa 0
+VDiode vcc diode 0
+
+C1 capa t1b 10e-6 IC(0)
+
+
+.tran 10e-4 3.3309s UIC
+
+.end
+
+
+
+.control
+run
+*print dc v(t1c)
+
+gnuplot gp v(t1c) v(t2c)  v(t1b)
+gnuplot gp2 i(Vcapa) i(VDiode)
+gnuplot gp3 i(Vcapa)
+.endc
+
+
