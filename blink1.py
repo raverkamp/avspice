@@ -50,7 +50,7 @@ def blinker3(args):
 
     base_vca = args.vca
 
-    variables = {"capa": args.capa, "vc": 9, "r_ca": args.r_ca}
+    variables = {"capa": args.capa, "vc": 10, "r_ca"}
 
     l=[]
     for (k,v) in sorted(variables.items(), key=lambda kv: kv[1]):
