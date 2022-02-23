@@ -169,6 +169,9 @@ class Inductor(Node2):
         super().__init__(name)
         self.induc = induc
 
+    def get_induc(self, variables):
+        return self.induc
+        
     def __repr__(self):
         return f"<Inductor {self.name}>"
 
@@ -433,9 +436,13 @@ class Result:
             print(k + " " + str(v))
 
 class CodeGenerator:
-    def __init__(self, n, n_curr_ports):
+    def __init__(self, n, n_curr_ports, transient):
         self.n = n
         self.n_curr_ports = n_curr_ports
+        #        if transient:
+        h_par = ", h"
+        #       else:
+        #          h_par = ""
         self.init = [
             "def bla():",
             "   return Computer()",
@@ -444,11 +451,11 @@ class CodeGenerator:
             "    def __init__(self):",
             "        from ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
                     + "NVoltage, NSineVoltage, NSawVoltage"]
-        self.y_code = ["    def y(self, time, sol, state_vec):",
+        self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",
                        f"        res = np.zeros({self.n})"]
 
-        self.dy_code = ["    def dy(self, time, sol, state_vec):",
+        self.dy_code = [f"    def dy(self, time, sol,state_vec{h_par}):",
                         "        import numpy as np",
                         f"        res = np.zeros(({self.n},{self.n}))"]
         self.cur_code  = ["    def currents(self, time, sol, state_vec):",
@@ -539,23 +546,31 @@ class Analysis:
             return self.induc_list.index(part) + len(self.capa_list)
         raise Exception(f"no state index for component {part}")
 
+    def state_index_y(self, part):
+        return (len(self.network.node_list)
+                + len(self.voltage_list)
+                + len(self.capa_list)
+                + len(self.induc_list)
+                + self.state_index(part))
+
     def state_size(self):
         return len(self.capa_list) + len(self.induc_list)
 
 
-    def _equation_size(self):
+    def _equation_size(self, transient):
         return (len(self.network.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list)
-                + len(self.induc_list))
+                + len(self.induc_list)
+                + (len(self.capa_list) + len(self.induc_list) if transient else 0))
 
     def curr_index(self, partname, port):
         return self.curr_port_list.index((partname, port))
 
     def generate_code(self, variables, transient):
-        cg = CodeGenerator(self._equation_size(), len(self.curr_port_list))
-        n = self._equation_size()
-
+        n = self._equation_size(transient)
+        cg = CodeGenerator(n, len(self.curr_port_list), transient)
+    
         counter = 0
         for part in self.network.parts:
             comp = part.component
@@ -670,16 +685,29 @@ class Analysis:
 
             elif isinstance(comp, Capacitor):
                 k = self.capa_index(part)
-                sn = self.state_index(part)
+            
                 if transient:
+                    sn = self.state_index(part)
+                    sny = self.state_index_y(part)
+                    # sol[k] current through capacitor
+                    # sol[sny] voltage accross capacitor
+                    # state_vec(sn) voltage of last iteration
+                    capa = comp.get_capa(variables)
                     cg.add_ysum(kp, f"sol[{k}]")
                     cg.add_ysum(kn, f"-(sol[{k}])")
-                    cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - state_vec[{sn}]")
+                    cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - sol[{sny}]")
+                    #cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - state_vec[{sn}]")
+                    
+                    cg.add_ysum(sny, f"sol[{sny}] + h * sol[{k}]/{capa} - state_vec[{sn}]")
 
                     cg.add_dysum(kp, k, "1")
                     cg.add_dysum(kn, k, "-1")
                     cg.add_dysum(k, kp, "1")
                     cg.add_dysum(k, kn, "(-1)")
+                    cg.add_dysum(k, sny, "(-1)")
+                    cg.add_dysum(sny, sny, "1")
+                    cg.add_dysum(sny, k,f"+h/{capa}")
+                    
                     cg.add_to_cur_code([f"res[{curr_index_p}] = -(sol[{k}])",
                                         f"res[{curr_index_n}] = sol[{k}]"])
                 else:
@@ -689,15 +717,27 @@ class Analysis:
                                         f"res[{curr_index_n}] = -(sol[{k}])"])
             elif isinstance(comp, Inductor):
                 k = self.induc_index(part)
-                sn = self.state_index(part)
                 if transient:
+                    sn = self.state_index(part)
+                    sny = self.state_index_y(part)
+                    induc = comp.get_induc(variables)
+                    # sol[k] current through inductor
+                    # sol[sny] also current through conductor
+                    # state_vec(sn) current through conductor of last ieteration
                     cg.add_ysum(kp, f"(-sol[{k}])")
                     cg.add_ysum(kn, f"sol[{k}]")
-                    cg.add_ysum(k, f"sol[{k}] - state_vec[{sn}]")
+                    cg.add_ysum(k, f"sol[{k}] - sol[{sny}]")
+                    cg.add_ysum(sny, f"sol[{sny}] - h *  (sol[{kp}] - sol[{kn}])/{induc} - state_vec[{sn}]")
 
                     cg.add_dysum(kp, k, "(-1)")
                     cg.add_dysum(kn, k, "1")
                     cg.add_dysum(k, k, "1")
+                    cg.add_dysum(k, sny, "-1")
+                    cg.add_dysum(sny,  sny, "1")
+                    cg.add_dysum(sny, kp, f"-h /{induc}")
+                    cg.add_dysum(sny, kn, f"h /{induc}")
+                    
+                    
 
                     cg.add_to_cur_code([f"res[{curr_index_p}] = state_vec[{sn}]",
                                         f"res[{curr_index_n}] = -state_vec[{sn}]"])
@@ -781,7 +821,7 @@ class Analysis:
                 compute_cond=False):
         if variables is None:
             variables = {}
-        n = self._equation_size()
+        n = self._equation_size(transient)
         if start_solution_vec is None:
             if start_voltages is None:
                 solution_vec0 = np.zeros(n)
@@ -800,13 +840,13 @@ class Analysis:
         else:
             state_vec = None
 
-        c = self.generate_code(variables,transient)
+        computer = self.generate_code(variables,transient)
 
         def f(x):
-            return c.y(time, x, state_vec)
+            return computer.y(time, x, state_vec, 0)
 
         def Df(x):
-            return c.dy(time, x, state_vec)
+            return computer.dy(time, x, state_vec, 0)
 
         res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
@@ -816,7 +856,7 @@ class Analysis:
             else:
                 cond=None
             norm_y = np.linalg.norm(y)
-            currents = self._compute_currents(c,time, sol, state_vec)
+            currents = self._compute_currents(computer, time, sol, state_vec)
             return Result(self.network,
                           self,
                           iterations,
@@ -877,13 +917,14 @@ class Analysis:
                        abstol,
                        reltol,
                        c,
-                       compute_cond):
+                       compute_cond,
+                       h):
 
         def f(x):
-            return c.y(time, x, state_vec)
+            return c.y(time, x, state_vec, h)
 
         def Df(x):
-            return c.dy(time, x, state_vec)
+            return c.dy(time, x, state_vec, h)
 
         res = solving.solve(start_sol, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
@@ -938,7 +979,7 @@ class Analysis:
 
         solutions= []
         sol = res.solution_vec
-
+        """
         for part in self.network.parts:
             comp =  part.component
             if isinstance(comp, Capacitor):
@@ -950,8 +991,8 @@ class Analysis:
                 k = self.state_index(part)
                 if math.isnan(state_vec[k]):
                     curr = res.get_current(f"{part.name}.p")
-                    state_vec[k] = curr
-        c = self.generate_code(variables,True)
+                    state_vec[k] = curr"""
+        computer = self.generate_code(variables,True)
         while time < maxtime:
             res = self.solve_internal(time,
                     maxit,
@@ -959,27 +1000,21 @@ class Analysis:
                     state_vec,
                     abstol,
                     reltol,
-                    c,
-                    compute_cond)
+                    computer,
+                    compute_cond,
+                    timestep)
             if isinstance(res, str):
-                raise Exception(f"fail at time {time}")
+                raise Exception(f"fail at time {time}: {res}")
 
             solutions.append((time, res.get_voltages(), res.get_currents()))
             sol = res.solution_vec
 
             for part in self.network.parts:
                 comp =  part.component
-                if isinstance(comp, Capacitor):
-                    capa = comp.get_capa(variables)
-                    current = res.get_current(f"{part.name}.p")
+                if isinstance(comp, (Capacitor, Inductor)):
                     k = self.state_index(part)
-                    state_vec[k] += timestep*current/capa
+                    state_vec[k] = sol[self.state_index_y(part)]
 
-                if isinstance(comp, Inductor):
-                    indu = comp.induc
-                    v = res.get_voltage(f"{part.name}.p") - res.get_voltage(f"{part.name}.n")
-                    k = self.state_index(part)
-                    state_vec[k] += timestep*v/indu
 
             time += timestep
         return solutions

@@ -506,6 +506,24 @@ class TransientTest(unittest.TestCase):
 
         ve = res[-1][1]["ca.p"]
         ve_expected = v0 *(1-math.exp(-timespan/(r*capa)))
+        print(ve, ve_expected)
+        self.assertTrue(0.98 < ve/ve_expected <1.02)
+
+    def test1b(self):
+        r = 1000000
+        capa = 1e-6
+        timespan = 1
+        net = Network()
+        net.addR("rc", r, "v", "0")
+        net.addCapa("ca", capa, "v", "0")
+
+        ana = Analysis(net)
+        # assumption capacitor has voltage 1
+        res = ana.transient(timespan,0.01, capa_voltages={"ca" : 1})
+
+        ve = res[-1][1]["ca.p"]
+        ve_expected =  math.exp(-timespan/(r*capa))
+        print(ve, ve_expected)
         self.assertTrue(0.98 < ve/ve_expected <1.02)
 
     def test2(self):
@@ -529,7 +547,7 @@ class TransientTest(unittest.TestCase):
         net.addR("rc", ro, "1", "0")
         net.addInduc("ind", indo, "1", "0")
         ana = Analysis(net)
-        res = ana.transient(1,0.03, induc_currents={"ind": curro})
+        res = ana.transient(1,0.01, induc_currents={"ind": curro})
         #pp.pprint(res)
         a = res[0][2]["ind.p"]
         for (t,v,c) in res:

@@ -47,7 +47,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
 
     while True:
         if iterations > maxiter:
-            return "Fail"
+            return f"Fail #iterations={iterations}"
         iterations +=1
 
         dfx = dfn(x)
@@ -70,7 +70,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
                 break
             k = k + 1
             if k >= 20:
-                return "fail"
+                return "Fail no improvment"
             a = a/2
             xn = x + a * dx
             yn = fn(xn)
