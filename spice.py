@@ -961,6 +961,9 @@ class Analysis:
         induc_currents = induc_currents or {}
 
         time = 0.0
+        max_timestep =  timestep
+        
+        min_timestep = timestep / 10000.0
         res = self.analyze(maxit=maxit,
                            start_solution_vec=start_solution_vec,
                            capa_voltages=capa_voltages,
@@ -1004,8 +1007,15 @@ class Analysis:
                     compute_cond,
                     timestep)
             if isinstance(res, str):
-                raise Exception(f"fail at time {time}: {res}")
-
+                timestep = timestep / 2
+                if timestep < min_timestep:
+                    raise Exception(f"fail at time {time}: {res}, stepisze={timestep}")
+                print("dec step", time, timestep)
+                continue
+            a = timestep * 1.05
+            if a < max_timestep:
+                timestep = a
+                print("inc step", time, timestep)
             solutions.append((time, res.get_voltages(), res.get_currents()))
             sol = res.solution_vec
 

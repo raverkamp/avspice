@@ -208,3 +208,11 @@ OP Analyse passt in etwa. Aber auch im Spice Modell habe ich nach 3.31 Sekunden
 grosse Sprünge. Muss ich impplizit integrieren?
 
 
+2022-02-24_21:43
+Inzwischen benutze ich das implizite Euler Verfahren, es bringt nichts.
+Ich habe mir die Ausgabe von Spice angeschaut.
+Ich fuer v(t1b)  einen grossen  Sprung in der Simulation von ca. -6.5 Volt (von 0.5 nach -6.0).
+Schrittweite 2e-10. (- 3.435580616042551e+00 3.435580616280970e+00)
+Das bekomme ich nicht simuliert.
+Es gibt noch andere Unstetigkeiten.
+

@@ -45,12 +45,12 @@ def try_random_start(args):
 
 
 def blinker3(args):
-    net = create_blinker(transistor_gain=args.gain)
+    net = create_blinker(transistor_gain=args.gain, cutoff=args.cutoff)
     ana = Analysis(net)
 
     base_vca = args.vca
 
-    variables = {"capa": args.capa, "vc": 10, "r_ca"}
+    variables = {"capa": args.capa, "vc": 10}
 
     l=[]
     for (k,v) in sorted(variables.items(), key=lambda kv: kv[1]):
@@ -59,8 +59,9 @@ def blinker3(args):
     fig_title = ", ".join(l)
 
 
-    res = ana.transient(args.end, 0.01, capa_voltages={"ca": base_vca},
+    res = ana.transient(args.end, 0.001, capa_voltages={"ca": base_vca},
                         variables=variables,
+                        maxit=200,
                         start_voltages= {
                             "t1.C": args.t1c,
                             "t1.B": args.t1b,
@@ -117,9 +118,9 @@ def main():
     parser_b3.add_argument('-t2c', type=float, default=0)
     parser_b3.add_argument('-vca', type=float, default=0)
     parser_b3.add_argument('-capa', type=float, default=10e-6)
-    parser_b3.add_argument('-r_ca', type=float, default=0.1)
     parser_b3.add_argument('-gain', type=float, default=100)
     parser_b3.add_argument('-end', type=float, default=3.6)
+    parser_b3.add_argument('-cutoff', type=float, default=40)
 
     args = parser.parse_args()
     args.func(args)

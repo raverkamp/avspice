@@ -1,3 +1,4 @@
+blinker.cir
 .include models.mod
 
 VCC vcc 0 9
@@ -18,7 +19,7 @@ VDiode vcc diode 0
 C1 capa t1b 10e-6 IC(0)
 
 
-.tran 10e-4 3.3309s UIC
+.tran 10e-4 4 UIC
 
 .end
 
@@ -26,11 +27,12 @@ C1 capa t1b 10e-6 IC(0)
 
 .control
 run
+set filetype=ascii
+write mysim.txt all
 *print dc v(t1c)
 
-gnuplot gp v(t1c) v(t2c)  v(t1b)
-gnuplot gp2 i(Vcapa) i(VDiode)
-gnuplot gp3 i(Vcapa)
+gnuplot gp v(t1c) v(t2c)  v(t1b) v(t2c,capa) 
+*gnuplot gp2 i(Vcapa) i(VDiode)
+*gnuplot gp3 i(Vcapa)
+
 .endc
-
-
