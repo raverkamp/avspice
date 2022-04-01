@@ -982,19 +982,6 @@ class Analysis:
 
         solutions= []
         sol = res.solution_vec
-        """
-        for part in self.network.parts:
-            comp =  part.component
-            if isinstance(comp, Capacitor):
-                k = self.state_index(part)
-                if math.isnan(state_vec[k]):
-                    v = res.get_voltage(f"{part.name}.p") - res.get_voltage(f"{part.name}.n")
-                    state_vec[k] = v
-            if isinstance(comp, Inductor):
-                k = self.state_index(part)
-                if math.isnan(state_vec[k]):
-                    curr = res.get_current(f"{part.name}.p")
-                    state_vec[k] = curr"""
         computer = self.generate_code(variables,True)
         while time < maxtime:
             res = self.solve_internal(time,
@@ -1024,7 +1011,6 @@ class Analysis:
                 if isinstance(comp, (Capacitor, Inductor)):
                     k = self.state_index(part)
                     state_vec[k] = sol[self.state_index_y(part)]
-
 
             time += timestep
         return solutions
