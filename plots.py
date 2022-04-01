@@ -331,13 +331,15 @@ def rlc(args):
     plt.show()
 
 def tricky(args):
-    capa = 1000e-6
+    # loading a capacitor and an switching a transistor base
+    # when loaded
+    capa = 100e-6
     net = Network()
     tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
     net.add_component("t", tt, ("B", "C", "0"))
     net.addV("v", 9, "v", "0")
     net.addR("r1", 100, "v", "C")
-    net.addR("r2", 5e3, "C", "B")
+    net.addR("r2", 50e3, "C", "B")
     net.addCapa("ca", capa, "B", "0")
         
     ana = Analysis(net)
