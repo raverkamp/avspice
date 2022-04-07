@@ -375,15 +375,6 @@ class Network:
         indu = Inductor(name, induc)
         self.add_component(name, indu, (p, n))
 
-class XNode():
-    """node class for analysis"""
-    def __init__(self, name, ports):
-        self.ports = ports
-        self.name = name
-
-    def __repr__(self):
-        return f"<XNode {self.name}: {self.ports}>"
-
 class Result:
     """result of an analysis run"""
     def __init__(self, network, analysis, iterations, solution_vec, y, y_norm, mat_cond, currents):
