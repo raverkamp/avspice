@@ -28,9 +28,9 @@ def saw_tooth(freq,t):
     if t<0.5:
         return t*2
     else:
-        return 2 - t*2 
+        return 2 - t*2
 
-        
+
 def explin(x: float, lcutoff: float, rcutoff:float):
     assert lcutoff  <= rcutoff, "cutoffs wrong"
 

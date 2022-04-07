@@ -64,7 +64,6 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
         a = 1
         k = 0
 
-        l = []
         while True:
             # is there an improvement in the residual error?
             if norm_y_n < abstol or norm_y_n/norm_y <= (1-a/4):
@@ -73,7 +72,6 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
             k = k + 1
             if k >= 20:
                 x =  xn
-                break
                 return "Fail no improvment"
             a = a/2
             xn = x + a * dx

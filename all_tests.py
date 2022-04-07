@@ -112,12 +112,12 @@ class Test1(unittest.TestCase):
     # current and resistor
     def test_current_simple(self):
         net = Network()
-        r1 = net.addR("r1", 20, "1", "0")
-        c1 = net.addC("c1", 1, "1", "0")
+        net.addR("r1", 20, "1", "0")
+        net.addC("c1", 1, "1", "0")
 
         analy = Analysis(net)
         res = analy.analyze()
-        
+
         self.assertAlmostEqual(res.get_current("r1.p"), 1)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
         self.assertAlmostEqual(res.y_norm, 0)
@@ -125,9 +125,9 @@ class Test1(unittest.TestCase):
     def test_current_simple2(self):
         #parallel current source
         net = Network()
-        r1 = net.addR("r1", 20,  "1", "0")
-        c1 = net.addC("c1", 1, "1", "0")
-        c2 = net.addC("c2", 2, "1", "0")
+        net.addR("r1", 20,  "1", "0")
+        net.addC("c1", 1, "1", "0")
+        net.addC("c2", 2, "1", "0")
         analy = Analysis(net)
         res = analy.analyze()
         self.assertAlmostEqual(res.get_current("r1.p"), 3)
@@ -137,8 +137,8 @@ class Test1(unittest.TestCase):
     # voltage and resistor
     def test_voltage_simple(self):
         net = Network()
-        r1 = net.addR("r1", 20, "1", "0")
-        v1 = net.addV("v1", 1, "1", "0")
+        net.addR("r1", 20, "1", "0")
+        net.addV("v1", 1, "1", "0")
         analy = Analysis(net)
         res = analy.analyze()
         self.assertAlmostEqual(res.get_voltage("r1.p"), 1)
@@ -191,11 +191,11 @@ class Test1(unittest.TestCase):
 
     def test_voltage(self):
         net = Network()
-        v1 = net.addV("v1", 3, "v1p", "v2p")
-        v2 = net.addV("v2", 5, "v2p", "v3p")
-        v3 = net.addV("v3", 7, "v3p", "0")
-        r1 = net.addR("r1", 1000, "v1p", "0")
-        r2 = net.addR("r2", 100, "v1p", "v3p")
+        net.addV("v1", 3, "v1p", "v2p")
+        net.addV("v2", 5, "v2p", "v3p")
+        net.addV("v3", 7, "v3p", "0")
+        net.addR("r1", 1000, "v1p", "0")
+        net.addR("r2", 100, "v1p", "v3p")
 
         analy = Analysis(net)
         res = analy.analyze()
@@ -260,13 +260,13 @@ class TestTransistor(unittest.TestCase):
 
     def test_trans1(self):
         net = Network()
-        vc = net.addV("vc", 6, "vcc", "0")
-        vb = net.addV("vb", 1, "vb","0")
-        re = net.addR("re", 10, "E", "0")
-        rb = net.addR("rb", 10e3, "vb", "B")
-        rc = net.addR("rc", 10, "vcc", "C")
+        net.addV("vc", 6, "vcc", "0")
+        net.addV("vb", 1, "vb","0")
+        net.addR("re", 10, "E", "0")
+        net.addR("rb", 10e3, "vb", "B")
+        net.addR("rc", 10, "vcc", "C")
         tt = NPNTransistor("Model T1",1e-12, 25e-3, 100, 10)
-        t1 = net.add_component("t1", tt, ("B", "C", "E"))
+        net.add_component("t1", tt, ("B", "C", "E"))
 
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
@@ -319,11 +319,11 @@ class TestTransistor(unittest.TestCase):
         tt = NPNTransistor("", 1e-12, 25e-3, beta_f, beta_r)
 
         net = Network()
-        v = net.addV("v", 6, "vcc", "0")
-        re = net.addR("re", 10, "C", "0")
-        rb = net.addR("rb", 20e3, "vcc", "B")
-        rc = net.addR("rc", 10, "vcc", "E")
-        t1 = net.add_component("t1", tt, ("B", "C", "E"))
+        net.addV("v", 6, "vcc", "0")
+        net.addR("re", 10, "C", "0")
+        net.addR("rb", 20e3, "vcc", "B")
+        net.addR("rc", 10, "vcc", "E")
+        net.add_component("t1", tt, ("B", "C", "E"))
 
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
@@ -416,12 +416,6 @@ class PNPTransistorTests(unittest.TestCase):
         net.addR("r", r0, "vcc", "X")
 
         net.add_component("t1", tt, ("0", "X", "X"))
-        """
-        connect(v.p, r.p)
-        connect(r.n, t1.C)
-        connect(r.n, t1.E)
-        connect(t1.B, v.n)
-        connect(net.ground, v.n)"""
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
         self.assertTrue(not isinstance(res,str), f"no solution: {res}")
@@ -434,12 +428,12 @@ class PNPTransistorTests(unittest.TestCase):
         tt = PNPTransistor("", 1e-12, 25e-3, beta_f, beta_r)
 
         net = Network()
-        v = net.addV("v", 6, "vcc", "re")
-        re = net.addR("re", 10, "re", "E")
-        rb = net.addR("rb", 20e3, "B", "0")
-        rb2 = net.addR("rb2", 20e3, "vcc", "B")
-        rc = net.addR("rc", 10, "C", "0")
-        t1 = net.add_component("t1", tt, ("B", "C", "E"))
+        net.addV("v", 6, "vcc", "re")
+        net.addR("re", 10, "re", "E")
+        net.addR("rb", 20e3, "B", "0")
+        net.addR("rb2", 20e3, "vcc", "B")
+        net.addR("rc", 10, "C", "0")
+        net.add_component("t1", tt, ("B", "C", "E"))
 
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
@@ -455,12 +449,12 @@ class PNPTransistorTests(unittest.TestCase):
         tt = PNPTransistor("", 1e-12, 25e-3, beta_f, beta_r)
 
         net = Network()
-        v = net.addV("v", 6, "vcc", "0")
-        re = net.addR("re", 10,"vcc", "C")
-        rb = net.addR("rb", 20e3, "B", "0")
-        rb2 = net.addR("rb2", 20e3, "vcc", "B")
-        rc = net.addR("rc", 10, "E", "0")
-        t1 = net.add_component("t1", tt, ("B", "C", "E"))
+        net.addV("v", 6, "vcc", "0")
+        net.addR("re", 10,"vcc", "C")
+        net.addR("rb", 20e3, "B", "0")
+        net.addR("rb2", 20e3, "vcc", "B")
+        net.addR("rc", 10, "E", "0")
+        net.add_component("t1", tt, ("B", "C", "E"))
 
         ana = Analysis(net)
         res = ana.analyze(maxit=50)
@@ -529,18 +523,16 @@ class TransientTest(unittest.TestCase):
     def test2(self):
         net = Network()
         v0 = 10
-        vc = net.addSineV("vc", v0, 1, "v", "0")
-        rc = net.addR("rc", 100, "v", "0")
+        net.addSineV("vc", v0, 1, "v", "0")
+        net.addR("rc", 100, "v", "0")
         ana = Analysis(net)
         res = ana.transient(1,0.005)
 
-        for (t,v,c) in res:
+        for (t, v, _) in res:
             self.assertAlmostEqual(v["rc.p"], v0 * math.sin(2* math.pi * t))
 
     def test3(self):
-
         net = Network()
-        v0 = 10
         ro = 1e1
         indo =  10
         curro = 1
@@ -548,9 +540,8 @@ class TransientTest(unittest.TestCase):
         net.addInduc("ind", indo, "1", "0")
         ana = Analysis(net)
         res = ana.transient(1,0.01, induc_currents={"ind": curro})
-        #pp.pprint(res)
-        a = res[0][2]["ind.p"]
-        for (t,v,c) in res:
+
+        for (t, _, c) in res:
             curr = c["ind.p"]
             curr_expected = math.exp(-t*ro/indo)*curro
             self.assertTrue(0.98 < curr/curr_expected <1.02)
@@ -576,9 +567,9 @@ class TestInductor(unittest.TestCase):
         net = Network()
         v0 = 10
         net.addV("vc", v0, "v", "0")
-        r1 = net.addR("r1", 75, "v", "in")
-        r2 = net.addR("r2", 25, "r2", "0")
-        ind = net.addInduc("ind", 100, "in", "r2")
+        net.addR("r1", 75, "v", "in")
+        net.addR("r2", 25, "r2", "0")
+        net.addInduc("ind", 100, "in", "r2")
         ana = Analysis(net)
         res = ana.analyze(induc_currents={"ind": 0.09},transient=True)
         #self.assertAlmostEqual(res.get_voltage(ind.p), res.get_voltage(ind.n))

@@ -30,17 +30,8 @@ class NSawVoltage:
         self.f = f
 
     def voltage(self, time):
-        return self.v * util.saw_tooth(self.f * time)
+        return self.v * util.saw_tooth(self.f, time)
 
-class NSawVoltage:
-    
-    def __init__(self,v,f):
-        self.v = v
-        self.f = f
-
-    def voltage(self, time):
-        return self.v *  util.saw_tooth(self.f,time)
-    
 class NDiode:
     """solid state diode"""
     def __init__(self, Is, Nut, lcut_off = -40, rcut_off=40):
