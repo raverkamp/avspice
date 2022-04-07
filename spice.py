@@ -1,12 +1,12 @@
 """ simple routines for experimenting with nodal analysis """
 
+import collections
 import math
 import pprint as pp
 import numbers
 import numpy as np
 import solving
 import util
-import collections
 
 class Variable:
     """a variable"""
@@ -171,7 +171,7 @@ class Inductor(Node2):
 
     def get_induc(self, variables):
         return self.induc
-        
+
     def __repr__(self):
         return f"<Inductor {self.name}>"
 
@@ -416,7 +416,7 @@ class Result:
 
     def display(self):
         x = list(self.voltages.items())
-        x.sort
+        x.sort()
         print("--- Voltages ---")
         for (k,v) in x:
             print(k + " " + str(v))
@@ -561,7 +561,7 @@ class Analysis:
     def generate_code(self, variables, transient):
         n = self._equation_size(transient)
         cg = CodeGenerator(n, len(self.curr_port_list), transient)
-    
+
         counter = 0
         for part in self.network.parts:
             comp = part.component
@@ -669,14 +669,14 @@ class Analysis:
                 curr_index_B  = self.curr_index(part.name, "B")
                 curr_index_E  = self.curr_index(part.name, "E")
                 curr_index_C  = self.curr_index(part.name, "C")
-                
+
                 cg.add_to_cur_code([f"res[{curr_index_B}] = -({cb})",
                                   f"res[{curr_index_E}] =  -({ce})",
                                   f"res[{curr_index_C}] =  -({cc})"])
 
             elif isinstance(comp, Capacitor):
                 k = self.capa_index(part)
-            
+
                 if transient:
                     sn = self.state_index(part)
                     sny = self.state_index_y(part)
@@ -688,7 +688,7 @@ class Analysis:
                     cg.add_ysum(kn, f"-(sol[{k}])")
                     cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - sol[{sny}]")
                     #cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - state_vec[{sn}]")
-                    
+
                     cg.add_ysum(sny, f"sol[{sny}] + h * sol[{k}]/{capa} - state_vec[{sn}]")
 
                     cg.add_dysum(kp, k, "1")
@@ -698,7 +698,7 @@ class Analysis:
                     cg.add_dysum(k, sny, "(-1)")
                     cg.add_dysum(sny, sny, "1")
                     cg.add_dysum(sny, k,f"+h/{capa}")
-                    
+
                     cg.add_to_cur_code([f"res[{curr_index_p}] = -(sol[{k}])",
                                         f"res[{curr_index_n}] = sol[{k}]"])
                 else:
@@ -718,7 +718,8 @@ class Analysis:
                     cg.add_ysum(kp, f"(-sol[{k}])")
                     cg.add_ysum(kn, f"sol[{k}]")
                     cg.add_ysum(k, f"sol[{k}] - sol[{sny}]")
-                    cg.add_ysum(sny, f"sol[{sny}] - h *  (sol[{kp}] - sol[{kn}])/{induc} - state_vec[{sn}]")
+                    cg.add_ysum(sny, f"sol[{sny}] - h *  (sol[{kp}] "
+                                + f" - sol[{kn}])/{induc} - state_vec[{sn}]")
 
                     cg.add_dysum(kp, k, "(-1)")
                     cg.add_dysum(kn, k, "1")
@@ -727,8 +728,8 @@ class Analysis:
                     cg.add_dysum(sny,  sny, "1")
                     cg.add_dysum(sny, kp, f"-h /{induc}")
                     cg.add_dysum(sny, kn, f"h /{induc}")
-                    
-                    
+
+
 
                     cg.add_to_cur_code([f"res[{curr_index_p}] = state_vec[{sn}]",
                                         f"res[{curr_index_n}] = -state_vec[{sn}]"])
@@ -780,13 +781,13 @@ class Analysis:
                 if capa_voltages and  part.name in capa_voltages:
                     state_vec[k] = capa_voltages[part.name]
                 else:
-                    raise Exception(f"no voltage given for capacitor {comp.name}")
+                    raise Exception(f"no voltage given for capacitor {part.name}")
             if isinstance(part.component, Inductor):
                 k = self.state_index(part)
                 if induc_currents and part.name in induc_currents:
                     state_vec[k] = induc_currents[part.name]
                 else:
-                    raise Exception(f"no  current given for inductor {comp.name}")
+                    raise Exception(f"no  current given for inductor {part.name}")
 
         return state_vec
 
@@ -889,8 +890,8 @@ class Analysis:
             cond =  np.linalg.cond(dfx,'fro')
         else:
             cond=None
-        currents = self._compute_currents(c, time, sol, state_vec)
-        return Result(self.netw,
+        currents = self._compute_currents(computer, time, sol, state_vec)
+        return Result(self.network,
                       self,
                       iterations,
                       sol,
@@ -953,7 +954,7 @@ class Analysis:
 
         time = 0.0
         max_timestep =  timestep
-        
+
         min_timestep = timestep / 10000.0
         res = self.analyze(maxit=maxit,
                            start_solution_vec=start_solution_vec,
