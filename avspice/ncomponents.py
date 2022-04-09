@@ -1,6 +1,6 @@
 import math
-from util import explin, dexplin
-import util
+from .util import explin, dexplin
+from . import util
 """ numerical components"""
 
 

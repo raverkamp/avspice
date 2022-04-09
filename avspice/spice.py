@@ -5,8 +5,8 @@ import math
 import pprint as pp
 import numbers
 import numpy as np
-import solving
-import util
+from . import solving
+from . import util
 
 class Variable:
     """a variable"""
@@ -440,7 +440,7 @@ class CodeGenerator:
             "",
             "class Computer:",
             "    def __init__(self):",
-            "        from ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
+            "        from avspice.ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
                     + "NVoltage, NSineVoltage, NSawVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",

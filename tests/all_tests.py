@@ -1,16 +1,17 @@
 """simple unit tests"""
+
 import unittest
 import pprint as pp
 from math import exp
 import math
 import numpy as np
-from spice import Network, Analysis, Diode, NPNTransistor,\
+from avspice import Network, Analysis, Diode, NPNTransistor,\
     Variable, PNPTransistor
-from util import  explin, dexplin
+from avspice.util import  explin, dexplin
 
-import ncomponents
+from avspice import ncomponents
 
-import solving
+from avspice import solving
 
 DIODE = Diode("D", 1e-8, 25e-3, 10)
 
