@@ -1,15 +1,15 @@
-import matplotlib as mp
-import matplotlib.pyplot as plt
-from spice import *
+import math
 import argparse
 import sys
-from util import *
 
-import math
+import matplotlib as mp
+import matplotlib.pyplot as plt
+from avspice import *
+from avspice.util import *
 
-from ncomponents import NNPNTransistor
 
 
+from avspice.ncomponents import NNPNTransistor
 
 def plot1(args):
     # das passt alles nicht
@@ -43,7 +43,7 @@ def plot2(args):
 
     vc = 2
     ve = 0
-    x = list(drange(-0.5,3.5, 0.01)    )
+    x = list(drange(-0.5,0.8, 0.01)    )
     ie = [t.IE(vb-ve, vb-vc) for vb in x]
     ib = [t.IB(vb-ve, vb-vc) for vb in x]
     _, _ = plt.subplots()  # Create a figure containing a single axes.
@@ -73,27 +73,19 @@ def plot3(args):
 
 
 def plot4(args):
-    x = list(drange(-2, 10, 0.01))
+    x = list(drange(0, 6, 0.01))
     y = []
     z = []
     sol = None
-    iy = []
 
-    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    tt = NPNTransistor("",1e-12, 25e-3, 100, 10)
 
     net = Network()
-    vc = net.addV("vc", 2)
-    vb = net.addV("vb", Variable("vb"))
-    re = net.addR("re", 100)
-    rb = net.addR("rb", 10e3)
-    t1 = net.addComp("T1", tt)
-    connect(vc.p, t1.C)
-    connect(vc.n, net.ground)
-    connect(vb.p, rb.p)
-    connect(rb.n, t1.B)
-    connect(vb.n, net.ground)
-    connect(t1.E, re.p)
-    connect(re.n, net.ground)
+    net.addV("vc", 2, "v", "0")
+    net.addV("vb", Variable("vb"), "vb", "0")
+    net.addR("re", 100, "E", "0")
+    net.addR("rb", 10e3, "vb", "B")
+    net.add_component("T1", tt, ("B", "v", "E"))
     ana = Analysis(net)
     for v in x:
         res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vb": v})
@@ -101,23 +93,20 @@ def plot4(args):
             print("no covergence at: {0}".format(v))
             y.append(None)
             z.append(None)
-            iy.appned(None)
             sol = None
         else:
-            y.append(res.get_current(t1.E))
-            z.append(res.get_current(t1.B))
-            iy.append(res.iterations)
+            y.append(res.get_current("T1.C"))
+            z.append(res.get_current("T1.B"))
             sol = res.solution_vec
-    fig, (ax1,ax) = plt.subplots(2)
-    ax1.plot(x,y, color="black", label="I(E)")
+    fig, (ax1) = plt.subplots(1)
+    ax1.plot(x,y, color="black", label="I(C)")
+    ax1.legend(loc=0)
+    ax1.set_ylabel("I(C)")
     ax2 = ax1.twinx()
     ax2.plot(x,z, color="green", label="I(B)")
-    ax1.legend()
-    ax2.legend()
-
+    ax2.legend(loc=1)
+    ax2.set_ylabel("I(B)")
     fig.tight_layout()
-    ax.plot(x, iy)
-    ax.set_title("Iterations")
     plt.show()
     #input()
 
@@ -216,7 +205,6 @@ def emitter(args):
 
 
 def saw1(args):
-    import util
     net = Network()
     r = 100000
     capa = 10e-6
@@ -241,7 +229,6 @@ def saw1(args):
 
 def emitterschaltung(args):
     #   https://www.elektronik-kompendium.de/sites/slt/0204302.htm
-    import util
     tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
     net = Network()
     net.addV("vc", 10, "vcc", "0")

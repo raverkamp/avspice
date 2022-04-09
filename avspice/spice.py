@@ -329,6 +329,8 @@ class Network:
         self.part_dict = {}
 
     def add_component(self, name:str, comp: Component, nodes):
+        assert isinstance(name, str), "name parameter must be a string"
+        assert isinstance(comp, Component), "component parameter must be a component"
         ports = comp.get_ports()
         assert len(ports) == len(nodes)
         if name in self.part_dict:
