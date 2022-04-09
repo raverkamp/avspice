@@ -73,39 +73,64 @@ def plot3(args):
 
 
 def plot4(args):
-    x = list(drange(0, 6, 0.01))
-    y = []
-    z = []
+   
     sol = None
 
     tt = NPNTransistor("",1e-12, 25e-3, 100, 10)
 
-    net = Network()
-    net.addV("vc", 2, "v", "0")
-    net.addV("vb", Variable("vb"), "vb", "0")
-    net.addR("re", 100, "E", "0")
-    net.addR("rb", 10e3, "vb", "B")
-    net.add_component("T1", tt, ("B", "v", "E"))
-    ana = Analysis(net)
-    for v in x:
-        res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vb": v})
-        if isinstance(res, str):
-            print("no covergence at: {0}".format(v))
-            y.append(None)
-            z.append(None)
-            sol = None
+    def generate(er):
+        x = list(drange(0, 6, 0.01))
+        y = []
+        z = []
+        net = Network()
+        net.addV("vc", 2, "v", "0")
+        net.addV("vb", Variable("vb"), "vb", "0")
+        net.addR("rb", 10e3, "vb", "B")
+
+        if er:
+            net.addR("re", 100, "E", "0")
+            net.add_component("T1", tt, ("B", "v", "E"))
         else:
-            y.append(res.get_current("T1.C"))
-            z.append(res.get_current("T1.B"))
-            sol = res.solution_vec
-    fig, (ax1) = plt.subplots(1)
-    ax1.plot(x,y, color="black", label="I(C)")
-    ax1.legend(loc=0)
-    ax1.set_ylabel("I(C)")
-    ax2 = ax1.twinx()
+            net.addR("re", 100, "v", "C")
+            net.add_component("T1", tt, ("B", "C", "0"))
+            
+        ana = Analysis(net)
+        sol = None
+        for v in x:
+            res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vb": v})
+            if isinstance(res, str):
+                print("no covergence at: {0}".format(v))
+                y.append(None)
+                z.append(None)
+                sol = None
+            else:
+                y.append(res.get_current("T1.C"))
+                z.append(res.get_current("T1.B"))
+                sol = res.solution_vec
+        return (x,y,z)
+
+    
+    fig, (ax, bx) = plt.subplots(2)
+    (x,y,z) = generate(True )
+    ax.set_title("Emitter resistor")
+    ax.plot(x,y, color="black", label="I(C)")
+    ax.legend(loc=0)
+    ax.set_ylabel("I(C)")
+    ax2 = ax.twinx()
     ax2.plot(x,z, color="green", label="I(B)")
     ax2.legend(loc=1)
     ax2.set_ylabel("I(B)")
+
+    (x,y,z) = generate(False)
+    bx.plot(x,y, color="black", label="I(C)")
+    bx.legend(loc=0)
+    bx.set_ylabel("I(C)")
+    bx.set_title("Collector resistor")
+    bx2 = bx.twinx()
+    bx2.plot(x,z, color="green", label="I(B)")
+    bx2.legend(loc=1)
+    bx2.set_ylabel("I(B)")
+
     fig.tight_layout()
     plt.show()
     #input()
