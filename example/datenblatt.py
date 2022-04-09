@@ -1,15 +1,14 @@
 import matplotlib as mp
 import matplotlib.pyplot as plt
-from spice import *
+from avspice import *
 import argparse
 import sys
-from util import *
-import ncomponents
+from avspice.util import *
+from avspice import ncomponents
 import math
 
 
 def kennlinie(args):
-    print(("kennlinie", args))
     tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
     net = Network()
     t1 = net.add_component("t1", tt, ("B", "v", "0")) 
@@ -18,7 +17,7 @@ def kennlinie(args):
     net.addR("rb", Variable("rb"), "vb", "B")
     
     ana = Analysis(net)
-    ce_voltages = list(drange(0, 10, 0.01))
+    ce_voltages = list(drange(0, 2, 0.01))
     (fig, ax) = plt.subplots(1)
     for i in [ 50e-6, 100e-6, 200e-6, 400e-6]:
         y = []
@@ -45,10 +44,9 @@ def main():
     parser_k.set_defaults(func=kennlinie)
     
     args = parser.parse_args()
-    args.func(args)
-    
-#     parser_a.add_argument('bar', type=int, help='bar help')
-#     parser_b = subparsers.add_parser('b', help='b help')
-#     parser_b.add_argument('--baz', choices='XYZ', help='baz help')
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_usage()
 
 main()
