@@ -1,10 +1,10 @@
 import matplotlib as mp
 import matplotlib.pyplot as plt
-from spice import *
+from avspice import *
 import argparse
 import sys
-from util import *
-import ncomponents
+from avspice.util import *
+from avspice  import ncomponents
 
 import math
 
@@ -65,7 +65,7 @@ def plot2(args):
 
     tt = npntransistor
  
-    net = Network()
+    net = Circuit()
     net.addV("vc", 5, "v", "0")
     net.addV("vb", Variable("vb"), "vb","0")
     net.addR("rc", 100, "v", "C")

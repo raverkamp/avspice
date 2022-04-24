@@ -82,7 +82,7 @@ def plot4(args):
         x = list(drange(0, 6, 0.01))
         y = []
         z = []
-        net = Network()
+        net = Circuit()
         net.addV("vc", 2, "v", "0")
         net.addV("vb", Variable("vb"), "vb", "0")
         net.addR("rb", 10e3, "vb", "B")
@@ -143,7 +143,7 @@ def plot5(args):
     iy = []
 
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
-    net = Network()
+    net = Circuit()
     vc = net.addV("vc", 5)
     rc = net.addR("rc", 1e2)
     rb = net.addR("rb", Variable("rb"))
@@ -181,7 +181,7 @@ def plot5(args):
 def emitter(args):
     tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
     nw = Network()
-    net = Network()
+    net = Circuit()
     vc = net.addV("vc", 5)
     r1 = net.addR("r1", 2000)
     r2 = net.addR("r2", 2000)
@@ -230,7 +230,7 @@ def emitter(args):
 
 
 def saw1(args):
-    net = Network()
+    net = Circuit()
     r = 100000
     capa = 10e-6
     net.addSawV("vc", 1, 1, "v", "0")
@@ -255,7 +255,7 @@ def saw1(args):
 def emitterschaltung(args):
     #   https://www.elektronik-kompendium.de/sites/slt/0204302.htm
     tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
-    net = Network()
+    net = Circuit()
     net.addV("vc", 10, "vcc", "0")
     net.addSawV("ve", 0.1, 10, "ve", "0")
 
@@ -300,7 +300,7 @@ def emitterschaltung(args):
     plt.show()
 
 def rlc(args):
-    net = Network()
+    net = Circuit()
     i0 = 0.1
     rv = 100
     indu = 1
@@ -346,7 +346,7 @@ def tricky(args):
     # loading a capacitor and an switching a transistor base
     # when loaded
     capa = 100e-6
-    net = Network()
+    net = Circuit()
     tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
     net.add_component("t", tt, ("B", "C", "0"))
     net.addV("v", 9, "v", "0")

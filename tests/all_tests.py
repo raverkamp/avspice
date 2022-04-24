@@ -5,8 +5,8 @@ import pprint as pp
 from math import exp
 import math
 import numpy as np
-from avspice import Network, Analysis, Diode, NPNTransistor,\
-    Variable, PNPTransistor
+from avspice import Circuit, Analysis, Diode, NPNTransistor,\
+    Variable, PNPTransistor, SubCircuit
 from avspice.util import  explin, dexplin
 
 from avspice import ncomponents
@@ -63,6 +63,8 @@ class TestMath(unittest.TestCase):
 
 class TestSolve(unittest.TestCase):
 
+    """test the solving code"""
+
     def test_simple_solve1(self):
 
         def f(x):
@@ -94,7 +96,7 @@ class TestSolve(unittest.TestCase):
 class NetworkContstruct(unittest.TestCase):
 
     def test_init(self):
-        n = Network()
+        n = Circuit()
         n.addR("r",20, "0", "1")
         n.addC("c0",40, "1", "2")
         n.addV("c1",40, "2", "3")
@@ -112,12 +114,14 @@ class Test1(unittest.TestCase):
 
     # current and resistor
     def test_current_simple(self):
-        net = Network()
+        net = Circuit()
         net.addR("r1", 20, "1", "0")
         net.addC("c1", 1, "1", "0")
 
         analy = Analysis(net)
         res = analy.analyze()
+
+        res.display()
 
         self.assertAlmostEqual(res.get_current("r1.p"), 1)
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
@@ -125,7 +129,7 @@ class Test1(unittest.TestCase):
 
     def test_current_simple2(self):
         #parallel current source
-        net = Network()
+        net = Circuit()
         net.addR("r1", 20,  "1", "0")
         net.addC("c1", 1, "1", "0")
         net.addC("c2", 2, "1", "0")
@@ -137,7 +141,7 @@ class Test1(unittest.TestCase):
 
     # voltage and resistor
     def test_voltage_simple(self):
-        net = Network()
+        net = Circuit()
         net.addR("r1", 20, "1", "0")
         net.addV("v1", 1, "1", "0")
         analy = Analysis(net)
@@ -148,7 +152,7 @@ class Test1(unittest.TestCase):
 
     # diode and resistor in serial
     def test_diode_simple1(self):
-        net = Network()
+        net = Circuit()
         net.add_component("d1", DIODE, ("vcc", "r"))
         net.addR("r1", 500, "r", "0")
         net.addV("v1", 5, "vcc", "0")
@@ -160,7 +164,7 @@ class Test1(unittest.TestCase):
 
    # diode - diode - resistor
     def test_diode_simple2(self):
-        net = Network()
+        net = Circuit()
         net.add_component("d1", DIODE, ("vcc", "d1"))
         net.add_component("d2", DIODE, ("d1", "d2"))
         net.addR("r1", 500, "d2","0")
@@ -178,7 +182,7 @@ class Test1(unittest.TestCase):
 
     # diode|diode -> resistor
     def test_diode_simple3(self):
-        net = Network()
+        net = Circuit()
         net.add_component("d1", DIODE, ("vcc","d"))
         net.add_component("d2", DIODE, ("vcc", "d"))
         net.addR("r1", 500, "d", "0")
@@ -191,7 +195,7 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.y_norm, 0)
 
     def test_voltage(self):
-        net = Network()
+        net = Circuit()
         net.addV("v1", 3, "v1p", "v2p")
         net.addV("v2", 5, "v2p", "v3p")
         net.addV("v3", 7, "v3p", "0")
@@ -208,7 +212,7 @@ class Test1(unittest.TestCase):
 
 
     def test_var(self):
-        net = Network()
+        net = Circuit()
         volt_var = Variable("v")
         net.addV("v1", volt_var, "vcc","0")
         net.addR("r2", 100, "vcc", "0")
@@ -223,7 +227,7 @@ class Test1(unittest.TestCase):
 
     def test_var2(self):
         """test default for variable"""
-        net = Network()
+        net = Circuit()
         volt_var = Variable("v", 5)
         net.addV("v1", volt_var, "vcc", "0")
         net.addR("r2", 100, "vcc", "0")
@@ -260,7 +264,7 @@ class TestTransistor(unittest.TestCase):
             self.assertAlmostEqual(ic+ib-ie,0)
 
     def test_trans1(self):
-        net = Network()
+        net = Circuit()
         net.addV("vc", 6, "vcc", "0")
         net.addV("vb", 1, "vb","0")
         net.addR("re", 10, "E", "0")
@@ -276,7 +280,7 @@ class TestTransistor(unittest.TestCase):
         self.assertAlmostEqual(res.y_norm, 0)
 
     def test_trans2(self):
-        net = Network()
+        net = Circuit()
         net.addV("vc",Variable("vc"), "vcc", "0")
         tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
         net.add_component("t1", tt, ("B", "C", "0"))
@@ -298,7 +302,7 @@ class TestTransistor(unittest.TestCase):
         beta_r = 20
         tt = NPNTransistor("T", 1e-12, 25e-3, beta_f, beta_r)
 
-        net = Network()
+        net = Circuit()
         net.addV("v", 6, "vcc", "0")
         net.addR("re", 10, "E", "0")
         net.addR("rb", 20e3, "vcc", "B")
@@ -319,7 +323,7 @@ class TestTransistor(unittest.TestCase):
         beta_r = 20
         tt = NPNTransistor("", 1e-12, 25e-3, beta_f, beta_r)
 
-        net = Network()
+        net = Circuit()
         net.addV("v", 6, "vcc", "0")
         net.addR("re", 10, "C", "0")
         net.addR("rb", 20e3, "vcc", "B")
@@ -412,7 +416,7 @@ class PNPTransistorTests(unittest.TestCase):
 
         vv = solving.bisect(f, 0.001, v0)
 
-        net = Network()
+        net = Circuit()
         net.addV("v", v0, "vcc", "0")
         net.addR("r", r0, "vcc", "X")
 
@@ -428,7 +432,7 @@ class PNPTransistorTests(unittest.TestCase):
         beta_r = 20
         tt = PNPTransistor("", 1e-12, 25e-3, beta_f, beta_r)
 
-        net = Network()
+        net = Circuit()
         net.addV("v", 6, "vcc", "re")
         net.addR("re", 10, "re", "E")
         net.addR("rb", 20e3, "B", "0")
@@ -449,7 +453,7 @@ class PNPTransistorTests(unittest.TestCase):
         beta_r = 20
         tt = PNPTransistor("", 1e-12, 25e-3, beta_f, beta_r)
 
-        net = Network()
+        net = Circuit()
         net.addV("v", 6, "vcc", "0")
         net.addR("re", 10,"vcc", "C")
         net.addR("rb", 20e3, "B", "0")
@@ -469,7 +473,7 @@ class ResultDisplayTest(unittest.TestCase):
 
     def test_result_display(self):
         npntransistor = NPNTransistor("T", 1e-12, 25e-3, 100, 10)
-        net = Network()
+        net = Circuit()
         net.addV("vc", 5, "v", "0")
         net.addV("vb", Variable("vb", 2), "vb", "0")
         net.addR("rc", 100, "v", "C")
@@ -489,7 +493,7 @@ class TransientTest(unittest.TestCase):
         r = 17e3
         capa = 312e-6
         timespan = 1
-        net = Network()
+        net = Circuit()
         net.addV("vc", v0, "v", "0")
         net.addR("rc", r, "v", "c")
         net.addCapa("ca", capa, "c", "0")
@@ -508,7 +512,7 @@ class TransientTest(unittest.TestCase):
         r = 1000000
         capa = 1e-6
         timespan = 1
-        net = Network()
+        net = Circuit()
         net.addR("rc", r, "v", "0")
         net.addCapa("ca", capa, "v", "0")
 
@@ -522,7 +526,7 @@ class TransientTest(unittest.TestCase):
         self.assertTrue(0.98 < ve/ve_expected <1.02)
 
     def test2(self):
-        net = Network()
+        net = Circuit()
         v0 = 10
         net.addSineV("vc", v0, 1, "v", "0")
         net.addR("rc", 100, "v", "0")
@@ -533,7 +537,7 @@ class TransientTest(unittest.TestCase):
             self.assertAlmostEqual(v["rc.p"], v0 * math.sin(2* math.pi * t))
 
     def test3(self):
-        net = Network()
+        net = Circuit()
         ro = 1e1
         indo =  10
         curro = 1
@@ -551,7 +555,7 @@ class TransientTest(unittest.TestCase):
 class TestInductor(unittest.TestCase):
 
     def test1(self):
-        net = Network()
+        net = Circuit()
         v0 = 10
         net.addV("vc", v0, "v", "0")
         net.addR("r1", 75, "v", "in")
@@ -565,7 +569,7 @@ class TestInductor(unittest.TestCase):
         self.assertAlmostEqual(res.get_voltage("ind.p"), 2.5)
 
     def test2(self):
-        net = Network()
+        net = Circuit()
         v0 = 10
         net.addV("vc", v0, "v", "0")
         net.addR("r1", 75, "v", "in")
@@ -578,6 +582,39 @@ class TestInductor(unittest.TestCase):
         self.assertAlmostEqual(res.get_current("ind.p"), res.get_current("r2.p"))
         self.assertAlmostEqual(res.get_current("ind.p"), 0.09)
 
+class TestSubCircuit(unittest.TestCase):
+
+    def test_construct(self):
+        s = SubCircuit(("A", "B"))
+        s.addR("r1",10, "A","c")
+        s.addR("r2",90, "c","B")
+
+        c = Circuit()
+        c.add_subcircuit("sub", s, ("VCC", "0"))
+        c.addV("V", 10, "VCC", "0")
+
+        ana = Analysis(c)
+        res = ana.analyze()
+        res.display()
+        self.assertAlmostEqual(res.get_current("sub/r1.p"), 0.1)
+
+    def test_darlington(self):
+
+        sc = SubCircuit(("B", "C", "E"))
+        tt = NPNTransistor("", 1e-12, 25e-3, 100, 20)
+        sc.add_component("t1", tt, ("B", "C", "B2"))
+        sc.add_component("t2", tt, ("B2", "C", "E"))
+
+        c = Circuit()
+        c.addV("VCC", 10, "vcc", "0")
+        c.addR("RB", 10e3, "vcc", "B")
+
+
+        c.add_subcircuit("dar", sc, ("B", "vcc", "0"))
+        
+        ana = Analysis(c)
+        res = ana.analyze()
+        self.assertTrue(abs(res.get_current("dar/t2.E")/(-8.8) -1) < 0.001)
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,14 +2,14 @@
 import argparse
 import sys
 import matplotlib.pyplot as plt
-from spice import Network, NPNTransistor, Analysis, pivot
+from avspice import Circuit, NPNTransistor, Analysis, pivot
 
 # my transistor model
 tr_rav = NPNTransistor("", 1e-12, 25e-3, 100, 10)
 
 def create_circuit(transistor, capacity, inductivity):
     tt = transistor
-    net = Network()
+    net = Circuit()
     net.addV("vc", 10, "v", "0")
     net.addR("rc1",2e3, "v", "t1c")
     net.addR("rc2",2e3, "v", "t2c")
@@ -19,31 +19,10 @@ def create_circuit(transistor, capacity, inductivity):
     t1 = net.add_component("t1",tt, ("t1b", "t1c", "0"))
     t2 = net.add_component("t2",tt, ("t2b", "t2c", "0"))
 
-
-                     #    connect(vc.n, net.ground)
-                     
-                     #   connect(vc.p, rc1.p)
-                     #   connect(rc1.n, t1.C)
-                     #  connect(t1.E, vc.n)
-                     # connect(vc.p, rb1.p)
-                     #connect(rb1.n, t1.B)
-                     
-                     #connect(vc.p, rc2.p)
-                     #connect(rc2.n, t2.C)
-                     #connect(t2.E, vc.n)
-                     #connect(vc.p, rb2.p)
-                     #connect(rb2.n, t2.B)
-
     net.addR("r1",22e3, "t1c","t2b")
-                     #    connect(t1.C, rf.p)
-                     #    connect(rf.n, t2.B)
 
     capa = net.addCapa("capa", capacity, "t2c", "i")
     net.addInduc("ind", inductivity, "i", "t1b")
-
-                     #    connect(capa.p, t2.C)
-                     #    connect(capa.n, ind.p)
-                     #   connect(ind.n, t1.B)
 
     return net
 

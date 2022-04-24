@@ -10,7 +10,7 @@ import math
 
 def kennlinie(args):
     tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
-    net = Network()
+    net = Circuit()
     t1 = net.add_component("t1", tt, ("B", "v", "0")) 
     net.addV("vc", Variable("vc"), "v", "0")
     net.addV("cb", 1, "vb", "0")

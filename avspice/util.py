@@ -50,3 +50,9 @@ def dexplin(x:float, lcutoff:float, rcutoff:float):
         return  math.exp(lcutoff)
     else:
         return math.exp(x)
+
+def is_str_seq(l):
+    for x  in l:
+        if not isinstance(x, str):
+            return False
+    return True
