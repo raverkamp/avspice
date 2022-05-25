@@ -59,7 +59,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, x0 = None, alfa=None, verbo
         norm_y_n = np.linalg.norm(yn)
         if iterations > 100:
             print("iteration", norm_y, x-xn)
-        if close_enough(x, xn, abstol, reltol) or norm_y <=  1e-6:
+        if close_enough(x, xn, abstol, reltol):
             return (xn, yn, dfx, iterations, norm_y_n)
         a = 1
         k = 0

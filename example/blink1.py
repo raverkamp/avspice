@@ -1,9 +1,9 @@
 import matplotlib as mp
 import matplotlib.pyplot as plt
-from spice import *
+from avspice import *
 import argparse
 import sys
-from util import *
+from avspice.util import *
 
 from example_circuits import create_blinker
 
