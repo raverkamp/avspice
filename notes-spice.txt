@@ -216,3 +216,7 @@ Schrittweite 2e-10. (- 3.435580616042551e+00 3.435580616280970e+00)
 Das bekomme ich nicht simuliert.
 Es gibt noch andere Unstetigkeiten.
 
+2022-05-25_21:18
+
+Alles tests laufen lassen mit
+PYTHONPATH=. python tests/all_tests.py

@@ -27,14 +27,13 @@ def blinker_static(args):
 
 def try_random_start(args):
     import random
-    net = create_blinker(r_ca=1e-1)
+    net = create_blinker()
     ana = Analysis(net)
-    base_vca = 0
+    base_vca = args.vca
     res = ana.analyze(maxit=50, start_solution_vec=None, capa_voltages={"ca": base_vca},
                       variables={"vc": 9},
                       start_voltages= {
                           "t1.C": args.t1c,
-                          #"t2.C": random.random() * 9,
                           "t1.B": args.t1b
                       })
     if isinstance(res, str):
@@ -101,16 +100,17 @@ def blinker3(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
 
     parser_s = subparsers.add_parser('s')
     parser_s.set_defaults(func=blinker_static)
 
     parser_sol = subparsers.add_parser('sol')
     parser_sol.set_defaults(func=try_random_start)
+    parser_sol.add_argument('vca', type=float)
     parser_sol.add_argument('-t1c', type=float, default=0)
     parser_sol.add_argument('-t1b', type=float, default=0)
-
+   
     parser_b3 = subparsers.add_parser('b3')
     parser_b3.set_defaults(func=blinker3)
     parser_b3.add_argument('-t1c', type=float, default=0)
