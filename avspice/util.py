@@ -61,6 +61,8 @@ def is_str_seq(l):
 def find_pos(v, x):
     """v is sorted double vector, x is double
        return largest i such that  x >= v[i], -1 if x< v[0]"""
+    if len(v) == 0:
+        raise Exception("argument v must have length >=1")
     if x < v[0]:
         return -1
     i = len(v) -1

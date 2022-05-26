@@ -367,6 +367,23 @@ def tricky(args):
     fig.legend()
     plt.show()
 
+def step(args):
+    net = Circuit()
+    v = PieceWiseLinearVoltage("name", [(0.5,0), (1,1), (4,0)])
+    net.add_component("V", v, ("VCC", "0"))
+    net.addR("R",10,"VCC", "0")
+    ana = Analysis(net)
+    res = ana.transient(5,0.01)
+    (time,volts,currs) = pivot(res)
+    (fig, (a1, a2)) = plt.subplots(2)
+    a1.set_title("Voltage VCC")
+    a1.plot(time, volts["V.p"])
+    a2.set_title("Current VCC")
+    a2.plot(time, currs["V.p"])
+    fig.legend()
+    plt.show()
+
+
 def main():
     (cmd, args) = getargs()
     if cmd == "1":
@@ -389,6 +406,9 @@ def main():
         rlc(args)
     elif cmd == "tricky":
         tricky(args)
+    elif cmd == "step":
+        step(args)
+    
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 

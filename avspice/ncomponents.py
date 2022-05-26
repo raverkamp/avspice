@@ -32,6 +32,14 @@ class NSawVoltage:
     def voltage(self, time):
         return self.v * util.saw_tooth(self.f, time)
 
+class NPieceWiseLinearVoltage:
+    def __init__(self, vx, vy):
+        self.vx = vx
+        self.vy = vy
+
+    def voltage(self, time):
+        return util.linear_interpolate(self.vx, self.vy, time)
+
 class NDiode:
     """solid state diode"""
     def __init__(self, Is, Nut, lcut_off = -40, rcut_off=40):

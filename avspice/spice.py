@@ -127,6 +127,23 @@ class SawVoltage(Voltage):
         voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
         return (init, voltage)
 
+class PieceWiseLinearVoltage(Voltage):
+    
+    def __init__(self, name:str, pairs):
+        super().__init__(name,0)
+        a =  list(pairs)
+        a.sort(key=lambda x: x[0])
+        self.vx  = list([x for (x,y) in a])
+        self.vy  = list([y for (x,y) in a])
+
+    def voltage(self, time, variables):
+        return linear_interpolate(self.vx, self.vy, time)
+
+    def code(self, name, variables):
+        init = [f"self.{name} = NPieceWiseLinearVoltage({self.vx},  {self.vy})"]
+        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+        return (init, voltage)
+
 
 class Diode(Node2):
     """solid state diode"""
@@ -475,7 +492,7 @@ class CodeGenerator:
             "class Computer:",
             "    def __init__(self):",
             "        from avspice.ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
-                    + "NVoltage, NSineVoltage, NSawVoltage"]
+                    + "NVoltage, NSineVoltage, NSawVoltage, NPieceWiseLinearVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",
                        f"        res = np.zeros({self.n})"]
