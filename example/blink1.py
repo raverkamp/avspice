@@ -45,7 +45,7 @@ def try_random_start(args):
 
 
 def blinker3(args):
-    net = create_blinker(transistor_gain=args.gain, cutoff=args.cutoff)
+    net = create_blinker(transistor_gain=args.gain, cutoff=args.cutoff, rampup=args.rampup)
     ana = Analysis(net)
 
     base_vca = args.vca
@@ -55,7 +55,7 @@ def blinker3(args):
     l=[]
     for (k,v) in sorted(variables.items(), key=lambda kv: kv[1]):
         l.append(f"{k}={v}")
-    l.append(f"gain={args.gain}")
+    l.append(f"gain={args.gain},rampup={args.rampup}")
     fig_title = ", ".join(l)
 
 
@@ -122,6 +122,7 @@ def main():
     parser_b3.add_argument('-gain', type=float, default=100)
     parser_b3.add_argument('-end', type=float, default=3.6)
     parser_b3.add_argument('-cutoff', type=float, default=40)
+    parser_b3.add_argument('-rampup', type=float, default=0)
 
     args = parser.parse_args()
     args.func(args)

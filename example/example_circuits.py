@@ -2,7 +2,7 @@ from avspice import *
 
 # transistor_gain is the gain of the tarnssistor
 # r_ca is resitor value in front of capacitor
-def create_blinker(transistor_gain=None, cutoff=40):
+def create_blinker(transistor_gain=None, cutoff=40,rampup=None):
     # https://www.elektronik-labor.de/Lernpakete/Blinker.html
     # weiter unten
     # oder hier: https://www.elektronik-labor.de/Lernpakete/Kalender08/Kalender08.htm#_Toc197001462
@@ -10,7 +10,11 @@ def create_blinker(transistor_gain=None, cutoff=40):
     tt = NPNTransistor("", 1e-12, 25e-3, transistor_gain, 10, cutoff=cutoff) 
     net = Circuit()
     d =Diode("D", 1e-8, 25e-3, lcut_off=-cutoff, rcut_off=cutoff)
-    net.addV("vc",  Variable("vc"), "v", "0")
+    if rampup is None or rampup<=0:
+        net.addV("vc",  Variable("vc"), "v", "0")
+    else:
+        v = PieceWiseLinearVoltage("x", [(0,0), (rampup,Variable("vc"))])
+        net.add_component("vc",v, ("v", "0"))
     net.add_component("d1", d, ("v", "da"))
     net.addR("r1", 27e3, "t1c", "t1b")
     net.addR("r2", 27e3,"v", "t1c")

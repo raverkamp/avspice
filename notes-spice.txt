@@ -227,3 +227,11 @@ PYTHONPATH=. python example/blink1.py sol 0 -t1b 0.1
 und
 PYTHONPATH=. python example/blink1.py sol 0 -t1b 0.6
 liefern zwei verschiedee Lösungen.
+
+
+2022-05-26_13:29
+Ich habe eine stueckweise lineare Voltage Source implementiert und
+mache damit ein Rampup der Versorgungsspannung fuer das
+Blinklicht.
+Die Simulation bricht schneller ab als ohne Rampup.
+
