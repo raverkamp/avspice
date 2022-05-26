@@ -56,3 +56,30 @@ def is_str_seq(l):
         if not isinstance(x, str):
             return False
     return True
+
+
+def find_pos(v, x):
+    """v is sorted double vector, x is double
+       return largest i such that  x >= v[i], -1 if x< v[0]"""
+    if x < v[0]:
+        return -1
+    i = len(v) -1
+    while True:
+        if i == -1:
+            return -1
+        if x >= v[i]:
+            return i 
+        i-=1
+        
+def linear_interpolate(x, y, t):
+    i = find_pos(x,t)
+    if i == -1:
+        return y[0]
+    if i == len(x) -1:
+        return y[i]
+    ax = x[i]
+    bx = x[i+1]
+    ay = y[i]
+    by = y[i+1]
+    return ay + (t-ax)/ (bx-ax) * (by-ay)
+

@@ -7,7 +7,7 @@ import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
     Variable, PNPTransistor, SubCircuit
-from avspice.util import  explin, dexplin
+from avspice.util import  explin, dexplin, linear_interpolate
 
 from avspice import ncomponents
 
@@ -60,6 +60,24 @@ class TestMath(unittest.TestCase):
         x = dexplin(-1.5,-2,3)
         self.assertAlmostEqual(x, exp(-1.5))
 
+    def test_interpolate(self):
+        x = [1, 4, 5, 10]
+        y = [7, 8, 20, 1]
+
+        for (vx, vy) in zip(x,y):
+            a = linear_interpolate(x, y, vx)
+            self.assertAlmostEqual(a, vy)
+        self.assertEqual(linear_interpolate(x, y, 0), 7)
+        self.assertEqual(linear_interpolate(x, y, 11), 1)
+
+        self.assertAlmostEqual(linear_interpolate(x, y, 2), 7 + 1/3)
+        self.assertAlmostEqual(linear_interpolate(x, y, 9), 1 + 19/5)
+
+        self.assertEqual(linear_interpolate([1],[5],0),5)
+        self.assertEqual(linear_interpolate([1],[5],1),5)
+        self.assertEqual(linear_interpolate([1],[5],2),5)
+
+        
 
 class TestSolve(unittest.TestCase):
 
