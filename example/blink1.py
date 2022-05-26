@@ -32,6 +32,7 @@ def try_random_start(args):
     base_vca = args.vca
     res = ana.analyze(maxit=50, start_solution_vec=None, capa_voltages={"ca": base_vca},
                       variables={"vc": 9},
+                      transient=True,
                       start_voltages= {
                           "t1.C": args.t1c,
                           "t1.B": args.t1b
@@ -39,7 +40,7 @@ def try_random_start(args):
     if isinstance(res, str):
         print("fail")
     else:
-        for s in ["t1.C", "t1.B", "t2.C", "t2.B"]:
+        for s in ["t1.C", "t1.B", "t2.C", "t2.B", "ca.p", "ca.n"]:
             print("{0} V = {1}   I={2}".format(s, res.get_voltage(s), res.get_current(s)))
 
 
