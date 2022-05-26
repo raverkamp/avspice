@@ -131,15 +131,17 @@ class PieceWiseLinearVoltage(Voltage):
     
     def __init__(self, name:str, pairs):
         super().__init__(name,0)
-        a =  list(pairs)
-        a.sort(key=lambda x: x[0])
-        self.vx  = list([x for (x,y) in a])
-        self.vy  = list([y for (x,y) in a])
+        self.pairs = list(pairs)
 
     def voltage(self, time, variables):
         return linear_interpolate(self.vx, self.vy, time)
 
     def code(self, name, variables):
+        a = list(self.pairs)
+        a.sort(key=lambda x: x[0])
+        self.vx  = list([x for (x,y) in a])
+        self.vy  = list([self.get_val(y, variables) for (x,y) in a])
+        
         init = [f"self.{name} = NPieceWiseLinearVoltage({self.vx},  {self.vy})"]
         voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
         return (init, voltage)
