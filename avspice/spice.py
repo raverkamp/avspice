@@ -1058,7 +1058,8 @@ class Analysis:
             if isinstance(res, str):
                 timestep = timestep / 2
                 if timestep < min_timestep:
-                    raise Exception(f"fail at time {time}: {res}, stepisze={timestep}")
+                    print(f"fail at time {time}: {res}, stepisze={timestep}")
+                    return solutions
                 print("dec step", time, timestep)
                 continue
             a = timestep * 1.05
