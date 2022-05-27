@@ -235,3 +235,8 @@ mache damit ein Rampup der Versorgungsspannung fuer das
 Blinklicht.
 Die Simulation bricht schneller ab als ohne Rampup.
 
+
+2022-05-27_15:06
+Die Blinker Simulation funktioniert.
+Wenn keine Lösung ausgehedn von der alten gefunden wird, startet die Lösungssuche
+mit einem zufälligen Vector neu.

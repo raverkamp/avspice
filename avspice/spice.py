@@ -1076,6 +1076,11 @@ class Analysis:
                     timestep)
             if isinstance(res, str):
                 timestep = timestep / 2
+                if timestep < min_timestep * 2:
+                    n = self._equation_size(True)
+                    #                    sol = np.zeros(n) + np.random.rand(n)
+                    sol = (np.random.rand(n)*10)
+                    timestep  = timestep *4
                 if timestep < min_timestep:
                     print(f"fail at time {time}: {res}, stepisze={timestep}")
                     return solutions
