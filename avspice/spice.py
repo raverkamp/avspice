@@ -128,7 +128,7 @@ class SawVoltage(Voltage):
         return (init, voltage)
 
 class PieceWiseLinearVoltage(Voltage):
-    
+
     def __init__(self, name:str, pairs):
         super().__init__(name,0)
         self.pairs = list(pairs)
@@ -139,10 +139,10 @@ class PieceWiseLinearVoltage(Voltage):
     def code(self, name, variables):
         a = list(self.pairs)
         a.sort(key=lambda x: x[0])
-        self.vx  = list([x for (x,y) in a])
-        self.vy  = list([self.get_val(y, variables) for (x,y) in a])
-        
-        init = [f"self.{name} = NPieceWiseLinearVoltage({self.vx},  {self.vy})"]
+        vx  = list([x for (x,y) in a])
+        vy  = list([self.get_val(y, variables) for (x,y) in a])
+
+        init = [f"self.{name} = NPieceWiseLinearVoltage({vx},  {vy})"]
         voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
         return (init, voltage)
 
@@ -929,7 +929,7 @@ class Analysis:
         def Df(x):
             return computer.dy(time, x, state_vec, 0)
 
-        res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit)
+        res = solving.solve_alfa(solution_vec, f, Df, abstol, reltol, maxit)
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             if compute_cond:
@@ -946,48 +946,8 @@ class Analysis:
                           norm_y,
                           cond,
                           currents)
-
-        alfa = 0.5
-
-        for i in range(20):
-            print(("energy factor ",i))
-            alfa = (alfa + 1) / 2
-            res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit,
-                                x0=solution_vec0, alfa=alfa)
-            if not isinstance(res, str):
-                solution_vec = res[0]
-                break
-        if isinstance(res,str):
-            print("failed getting initial solution")
-            return res
-        print(f"got initial solution, alfa={alfa}")
-
-        while True:
-            alfa = max(alfa / 1.1, 0)
-            res = solving.solve(solution_vec, f, Df, abstol, reltol, maxit,
-                                x0=solution_vec0, alfa=alfa)
-            if isinstance(res, str):
-                print(f"alfa={alfa}")
-                return res
-            if alfa <=0:
-                break
-            solution_vec = res[0]
-
-        (sol, y, dfx, iterations, norm_y) = res
-        norm_y = np.linalg.norm(y)
-        if compute_cond:
-            cond =  np.linalg.cond(dfx,'fro')
         else:
-            cond=None
-        currents = self._compute_currents(computer, time, sol, state_vec)
-        return Result(self.parts,
-                      self,
-                      iterations,
-                      sol,
-                      y,
-                      norm_y,
-                      cond,
-                      currents)
+            return res
 
 
     def solve_internal(self,
@@ -1075,12 +1035,13 @@ class Analysis:
                     compute_cond,
                     timestep)
             if isinstance(res, str):
+                print("res: " + res)
                 timestep = timestep / 2
                 if timestep < min_timestep * 2:
                     n = self._equation_size(True)
                     #                    sol = np.zeros(n) + np.random.rand(n)
                     sol = (np.random.rand(n)*10)
-                    timestep  = timestep *4
+                    timestep  = timestep * 4
                 if timestep < min_timestep:
                     print(f"fail at time {time}: {res}, stepisze={timestep}")
                     return solutions
