@@ -120,9 +120,9 @@ def main():
     parser_b3.add_argument('-vca', type=float, default=0)
     parser_b3.add_argument('-capa', type=float, default=10e-6)
     parser_b3.add_argument('-gain', type=float, default=100)
-    parser_b3.add_argument('-end', type=float, default=3.6)
+    parser_b3.add_argument('-end', type=float, default=6)
     parser_b3.add_argument('-cutoff', type=float, default=40)
-    parser_b3.add_argument('-rampup', type=float, default=0)
+    parser_b3.add_argument('-rampup', type=float, default=0.1)
 
     args = parser.parse_args()
     args.func(args)
