@@ -4,7 +4,7 @@ import unittest
 import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
-    Variable, PNPTransistor, SubCircuit
+    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage
 from avspice.util import  explin, dexplin, linear_interpolate
 
 from avspice import ncomponents
@@ -632,6 +632,36 @@ class TestSubCircuit(unittest.TestCase):
         ana = Analysis(c)
         res = ana.analyze()
         self.assertTrue(abs(res.get_current("dar/t2.E")/(-8.8) -1) < 0.001)
+
+class TestVoltageTransient(unittest.TestCase):
+
+    def test_stepwise(self):
+        """test for PieceWiseLinearVoltage"""
+        net = Circuit()
+        v = PieceWiseLinearVoltage("name", [(0.5,0), (1,1), (4,0)])
+        net.add_component("V", v, ("VCC", "0"))
+        net.addR("R1",90,"VCC", "1")
+        net.addR("R2",10,"1", "0")
+        ana = Analysis(net)
+        res = ana.transient(5,0.01)
+        time = res.get_time()
+
+        def vat(t):
+            return res.get_voltage_at(t, "R1.n")
+        def cat(t):
+            return res.get_current_at(t, "R1.p")
+
+        self.assertAlmostEqual(vat(0.1), 0)
+        self.assertAlmostEqual(cat(0.1),0)
+
+
+        self.assertAlmostEqual(vat(0.75), 1/2/10)
+        self.assertAlmostEqual(cat(0.75),0.5/100)
+
+        self.assertAlmostEqual(vat(3), 0.1*(1/3 *1 + 2/3*0))
+        self.assertAlmostEqual(cat(3), 1/300)
+
+
 
 if __name__ == '__main__':
     unittest.main()

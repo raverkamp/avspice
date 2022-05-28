@@ -466,6 +466,13 @@ class TransientResult:
     def get_time(self):
         return self.time
 
+    def get_voltage_at(self, t, k):
+        return util.linear_interpolate(self.time, self.get_voltage(k), t)
+
+    def get_current_at(self, t, k):
+        return util.linear_interpolate(self.time, self.get_current(k), t)
+    
+
 
 class Result:
     """result of an analysis run"""

@@ -73,7 +73,7 @@ def plot3(args):
 
 
 def plot4(args):
-   
+
     sol = None
 
     tt = NPNTransistor("",1e-12, 25e-3, 100, 10)
@@ -93,7 +93,7 @@ def plot4(args):
         else:
             net.addR("re", 100, "v", "C")
             net.add_component("T1", tt, ("B", "C", "0"))
-            
+
         ana = Analysis(net)
         sol = None
         for v in x:
@@ -109,7 +109,7 @@ def plot4(args):
                 sol = res.solution_vec
         return (x,y,z)
 
-    
+
     fig, (ax, bx) = plt.subplots(2)
     (x,y,z) = generate(True )
     ax.set_title("Emitter resistor")
@@ -353,11 +353,11 @@ def tricky(args):
     net.addR("r1", 100, "v", "C")
     net.addR("r2", 50e3, "C", "B")
     net.addCapa("ca", capa, "B", "0")
-        
+
     ana = Analysis(net)
     res = ana.transient(0.6,0.0001, capa_voltages={"ca":0.0} )
     time = res.get_time()
-    
+
     (fig, (a1, a2, a3)) = plt.subplots(3)
     a1.set_title("curr(t.E)")
     a1.plot(time, res.get_current("t.E"))
@@ -368,21 +368,6 @@ def tricky(args):
     fig.legend()
     plt.show()
 
-def step(args):
-    net = Circuit()
-    v = PieceWiseLinearVoltage("name", [(0.5,0), (1,1), (4,0)])
-    net.add_component("V", v, ("VCC", "0"))
-    net.addR("R",10,"VCC", "0")
-    ana = Analysis(net)
-    res = ana.transient(5,0.01)
-    time = res.get_time()
-    (fig, (a1, a2)) = plt.subplots(2)
-    a1.set_title("Voltage VCC")
-    a1.plot(time, res.get_voltage("V.p"))
-    a2.set_title("Current VCC")
-    a2.plot(time, res.get_current("V.p"))
-    fig.legend()
-    plt.show()
 
 
 def main():
@@ -407,9 +392,6 @@ def main():
         rlc(args)
     elif cmd == "tricky":
         tricky(args)
-    elif cmd == "step":
-        step(args)
-    
     else:
         raise Exception("unknown commnd: {0}".format(cmd))
 
