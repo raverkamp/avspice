@@ -136,75 +136,55 @@ def plot4(args):
     #input()
 
 def plot5(args):
-    x = list(drange(-2, 10, 0.01))
-    y = []
-    z = []
-    sol = None
-    iy = []
 
-    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    tt = NPNTransistor("X", 1e-12, 25e-3, 100, 10)
+
     net = Circuit()
-    vc = net.addV("vc", 5)
-    rc = net.addR("rc", 1e2)
-    rb = net.addR("rb", Variable("rb"))
-    t1 = net.addComp("T1", tt)
-    connect(vc.p, rc.p)
-    connect(rc.n, t1.C)
-    connect(vc.p, rb.p)
-    connect(rb.n, t1.B)
-    connect(vc.n, net.ground)
-    connect(t1.E, net.ground)
+    net.addV("vc", 5, "vcc", "0")
+    net.addR("rc", 1e2, "vcc", "t1c")
+    net.addR("rb", Variable("rb"), "vcc", "rbn")
+#    net.addR("rb", 1e4, "vcc", "rbp")
+    net.add_component("T1", tt,("rbn","t1c","e"))
+    net.addR("re",1,  "e", "0")
 
     ana = Analysis(net)
     sol = None
     lrb = []
     lvb = []
+    lcb = []
     for vrb in drange(1e3,1e6,1000):
-        res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"rb": vrb})
+        res = ana.analyze(maxit=30, variables={"rb": vrb})
         if isinstance(res, str):
             print("no covergence at: {0}".format(vrb))
-            y.append(None)
-            z.append(None)
-            iy.append(None)
-            sol = None
+            lrb.append(None)
+            lvb.append(None)
+            lcb.append(None)
         else:
             lrb.append(vrb)
-            lvb.append(res.get_voltage (t1.B))
-            sol = res.solution_vec
+            lvb.append(res.get_voltage ("T1.B"))
+            lcb.append(res.get_current("T1.B"))
     fig, (ax1,ax2) = plt.subplots(2)
     ax1.plot(lrb,lvb,color="black")
+    ax2.plot(lrb,lcb,color="black")
     fig.tight_layout()
     plt.show()
     #input()
 
 
 def emitter(args):
-    tt = NPNTransistor(None, "", 1e-12, 25e-3, 100, 10)
+    tt = NPNTransistor("X", 1e-12, 25e-3, 100, 10)
     nw = Network()
     net = Circuit()
-    vc = net.addV("vc", 5)
-    r1 = net.addR("r1", 2000)
-    r2 = net.addR("r2", 2000)
+    net.addV("vc", 5, "vc", "0")
+    net.addR("r1", 2000, "vc", "t1b")
+    net.addR("r2", 2000, "t1b",  "0")
 
 
-    vb = net.addV("vb", Variable("vb"))
-    rc = net.addR("rc", 1e3)
-    rb = net.addR("rb", 1e5)
+    net.addV("vb", Variable("vb"), "vb", "0")
+    net.addR("rc", 1e3, "vc", "t1c")
+    net.addR("rb", 1e5,  "vb" , "t1b")
 
-    t1 = net.addComp("T1", tt)
-
-    connect(vc.p, rc.p)
-    connect(vc.n, net.ground)
-    connect(rc.n, t1.C)
-    connect(t1.E, net.ground)
-    connect(r1.p, vc.p)
-    connect(r1.n, r2.p)
-    connect(r2.n, net.ground)
-    connect(r1.n, t1.B)
-
-    connect(vb.p, rb.p)
-    connect(vb.n, net.ground)
-    connect(rb.n, t1.B)
+    net.add_component("t1", tt, ("t1b", "t1c", "0"))
 
 
     y = []
@@ -219,13 +199,12 @@ def emitter(args):
             y.append(None)
             sol = None
         else:
-            y.append(res.get_voltage(t1.C))
-            z.append(res.get_voltage(t1.B))
+            y.append(res.get_voltage("t1.C"))
+            z.append(res.get_voltage("t1.B"))
             sol = res.solution_vec
     fig, (a1,a2) = plt.subplots(2)
     a1.plot(x,y, color="blue")
     a2.plot(x,z, color="blue")
-    print(z)
     plt.show()
 
 
@@ -240,15 +219,9 @@ def saw1(args):
     ana = Analysis(net)
     res = ana.transient(9,0.0001, capa_voltages={"ca":0})
 
-    time = []
-    ca_p = []
-    for (t,v,c) in res:
-        time.append(t)
-        ca_p.append(v["ca.p"])
-
     (f, p1) = plt.subplots(1)
     p1.set_title("Voltage at capacitor, R={0}, CAPA={1}".format(r,capa))
-    p1.plot(time, ca_p)
+    p1.plot(res.get_time(), res.get_voltage("ca.p"))
     plt.show()
 
 
@@ -274,26 +247,16 @@ def emitterschaltung(args):
 
     ana = Analysis(net)
     res = ana.transient(0.4,0.0001, capa_voltages={"ca":0, "ce":0})
-    time = []
-    va = []
-    ca = []
-    ctb = []
-    vtb = []
-    for (t,v,c) in res:
-        time.append(t)
-        va.append(v["rl.p"])
-        ca.append(c["rl.p"])
-        ctb.append(c["tr.B"])
-        vtb.append(v["tr.B"])
+
     (fig, (p1, p2, p3, p4)) = plt.subplots(4)
-    p1.plot(time, ctb)
+    p1.plot(res.get_time(), res.get_current("tr.B"))
     p1.set_title("current base")
-    p2.plot(time, vtb)
+    p2.plot(res.get_time(), res.get_voltage("tr.B"))
     p2.set_title("voltage base")
 
-    p3.plot(time, va)
+    p3.plot(res.get_time(), res.get_voltage("rl.p"))
     p3.set_title("voltage out")
-    p4.plot(time, ca)
+    p4.plot(res.get_time(), res.get_current("rl.p"))
     p4.set_title("current out")
     fig.tight_layout()
 
@@ -313,16 +276,8 @@ def rlc(args):
     ana = Analysis(net)
     res = ana.transient(0.1,0.0001, induc_currents={"ind": 1}, capa_voltages={"ca":0} )
 
-    ip = []
-    iv = []
-    time = []
-    for (t,v,c) in res:
-        time.append(t)
-        ip.append(c["r1.p"])
-        iv.append(v["ind.p"] - v["ind.n"])
-
     (fig, ax) = plt.subplots(1)
-    ax.plot(time,ip, label="current", color="blue")
+    ax.plot(res.get_time(), res.get_current("r1.p"), label="current", color="blue")
     f = 1/(math.sqrt(capa*indu) * 2 * math.pi)
     ax.set_title(f"RLC r={rv}, c={capa}, l={indu}, freq={f}")
     import  matplotlib.ticker
@@ -335,7 +290,7 @@ def rlc(args):
 
 
     ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
-    ax2.plot(time,iv,label="voltage across inductor", color="red")
+    ax2.plot(res.get_time(), res.get_voltage("ind.p") - res.get_voltage("ind.n"),label="voltage across inductor", color="red")
     formattery2 = matplotlib.ticker.EngFormatter("V")
     ax2.yaxis.set_major_formatter(formattery2)
     ax2.yaxis.set_minor_formatter(formattery2)
