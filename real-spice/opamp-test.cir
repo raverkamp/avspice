@@ -1,0 +1,29 @@
+OPAMP Test
+* file opamp-test.cir
+
+.include models.mod
+.include lm324.lib
+
+
+VCC vcc 0 5
+
+Rg  0 pin 10k
+Rv pin vcc 10k
+
+Ro out 0 100
+
+Rkl out pin 10k
+
+Rnin 0 nin 100k
+
+
+X1  pin nin vcc 0 out LM324
+
+.op
+
+.dc vcc
+
+
+
+.end
+

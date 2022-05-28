@@ -1,1 +1,5 @@
 *.pyc
+real-spice/*.txt
+/real-spice/*.data
+/real-spice/*.plt
+/real-spice/*.raw

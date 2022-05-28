@@ -1,7 +1,7 @@
 blinker.cir
 .include models.mod
 
-VCC vcc 0 9
+VCC vcc 0 10
 R1 vcc t1c 27k
 *R2 t1c t1b 27k
 R2 t1c t1b 27k
