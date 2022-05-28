@@ -117,10 +117,6 @@ class SawVoltage(Voltage):
         super().__init__(name, volts)
         self._frequency = frequency
 
-    def voltage(self, time, variables):
-        v = self.get_val(self._volts, variables)
-        return v * util.saw_tooth(1,time)
-
     def code(self, name, variables):
         v = self.get_val(self._volts, variables)
         init = [f"self.{name} = NSawVoltage({v}, {self._frequency})"]
@@ -132,9 +128,6 @@ class PieceWiseLinearVoltage(Voltage):
     def __init__(self, name:str, pairs):
         super().__init__(name,0)
         self.pairs = list(pairs)
-
-    def voltage(self, time, variables):
-        return linear_interpolate(self.vx, self.vy, time)
 
     def code(self, name, variables):
         a = list(self.pairs)
@@ -431,8 +424,6 @@ class Result:
     """result of an analysis run"""
     def __init__(self, parts, analysis, iterations, solution_vec, y, y_norm, mat_cond, currents):
         assert isinstance(parts, list)
-        self.analysis = analysis
-        self.parts = parts
         self.solution_vec = solution_vec
         self.voltages = {}
         self.iterations = iterations
@@ -441,14 +432,13 @@ class Result:
         self.y_norm = y_norm
         self.currents = currents
 
-        for part in self.parts:
+        for part in parts:
             ports = part.component.get_ports()
             nodes =  part.connections
             assert len(ports) == len(nodes)
-            for i in range(len(ports)):
-                port = ports[i]
-                node = nodes[i]
-                k = self.analysis.node_index(node)
+
+            for (port,node) in zip(ports, nodes):
+                k = analysis.node_index(node)
                 port_name = part.name +"."  + port
                 self.voltages[port_name] = solution_vec[k]
 
@@ -887,6 +877,17 @@ class Analysis:
             res[name + "." +port] = cv[self.curr_index(name, port)]
         return res
 
+    def _compute_voltages(self, parts, solution_vec):
+        voltages = {}
+        for part in parts:
+            ports = part.component.get_ports()
+            nodes = part.connections
+            assert len(ports) == len(nodes)
+            for (port, node) in zip(ports, nodes):
+                k = self.node_index(node)
+                port_name = part.name +"."  + port
+                voltages[port_name] = solution_vec[k]
+        return voltages
 
     def analyze(self,
                 maxit=20,
@@ -968,22 +969,16 @@ class Analysis:
             return c.dy(time, x, state_vec, h)
 
         res = solving.solve(start_sol, f, Df, abstol, reltol, maxit)
-        if not isinstance(res, str):
-            (sol, y, dfx, iterations, norm_y) = res
-            if compute_cond:
-                cond =  np.linalg.cond(dfx,'fro')
-            else:
-                cond=None
-            currents = self._compute_currents(c, time, sol, state_vec)
-            return Result(self.parts,
-                          self,
-                          iterations,
-                          sol,
-                          y,
-                          norm_y,
-                          cond,
-                          currents)
-        return res
+        if isinstance(res, str):
+            return res
+        if compute_cond:
+            cond =  np.linalg.cond(res.dfx,'fro')
+        else:
+            cond=None
+        currents = self._compute_currents(c, time, res.x, state_vec)
+        voltages = self._compute_voltages(self.parts, res.x)
+        return ((res.x, res.y, res.norm_y, cond, res.iterations), voltages, currents)
+
 
     def transient(self,
                   maxtime,
@@ -1051,8 +1046,9 @@ class Analysis:
             if a < max_timestep:
                 timestep = a
                 print("inc step", time, timestep)
-            solutions.append((time, res.get_voltages(), res.get_currents()))
-            sol = res.solution_vec
+            ((sol_x, sol_y, sol_ny, sol_cond, sol_iterations), voltages, currents) = res
+            solutions.append((time, voltages, currents))
+            sol = sol_x
 
             for part in self.parts:
                 comp =  part.component

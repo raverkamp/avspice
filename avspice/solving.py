@@ -1,7 +1,6 @@
-import math
-import pprint as pp
+import collections
 import numpy as np
-#import scipy.optimize
+
 
 def reldiff(x,y):
     return abs(x-y) /  max(abs(x), abs(y))
@@ -14,6 +13,7 @@ def close_enough(v1,v2, abstol, reltol):
             return False
     return True
 
+BasicSolution = collections.namedtuple('Solution', ['x', 'y', 'dfx', 'iterations', 'norm_y'])
 
 def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
     iterations = 0
@@ -60,7 +60,7 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
         #if iterations > 100:
         #    print("iteration", norm_y, x-xn)
         if close_enough(x, xn, abstol, reltol):
-            return (xn, yn, dfx, iterations, norm_y_n)
+            return BasicSolution(x=xn, y=yn, dfx=dfx, iterations=iterations, norm_y=norm_y_n)
         a = 1
         k = 0
 
@@ -81,6 +81,8 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
         y = yn
         norm_y = norm_y_n
 
+Solution = collections.namedtuple('Solution', ['solution', 'y', 'dfx', 'iterations', 'norm_y'])
+
 def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
     solution_vec = xstart
     res = solve(solution_vec, f, df, abstol, reltol, maxiter)
@@ -88,10 +90,11 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
         return res
     alfa = 0.5
 
-    for i in range(20):
+    for _ in range(20):
         res = solve(solution_vec, f, df, abstol, reltol, maxiter, alfa=alfa)
         if not isinstance(res, str):
-            solution_vec = res[0]
+            print(res)
+            solution_vec = res.x
             break
         alfa = (alfa + 1) / 2
     if isinstance(res,str):
