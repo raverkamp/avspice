@@ -2,7 +2,7 @@
 import argparse
 import sys
 import matplotlib.pyplot as plt
-from avspice import Circuit, NPNTransistor, Analysis, pivot
+from avspice import Circuit, NPNTransistor, Analysis
 
 # my transistor model
 tr_rav = NPNTransistor("", 1e-12, 25e-3, 100, 10)
@@ -31,15 +31,15 @@ def osci(transistor=None,capa=None, ind=None):
 
     ana = Analysis(net)
     res = ana.transient(80e-6,1e-8, capa_voltages={"capa":-0.5}, induc_currents={"ind":-1.8e-4})
-    (time,volts,currs) = pivot(res)
+    time = res.get_time()
     (fig, (p1, p2, p3, p4)) = plt.subplots(4)
-    p1.plot(time, currs["t2.E"], label="curr(t2.E)")
+    p1.plot(time, res.get_current("t2.E"), label="curr(t2.E)")
     p1.legend()
-    p2.plot(time, currs["t1.E"], label="curr(t1.E)")
+    p2.plot(time, res.get_current("t1.E"), label="curr(t1.E)")
     p2.legend()
-    p3.plot(time, currs["capa.p"], label="curr(capa.p)")
+    p3.plot(time, res.get_current("capa.p"), label="curr(capa.p)")
     p3.legend()
-    p4.plot(time, volts["capa.p"]-volts["capa.n"], label="volts(capa)")
+    p4.plot(time, res.get_voltage("capa.p") - res.get_voltage("capa.n"), label="volts(capa)")
     p4.legend()
     fig.tight_layout()
 
@@ -53,7 +53,7 @@ def osci_op(transistor=None,capa=None, ind=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
     parser_t = subparsers.add_parser('t')
     def transient(args):
         osci(tr_rav, capa= 10e-9, ind=1e-3)
@@ -64,8 +64,8 @@ def main():
         osci_op(tr_rav, capa= 10e-9, ind=1e-3)
 
     parser_o.set_defaults(func=op)
-        
-        
+
+
 
     args = parser.parse_args()
     args.func(args)

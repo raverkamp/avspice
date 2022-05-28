@@ -67,30 +67,34 @@ def blinker3(args):
                             "t1.B": args.t1b,
                             "t2.C": args.t2c
                         })
-
-    (time,volts,currs) = pivot(res)
+    def currs(x):
+        return res.get_current(x)
+    def volts(x):
+        return res.get_voltage(x)
+    time = res.get_time()
+    
     fig, ((a1,a2, a3), (a4, a5, a6), (a7,a8,a9)) = plt.subplots(3,3)
-    a1.plot(time,currs["t1.C"],label="C(t1.C)")
+    a1.plot(time,currs("t1.C"),label="C(t1.C)")
     a1.legend()
-    a2.plot(time,currs["t2.C"], label="C(t2.C)")
+    a2.plot(time,currs("t2.C"), label="C(t2.C)")
     a2.legend()
-    a3.plot(time,currs["ca.p"], label="C(ca.p)")
+    a3.plot(time,currs("ca.p"), label="C(ca.p)")
     a3.legend()
 
-    a4.plot(time,volts["t1.C"],label="V(t1.C)")
-    a4.plot(time,volts["t2.C"],label="V(t2.C")
-    a4.plot(time,volts["t1.B"],label="V(t1.B)")
+    a4.plot(time,volts("t1.C"),label="V(t1.C)")
+    a4.plot(time,volts("t2.C"),label="V(t2.C")
+    a4.plot(time,volts("t1.B"),label="V(t1.B)")
     a4.legend()
-    a5.plot(time,currs["t1.B"],label="C(t1.B)")
+    a5.plot(time,currs("t1.B"),label="C(t1.B)")
     a5.legend()
-    a6.plot(time,currs["t1.E"],label="C(t1.E")
+    a6.plot(time,currs("t1.E"),label="C(t1.E")
     a6.legend()
-    a7.plot(time, volts["ca.p"] - volts["ca.n"], label="V(ca)")
+    a7.plot(time, volts("ca.p") - volts("ca.n"), label="V(ca)")
     a7.legend()
-    a8.plot(time,currs["t2.B"],label="C(t2.B)")
+    a8.plot(time,currs("t2.B"),label="C(t2.B)")
     a8.legend()
 
-    a9.plot(time,currs["d1.p"],label="C(d1.p)")
+    a9.plot(time,currs("d1.p"),label="C(d1.p)")
     a9.legend()
 
     fig.suptitle(fig_title)

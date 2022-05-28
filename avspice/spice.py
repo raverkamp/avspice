@@ -2,7 +2,6 @@
 
 import collections
 import math
-import pprint as pp
 import numbers
 import numpy as np
 from . import solving
@@ -42,7 +41,7 @@ class Component:
 class Node2(Component):
     """a component with just two ports"""
 
-    def __init__(self, name:str):
+    def __init__(self, name: str):
         super().__init__(name)
 
     def get_ports(self):
@@ -419,6 +418,54 @@ class SubCircuitComponent(Component):
 
     def get_ports(self):
         return self.subcircuit.export_nodes
+
+class TransientResult:
+    """result of a transient simulation"""
+
+    def __init__(self, time_points, voltages, currents):
+        if len(time_points) == 0:
+            raise Exception("init has length 0")
+        volts = {}
+        currs = {}
+        self.start_time = time_points[0]
+        self.end_time = time_points[len(time_points)-1]
+        if len(time_points) != len(voltages) or len(time_points) != len(currents):
+            raise Exception("length of lists do not match")
+        for k in voltages[0]:
+            volts[k] = []
+        for k in currents[0]:
+            currs[k] = []
+        for i in range(len(time_points)):
+            v = voltages[i]
+            c = currents[i]
+            if len(v)  != len(volts):
+                raise Exception("length for volts does not match")
+            if len(c)  != len(currs):
+                raise Exception("length for currents does not match")
+            for k in volts:
+                volts[k].append(v[k])
+            for k in c:
+                currs[k].append(c[k])
+
+        self.voltages = {}
+        self.currents = {}
+        self.time = np.array(time_points)
+
+        for k in volts:
+            self.voltages[k] = np.array(volts[k])
+
+        for k in currs:
+            self.currents[k] = np.array(currs[k])
+
+    def get_voltage(self, k):
+        return self.voltages[k]
+
+    def get_current(self, k):
+        return self.currents[k]
+
+    def get_time(self):
+        return self.time
+
 
 class Result:
     """result of an analysis run"""
@@ -1016,7 +1063,10 @@ class Analysis:
 
         state_vec = self._compute_state_vec(capa_voltages, induc_currents)
 
-        solutions= []
+        voltage_list = []
+        current_list = []
+        time_list = []
+
         sol = res.solution_vec
         computer = self.generate_code(variables,True)
         while time < maxtime:
@@ -1039,7 +1089,7 @@ class Analysis:
                     timestep  = timestep * 4
                 if timestep < min_timestep:
                     print(f"fail at time {time}: {res}, stepisze={timestep}")
-                    return solutions
+                    break
                 print("dec step", time, timestep)
                 continue
             a = timestep * 1.05
@@ -1047,7 +1097,10 @@ class Analysis:
                 timestep = a
                 print("inc step", time, timestep)
             ((sol_x, sol_y, sol_ny, sol_cond, sol_iterations), voltages, currents) = res
-            solutions.append((time, voltages, currents))
+            time_list.append(time)
+            voltage_list.append(voltages)
+            current_list.append(currents)
+
             sol = sol_x
 
             for part in self.parts:
@@ -1057,7 +1110,7 @@ class Analysis:
                     state_vec[k] = sol[self.state_index_y(part)]
 
             time += timestep
-        return solutions
+        return TransientResult(time_list,  voltage_list, current_list)
 
 
 def pivot(res):

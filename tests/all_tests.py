@@ -1,8 +1,6 @@
 """simple unit tests"""
 
 import unittest
-import pprint as pp
-from math import exp
 import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
@@ -20,45 +18,45 @@ class TestMath(unittest.TestCase):
 
     def test_explin(self):
         x = explin(2,-2,3)
-        self.assertAlmostEqual(x, exp(2))
+        self.assertAlmostEqual(x, math.exp(2))
 
         x = explin(3,-2,3)
-        self.assertAlmostEqual(x, exp(3))
+        self.assertAlmostEqual(x, math.exp(3))
         #
         x = explin(4,-2,3)
-        self.assertAlmostEqual(x, exp(3) + exp(3) * (4-3))
+        self.assertAlmostEqual(x, math.exp(3) + math.exp(3) * (4-3))
 
 
         x = explin(-4,-2,3)
-        self.assertAlmostEqual(x, exp(-2) + exp(-2) * (-4-(-2)))
+        self.assertAlmostEqual(x, math.exp(-2) + math.exp(-2) * (-4-(-2)))
 
 
         x = explin(4,-2,3)
         y = explin(23,-2,3)
-        self.assertAlmostEqual((y-x)/(23-4), exp(3.0))
+        self.assertAlmostEqual((y-x)/(23-4), math.exp(3.0))
 
 
     def test_dexplin(self):
         x = dexplin(2,-2,3)
-        self.assertAlmostEqual(x, exp(2))
+        self.assertAlmostEqual(x, math.exp(2))
 
         x = dexplin(3,-2,3)
-        self.assertAlmostEqual(x, exp(3))
+        self.assertAlmostEqual(x, math.exp(3))
 
         x = dexplin(4,-2,3)
-        self.assertAlmostEqual(x, exp(3))
+        self.assertAlmostEqual(x, math.exp(3))
 
         x = dexplin(6,-2,3)
-        self.assertAlmostEqual(x, exp(3))
+        self.assertAlmostEqual(x, math.exp(3))
 
         x = dexplin(-6,-2,3)
-        self.assertAlmostEqual(x, exp(-2))
+        self.assertAlmostEqual(x, math.exp(-2))
 
         x = dexplin(-2,-2,3)
-        self.assertAlmostEqual(x, exp(-2))
+        self.assertAlmostEqual(x, math.exp(-2))
 
         x = dexplin(-1.5,-2,3)
-        self.assertAlmostEqual(x, exp(-1.5))
+        self.assertAlmostEqual(x, math.exp(-1.5))
 
     def test_interpolate(self):
         x = [1, 4, 5, 10]
@@ -77,7 +75,7 @@ class TestMath(unittest.TestCase):
         self.assertEqual(linear_interpolate([1],[5],1),5)
         self.assertEqual(linear_interpolate([1],[5],2),5)
 
-        
+
 
 class TestSolve(unittest.TestCase):
 
@@ -88,6 +86,7 @@ class TestSolve(unittest.TestCase):
         def f(x):
             y = np.array([x[0], x[1]])
             return y
+
         def Df(x):
             df = np.zeros((2,2))
             df[0][0] = 1
@@ -521,7 +520,7 @@ class TransientTest(unittest.TestCase):
         # assumption capacitor is empty and will be loaded
         res = ana.transient(timespan,0.01, capa_voltages={"ca" : 0})
 
-        ve = res[-1][1]["ca.p"]
+        ve = res.get_voltage("ca.p")[-1]
         ve_expected = v0 *(1-math.exp(-timespan/(r*capa)))
         print(ve, ve_expected)
         self.assertTrue(0.98 < ve/ve_expected <1.02)
@@ -538,7 +537,7 @@ class TransientTest(unittest.TestCase):
         # assumption capacitor has voltage 1
         res = ana.transient(timespan,0.01, capa_voltages={"ca" : 1})
 
-        ve = res[-1][1]["ca.p"]
+        ve = res.get_voltage("ca.p")[-1]
         ve_expected =  math.exp(-timespan/(r*capa))
         print(ve, ve_expected)
         self.assertTrue(0.98 < ve/ve_expected <1.02)
@@ -551,8 +550,8 @@ class TransientTest(unittest.TestCase):
         ana = Analysis(net)
         res = ana.transient(1,0.005)
 
-        for (t, v, _) in res:
-            self.assertAlmostEqual(v["rc.p"], v0 * math.sin(2* math.pi * t))
+        for (t, v) in zip(res.get_time(), res.get_voltage("rc.p")):
+            self.assertAlmostEqual(v, v0 * math.sin(2* math.pi * t))
 
     def test3(self):
         net = Circuit()
@@ -564,8 +563,8 @@ class TransientTest(unittest.TestCase):
         ana = Analysis(net)
         res = ana.transient(1,0.01, induc_currents={"ind": curro})
 
-        for (t, _, c) in res:
-            curr = c["ind.p"]
+
+        for (t, curr) in zip(res.get_time(), res.get_current("ind.p")):
             curr_expected = math.exp(-t*ro/indo)*curro
             self.assertTrue(0.98 < curr/curr_expected <1.02)
 
@@ -629,7 +628,7 @@ class TestSubCircuit(unittest.TestCase):
 
 
         c.add_subcircuit("dar", sc, ("B", "vcc", "0"))
-        
+
         ana = Analysis(c)
         res = ana.analyze()
         self.assertTrue(abs(res.get_current("dar/t2.E")/(-8.8) -1) < 0.001)
