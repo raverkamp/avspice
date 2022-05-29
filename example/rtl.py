@@ -26,7 +26,19 @@ def create_nor2_gate(*, ri, rc):
     sc.add_component("T2", tnpn, ("b2","o","0"))
     return sc
 
-def not1(args):
+def create_or2_gate(*, ri, rc):
+    sc =  SubCircuit(("v", "0", "i1","i2", "o"))
+
+    nor2 = create_nor2_gate(ri=ri,rc=rc)
+    not1 = create_not_gate(ri=ri, rc=rc)
+
+    sc.add_subcircuit("nor", nor2, ("v","0","i1","i2", "o1"))
+    sc.add_subcircuit("not", not1, ("v","0","o1","o"))
+
+    return sc
+
+
+def cmd_not(args):
     net = Circuit()
     net.addV("V", 5, "vc","0")
 
@@ -50,7 +62,7 @@ def not1(args):
     res.display()
 
 
-def not_not(args):
+def cmd_not_not(args):
     net = Circuit()
 
     vi = Variable("vi")
@@ -77,7 +89,7 @@ def not_not(args):
     print(f"----   not2 vi={args.vi} -----")
     res.display()
 
-def nor2(args):
+def cmd_nor2(args):
     net = Circuit()
 
     vi1 = Variable("vi1")
@@ -105,6 +117,32 @@ def nor2(args):
     print(f"----   nor2 vi={args.vi1} {args.vi2} -----")
     res.display()
 
+def cmd_or2(args):
+    net = Circuit()
+
+    vi1 = Variable("vi1")
+    vi2 = Variable("vi2")
+
+    ri = 1e4
+    rc = 1e3
+    ro = ri/3
+
+    or2 = create_or2_gate(ri=ri, rc=rc)
+
+    net.addV("V", 5, "v","0")
+
+    net.addV("vi1", vi1, "i1", "0")
+    net.addV("vi2", vi2, "i2", "0")
+
+    net.add_subcircuit("or", or2, ("v","0","i1","i2", "o"))
+    net.addR("ro", ro, "o", "0")
+
+    ana = Analysis(net)
+
+    res= ana.analyze(variables={"vi1": args.vi1, "vi2": args.vi2})
+    print(f"----   nor2 vi={args.vi1} {args.vi2} -----")
+    res.display()
+
 
 
 def main():
@@ -112,17 +150,22 @@ def main():
     subparsers = parser.add_subparsers(required=True)
 
     p_not = subparsers.add_parser('not')
-    p_not.set_defaults(func=not1)
+    p_not.set_defaults(func=cmd_not)
     p_not.add_argument("vi", type=float)
 
     p_not_not = subparsers.add_parser('not_not')
-    p_not_not.set_defaults(func=not_not)
+    p_not_not.set_defaults(func=cmd_not_not)
     p_not_not.add_argument("vi", type=float)
 
     p_nor2 = subparsers.add_parser('nor2')
-    p_nor2.set_defaults(func=nor2)
+    p_nor2.set_defaults(func=cmd_nor2)
     p_nor2.add_argument("vi1", type=float)
     p_nor2.add_argument("vi2", type=float)
+
+    p_or2 = subparsers.add_parser('or2')
+    p_or2.set_defaults(func=cmd_or2)
+    p_or2.add_argument("vi1", type=float)
+    p_or2.add_argument("vi2", type=float)
 
 
     args = parser.parse_args()
