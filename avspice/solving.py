@@ -93,8 +93,8 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
     for _ in range(20):
         res = solve(solution_vec, f, df, abstol, reltol, maxiter, alfa=alfa)
         if not isinstance(res, str):
-            print(res)
             solution_vec = res.x
+            print(f"got start with alfa={alfa}")
             break
         alfa = (alfa + 1) / 2
     if isinstance(res,str):
@@ -106,7 +106,7 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
         res = solve(solution_vec, f, df, abstol, reltol, maxiter,
                             alfa=alfa)
         if isinstance(res, str):
-            print(f"alfa={alfa}")
+            print(f"fail at alfa={alfa}")
             return res
         if alfa <=0:
             break

@@ -240,3 +240,13 @@ Die Simulation bricht schneller ab als ohne Rampup.
 Die Blinker Simulation funktioniert.
 Wenn keine Lösung ausgehedn von der alten gefunden wird, startet die Lösungssuche
 mit einem zufälligen Vector neu.
+
+2022-05-29_08:44
+Jetzt  versuche ich es mit Resitor Transistor Logik.
+
+Ich habe aber Konvergenz Probleme bei zwei hinter einander geschalteten NOT Gattern.
+
+2022-05-29_13:26
+Problem mit  der Konvergent ist  gelöst:
+In der Code Generierung wurden für verschiedene Subcircuits die gleichen
+Variablen Namen benutzt.

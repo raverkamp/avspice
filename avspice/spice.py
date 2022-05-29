@@ -33,7 +33,7 @@ class Component:
             val = variables.get(var_or_num.name, None)
             if val is None:
                 if var_or_num.default is None:
-                    raise Exception(f"did not find value for var {var_or_num} in {self.name}")
+                    raise Exception(f"did not find value for variable '{var_or_num.name}' in '{self.name}'")
                 return var_or_num.default
             return val
         raise Exception("bug")
@@ -57,7 +57,7 @@ class Resistor(Node2):
         return self.get_val(self._ohm, variables)
 
     def __repr__(self):
-        return f"<Resistor {self.name}>"
+        return f"<Resistor {self._ohm}>"
 
 class Current(Node2):
     """current source"""
@@ -86,7 +86,7 @@ class Voltage(Node2):
         return v
 
     def __repr__(self):
-        return f"<Voltage {self.name}>"
+        return f"<Voltage {self._volts}>"
 
     def code(self, name, variables):
         v = self.get_val(self._volts, variables)
@@ -223,6 +223,9 @@ class NPNTransistor(Component):
 
         self.lcutoff = -cutoff
         self.rcutoff = cutoff
+
+    def __repr__(self):
+        return f"<Transistor {self.name}>"
 
     def get_ports(self):
         return ("B", "C", "E")
@@ -471,7 +474,7 @@ class TransientResult:
 
     def get_current_at(self, t, k):
         return util.linear_interpolate(self.time, self.get_current(k), t)
-    
+
 
 
 class Result:
@@ -647,6 +650,19 @@ class Analysis:
         for part in self.parts:
             for (port, node) in zip(part.component.get_ports(), part.connections):
                 self.port_node_indexes[f"{part.name}.{port}"] = self.node_index(node)
+        d={}
+        for n in self.node_list:
+            d[n] = 0
+        for p in parts:
+            for c in p.connections:
+                d[c] =d[c] +1
+        for (k,v) in d.items():
+            if v==0:
+                raise Exception(f"no part conencted to '{k}")
+            if v==1:
+                raise Exception(f"only one connection to '{k}")
+
+
 
     def node_index(self, node):
         return self.node_list.index(node)
@@ -735,7 +751,7 @@ class Analysis:
 
             elif isinstance(comp, Resistor):
                 G = 1/ comp.get_ohm(variables)
-                name = f"current_{comp.name}"
+                name = f"current_{cname}"
                 cg.add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
                 cg.add_ysum(kp, f"(-{name})")
                 cg.add_ysum(kn, f"{name}")
@@ -898,7 +914,6 @@ class Analysis:
         cg.add_to_init([""])
         l =  cg.init + cg.y_code + cg.dy_code + cg.cur_code
         code = "\n".join(l)
-        #        print(code)
         d = {}
         exec(code,d)
         bla = d["bla"]
