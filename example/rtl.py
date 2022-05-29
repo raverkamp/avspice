@@ -37,6 +37,18 @@ def create_or2_gate(*, ri, rc):
 
     return sc
 
+def create_or4_gate(*, ri, rc):
+    sc =  SubCircuit(("v", "0", "i1","i2", "i3", "i4", "o"))
+
+    or2 = create_or2_gate(ri=ri,rc=rc)
+
+    sc.add_subcircuit("or_i1", or2, ("v","0","i1","i2", "o1"))
+    sc.add_subcircuit("or_i2", or2, ("v","0","i3","i4", "o2"))
+
+    sc.add_subcircuit("or", or2, ("v","0", "o1", "o2", "o"))
+
+    return sc
+
 
 def cmd_not(args):
     net = Circuit()
@@ -140,8 +152,41 @@ def cmd_or2(args):
     ana = Analysis(net)
 
     res= ana.analyze(variables={"vi1": args.vi1, "vi2": args.vi2})
-    print(f"----   nor2 vi={args.vi1} {args.vi2} -----")
+    print(f"----   or2 vi={args.vi1} {args.vi2} -----")
     res.display()
+
+
+def cmd_or4(args):
+    net = Circuit()
+
+    vi1 = Variable("vi1")
+    vi2 = Variable("vi2")
+    vi3 = Variable("vi3")
+    vi4 = Variable("vi4")
+
+    ri = 1e4
+    rc = 1e3
+    ro = ri/3
+
+    or4 = create_or4_gate(ri=ri, rc=rc)
+
+    net.addV("V", 5, "v","0")
+
+    net.addV("vi1", vi1, "i1", "0")
+    net.addV("vi2", vi2, "i2", "0")
+    net.addV("vi3", vi3, "i3", "0")
+    net.addV("vi4", vi4, "i4", "0")
+
+    net.add_subcircuit("or", or4, ("v","0","i1","i2", "i3", "i4", "o"))
+    net.addR("ro", ro, "o", "0")
+
+    ana = Analysis(net)
+
+    res= ana.analyze(variables={"vi1": args.vi1, "vi2": args.vi2, "vi3": args.vi3, "vi4": args.vi4})
+    print(f"----   or4 vi={args.vi1} {args.vi2} -----")
+    res.display()
+    o =  res.get_voltage("ro.p")
+    print(f"Outout: {o}")
 
 
 
@@ -166,6 +211,13 @@ def main():
     p_or2.set_defaults(func=cmd_or2)
     p_or2.add_argument("vi1", type=float)
     p_or2.add_argument("vi2", type=float)
+
+    p_or4 = subparsers.add_parser('or4')
+    p_or4.set_defaults(func=cmd_or4)
+    p_or4.add_argument("vi1", type=float)
+    p_or4.add_argument("vi2", type=float)
+    p_or4.add_argument("vi3", type=float)
+    p_or4.add_argument("vi4", type=float)
 
 
     args = parser.parse_args()
