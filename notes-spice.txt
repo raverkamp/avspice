@@ -250,3 +250,93 @@ Ich habe aber Konvergenz Probleme bei zwei hinter einander geschalteten NOT Gatt
 Problem mit  der Konvergent ist  gelöst:
 In der Code Generierung wurden für verschiedene Subcircuits die gleichen
 Variablen Namen benutzt.
+
+2022-06-05_15:56
+
+Inzwischen habe RTL implementiert.
+
+2022-06-05_15:57
+Ich will Variablen besser machen.
+Sie sollen in das Code Object  rein generiert werden
+und werden vor der Berechnung gesetzt.
+
+Die Code Generierung in den objeckten müssten Variablen
+regsistrieren und bekommen einen Ausdruck um die Variable
+im Code einzubauen.
+Dazu müsste an den Code Generierer der Componenten ein
+Objekt zum registrien der Variable übergeben werden.
+
+Oder einfache eine Methode GetVarCode(Var())
+
+Im Code Generator eine Methode
+GetVarCode
+
+diese regsistriert die Variable
+und gibt den Code zuück mit dem sie referenziert wird.
+
+Wenn eine Variable reg
+get_var_code(self, var)
+
+
+Implementoerung
+
+Computer.set_variable (name, value)
+oder Computer.set_variable(variable, value)
+
+Was ist mit paramtern in Subcircuits?
+
+Parameter  für Subscricuits?
+
+Parameter fuer Componenten
+
+Parameter  für Modelle?
+
+
+Was ist der Sinn von Parametern:
+Eine Simulations Mascheine bauen und dann sind die Lösungen vergleichbar.
+Zum Beispiel für Sweeps.
+
+
+Ich kann den Lösungsvektor einer Simulation als Startwert für
+die Lösing einer Simulation mit leicht  geänderten Parametern
+benutzen.
+Das Simulations Rechenkern muss nur einmal erzeugt werden.
+Verschiedene Simulation können dann mit diesem Rechenkern durchgeführt werden.
+
+Für mich sind Parameter für Componenten und SubCircuits nicht so wichtig. Ich kann einen
+SubCircuit in einer Funktion erzeugen, gleich mit den richtigen Parametern.
+
+Wie werden Variablen gesetzt? Per Name, also dem String Wert?
+
+Oder bei der Anlage eine Circuits, Sub Circuits müssen die Parameter deklaiert werden?
+
+Also Circuit(var1, var2 ,var2, ...)
+var1 und etc. werden per String referenziert?
+
+Toplevel Paramater werden dann für eine Simulation gesetzt.
+
+Wie ist das mit SubCircuits?
+Diese werden instanziert mir Konstanten, Parametern, Formeln?
+
+Grundsätzlich müssen die Parameter mit den variablen oder ähnlich des Ober Circuits
+instanziert werden.
+
+Der Sub Sub Sub Circuit wird instanziert, oder hinzugefügt.
+
+Der Wert wird irgednwo als Konstante verwendet.
+Vor der Simulation werden die Variablen gesetzt, dann muss ausgwertet werden und die Konstante gesetzt werden.
+
+Für jeden SubCircuit braucheh wir code der die Variablen bei der Instanzierung durcgschleust.
+
+
+
+
+
+
+
+
+
+
+
+
+
