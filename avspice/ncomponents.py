@@ -8,6 +8,7 @@ class NVoltage:
     """voltage source"""
 
     def __init__(self, v):
+        assert isinstance(v, (float,int))
         self.v = v
 
     def voltage(self, time):
@@ -16,6 +17,9 @@ class NVoltage:
 class NSineVoltage:
 
     def __init__(self, v, f):
+        assert isinstance(v, (float,int))
+        assert isinstance(f, (float,int))
+        assert f>0
         self.v = v
         self.f = f
 

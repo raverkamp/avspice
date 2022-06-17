@@ -547,7 +547,7 @@ class Analysis:
         l =  cg.init + cg.component_init + [""] + x + cg.y_code + cg.dy_code + cg.cur_code
         code = "\n".join(l)
         d = {}
-        #        print(code)
+        #print(code)
         exec(code,d)
         bla = d["bla"]
         return bla
@@ -602,8 +602,7 @@ class Analysis:
                 time =0,
                 transient=False,
                 compute_cond=False):
-        if variables is None:
-            variables = {}
+
         n = self._equation_size(transient)
         if start_solution_vec is None:
             if start_voltages is None:
@@ -624,9 +623,7 @@ class Analysis:
             state_vec = None
 
         bla = self.generate_code(transient)
-        computer = bla(variables)
-        for (k,v) in variables.items():
-            computer.set_variable(k,v)
+        computer = bla(variables or {})
 
         def f(x):
             return computer.y(time, x, state_vec, 0)
