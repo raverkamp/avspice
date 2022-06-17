@@ -28,9 +28,8 @@ class Component:
 class Node2(Component):
     """a component with just two ports"""
 
-    def __init__(self, name: str):
-        super().__init__(name)
-
+    #  __init__ is the same as for Component
+    
     def get_ports(self):
         return ["p", "n"]
 
@@ -55,7 +54,7 @@ class Current(Node2):
     def __repr__(self):
         return f"<Current {self.name}>"
 
-    def code(self, cg, cname):
+    def code(self, cg):
         x = cg.get_value_code(self.amp)
         return ([], ([],f"{x}"))
 
@@ -76,7 +75,7 @@ class Voltage(Node2):
         return (init, voltage)
 
 class SineVoltage(Voltage):
-
+    """sine voltage"""
     def __init__(self, name:str, volts:float, frequency: float):
         super().__init__(name, volts)
         self._frequency = frequency
@@ -89,7 +88,7 @@ class SineVoltage(Voltage):
         return (init, voltage)
 
 class SawVoltage(Voltage):
-
+    """saw voltage"""
     def __init__(self, name:str, volts:float, frequency: float):
         super().__init__(name, volts)
         self._frequency = frequency
@@ -101,7 +100,7 @@ class SawVoltage(Voltage):
         return (init, voltage)
 
 class PieceWiseLinearVoltage(Voltage):
-
+    """piecewise linear voltage"""
     def __init__(self, name:str, pairs):
         super().__init__(name,0)
         self.pairs = list(pairs)
@@ -152,7 +151,7 @@ class Capacitor(Node2):
 
 
 class Inductor(Node2):
-    """ a Spule" """
+    """inductor"""
 
     def __init__(self, name, induc):
         super().__init__(name)
@@ -378,12 +377,15 @@ class Network:
 
 
 class Circuit(Network):
+    """toplevel circuit"""
+
     def __init__(self):
         super().__init__()
         self.node_list.append("0")
 
 
 class SubCircuit(Network):
+    """a sub circuit, reuse  in circuits"""
 
     def __init__(self, export_nodes):
         super().__init__()
@@ -391,7 +393,7 @@ class SubCircuit(Network):
         self.export_nodes = list(export_nodes)
 
 class SubCircuitComponent(Component):
-
+    """wrapper around a subcircuit in circuit"""
     def __init__(self, subcircuit):
         assert isinstance(subcircuit, SubCircuit)
         super().__init__("nix")
@@ -505,6 +507,8 @@ class Result:
             print(k + " " + str(v))
 
 class CodeGenerator:
+    """utility class for code generation"""
+
     def __init__(self, n, n_curr_ports, transient):
         self.n = n
         self.n_curr_ports = n_curr_ports
@@ -739,7 +743,7 @@ class Analysis:
                                     f"res[{curr_index_n}] = -(sol[{k}])"])
 
             elif isinstance(comp, Current):
-                (cinit, (pre, expr)) = comp.code(cg, cname)
+                (cinit, (pre, expr)) = comp.code(cg)
                 cg.add_to_cinit(cinit)
                 cg.add_to_y_code(pre)
                 cg.add_ysum(kp, f"({expr})")
