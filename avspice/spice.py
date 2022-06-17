@@ -79,10 +79,6 @@ class Voltage(Node2):
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self._volts = volts
 
-    def voltage(self, time, variables):
-        v = self.get_val(self._volts, variables)
-        return v
-
     def __repr__(self):
         return f"<Voltage {self._volts}>"
 
@@ -97,10 +93,6 @@ class SineVoltage(Voltage):
     def __init__(self, name:str, volts:float, frequency: float):
         super().__init__(name, volts)
         self._frequency = frequency
-
-    def voltage(self, time, variables):
-        v = self.get_val(self._volts, variables)
-        return v * math.sin(2 * math.pi * self._frequency)
 
     def code(self, cg, cname):
         v = cg.get_value_code(self._volts)
