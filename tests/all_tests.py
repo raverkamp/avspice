@@ -144,6 +144,22 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
         self.assertAlmostEqual(res.y_norm, 0)
 
+    def test_current_simple1b(self):
+        net = Circuit()
+        net.addR("r1", 20, "1", "0")
+        var = Variable("v1")
+        net.addC("c1", var, "1", "0")
+
+        analy = Analysis(net)
+        res = analy.analyze(variables={"v1":1})
+
+        res.display()
+
+        self.assertAlmostEqual(res.get_current("r1.p"), 1)
+        self.assertAlmostEqual(res.get_voltage("r1.p"), 20)
+        self.assertAlmostEqual(res.y_norm, 0)
+
+
     def test_current_simple2(self):
         #parallel current source
         net = Circuit()
@@ -166,6 +182,19 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_voltage("r1.p"), 1)
         self.assertAlmostEqual(res.get_current("r1.p"), 1/20)
         self.assertAlmostEqual(res.y_norm, 0)
+
+    def test_voltage_simpleb(self):
+        net = Circuit()
+        var = Variable("v1")
+        net.addR("r1", 20, "1", "0")
+        net.addV("v1", var, "1", "0")
+        analy = Analysis(net)
+        x = 5
+        res = analy.analyze(variables={"v1": x})
+        self.assertAlmostEqual(res.get_voltage("r1.p"), x)
+        self.assertAlmostEqual(res.get_current("r1.p"), x/20)
+        self.assertAlmostEqual(res.y_norm, 0)
+
 
     # diode and resistor in serial
     def test_diode_simple1(self):

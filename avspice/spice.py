@@ -53,8 +53,8 @@ class Resistor(Node2):
         super().__init__(name)
         self._ohm = ohm
 
-    def get_ohm(self, variables):
-        return self.get_val(self._ohm, variables)
+    def get_resistance(self):
+        return self._ohm
 
     def __repr__(self):
         return f"<Resistor {self._ohm}>"
@@ -68,11 +68,9 @@ class Current(Node2):
     def __repr__(self):
         return f"<Current {self.name}>"
 
-    def get_amp(self, variables):
-        return self.get_val(self.amp, variables)
-
-    def code(self,cname):
-        return ([], ([],f"{self.amp}"))
+    def code(self, cg, cname):
+        x = cg.get_value_code(self.amp)
+        return ([], ([],f"{x}"))
 
 class Voltage(Node2):
     """voltage source"""
@@ -88,10 +86,10 @@ class Voltage(Node2):
     def __repr__(self):
         return f"<Voltage {self._volts}>"
 
-    def code(self, name, variables):
-        v = self.get_val(self._volts, variables)
-        init = [f"self.{name} = NVoltage({v})"]
-        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+    def code(self, cg, cname):
+        v = cg.get_value_code(self._volts)
+        init = [f"self.{cname} = NVoltage({v})"]
+        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
         return (init, voltage)
 
 class SineVoltage(Voltage):
@@ -104,10 +102,11 @@ class SineVoltage(Voltage):
         v = self.get_val(self._volts, variables)
         return v * math.sin(2 * math.pi * self._frequency)
 
-    def code(self, name, variables):
-        v = self.get_val(self._volts, variables)
-        init = [f"self.{name} = NSineVoltage({v}, {self._frequency})"]
-        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+    def code(self, cg, cname):
+        v = cg.get_value_code(self._volts)
+        f = cg.get_value_code(self._frequency)
+        init = [f"self.{cname} = NSineVoltage({v}, {f})"]
+        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
         return (init, voltage)
 
 class SawVoltage(Voltage):
@@ -116,10 +115,10 @@ class SawVoltage(Voltage):
         super().__init__(name, volts)
         self._frequency = frequency
 
-    def code(self, name, variables):
-        v = self.get_val(self._volts, variables)
-        init = [f"self.{name} = NSawVoltage({v}, {self._frequency})"]
-        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+    def code(self, cg, cname):
+        v = cg.get_value_code(self._volts)
+        init = [f"self.{cname} = NSawVoltage({v}, {self._frequency})"]
+        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
         return (init, voltage)
 
 class PieceWiseLinearVoltage(Voltage):
@@ -128,14 +127,15 @@ class PieceWiseLinearVoltage(Voltage):
         super().__init__(name,0)
         self.pairs = list(pairs)
 
-    def code(self, name, variables):
+    def code(self, cg, cname):
         a = list(self.pairs)
         a.sort(key=lambda x: x[0])
         vx  = list([x for (x,y) in a])
-        vy  = list([self.get_val(y, variables) for (x,y) in a])
 
-        init = [f"self.{name} = NPieceWiseLinearVoltage({vx},  {vy})"]
-        voltage = ([f"{name}_voltage = self.{name}.voltage(time)"],f"{name}_voltage")
+        vy  = "[" + ", ".join(list([cg.get_value_code(y) for (x,y) in a])) + "]"
+
+        init = [f"self.{cname} = NPieceWiseLinearVoltage({vx},  {vy})"]
+        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
         return (init, voltage)
 
 
@@ -165,9 +165,8 @@ class Capacitor(Node2):
         super().__init__(name)
         self._capa = capa
 
-    def get_capa(self, variables):
-        a = self.get_val(self._capa, variables)
-        return a
+    def get_capacitance(self):
+        return self._capa
 
     def __repr__(self):
         return f"<Capacitor {self.name}>"
@@ -180,7 +179,7 @@ class Inductor(Node2):
         super().__init__(name)
         self.induc = induc
 
-    def get_induc(self, variables):
+    def get_inductance(self):
         return self.induc
 
     def __repr__(self):
@@ -445,20 +444,20 @@ class TransientResult:
                 raise Exception("length for volts does not match")
             if len(c)  != len(currs):
                 raise Exception("length for currents does not match")
-            for k in volts:
-                volts[k].append(v[k])
-            for k in c:
-                currs[k].append(c[k])
+            for (k, val) in volts.items():
+                val.append(v[k])
+            for (k, val) in currs.items():
+                val.append(c[k])
 
         self.voltages = {}
         self.currents = {}
         self.time = np.array(time_points)
 
-        for k in volts:
-            self.voltages[k] = np.array(volts[k])
+        for (k, val) in volts.items():
+            self.voltages[k] = np.array(val)
 
-        for k in currs:
-            self.currents[k] = np.array(currs[k])
+        for (k, val) in currs.items():
+            self.currents[k] = np.array(val)
 
     def get_voltage(self, k):
         return self.voltages[k]
@@ -534,12 +533,13 @@ class CodeGenerator:
         h_par = ", h"
         #       else:
         #          h_par = ""
+        self.component_init = []
         self.init = [
-            "def bla():",
-            "   return Computer()",
+            "def bla(variables):",
+            "   return Computer(variables)",
             "",
             "class Computer:",
-            "    def __init__(self):",
+            "    def __init__(self, variables):",
             "        from avspice.ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
                     + "NVoltage, NSineVoltage, NSawVoltage, NPieceWiseLinearVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
@@ -561,6 +561,24 @@ class CodeGenerator:
             for _ in range(n):
                 x.append([])
             self.dysum.append(x)
+        self.variables = {}
+
+    def get_var_code(self, variable):
+        assert isinstance(variable, Variable), "variable parameter must be instance of variable"
+        if variable in self.variables:
+            k = self.variables[variable]
+        else:
+            k = len(self.variables)
+            self.variables[variable] = k
+        return f"self.variables[{k}]"
+
+    def get_value_code(self, x):
+        if  isinstance(x, Variable):
+            return self.get_var_code(x)
+        elif isinstance(x, (float, int)):
+            return str(x)
+        else:
+            raise Exception("wrong type for scalar value:" + str(x))
 
     def add_ysum(self, k, e):
         self.ysum[k].append(e)
@@ -576,6 +594,9 @@ class CodeGenerator:
         for x in l:
             assert isinstance(x, str)
             m.append("        " + x)
+
+    def add_to_cinit(self,l):
+        self.add_to_method(self.component_init, l)
 
     def add_to_init(self,l):
         self.add_to_method(self.init, l)
@@ -707,7 +728,7 @@ class Analysis:
     def curr_index(self, partname, port):
         return self.curr_port_list.index((partname, port))
 
-    def generate_code(self, variables, transient):
+    def generate_code(self, transient):
         n = self._equation_size(transient)
         cg = CodeGenerator(n, len(self.curr_port_list), transient)
 
@@ -723,8 +744,8 @@ class Analysis:
                 curr_index_n  = self.curr_index(part.name, "n")
 
             if isinstance(comp, Voltage):
-                (vinit, (pre , expr)) = comp.code(cname, variables)
-                cg.add_to_init(vinit)
+                (vinit, (pre , expr)) = comp.code(cg, cname)
+                cg.add_to_cinit(vinit)
                 k = self.voltage_index(part)
                 cg.add_to_y_code(pre)
                 cg.add_ysum(kp, f"sol[{k}]")
@@ -739,8 +760,8 @@ class Analysis:
                                     f"res[{curr_index_n}] = -(sol[{k}])"])
 
             elif isinstance(comp, Current):
-                (cinit, (pre, expr)) = comp.code(cname)
-                cg.add_to_init(cinit)
+                (cinit, (pre, expr)) = comp.code(cg, cname)
+                cg.add_to_cinit(cinit)
                 cg.add_to_y_code(pre)
                 cg.add_ysum(kp, f"({expr})")
                 cg.add_ysum(kn, f"(-({expr}))")
@@ -750,7 +771,9 @@ class Analysis:
                                  f"res[{curr_index_n}] = {expr}"])
 
             elif isinstance(comp, Resistor):
-                G = 1/ comp.get_ohm(variables)
+                r = cg.get_value_code(comp.get_resistance())
+                G = f"self.{cname}_G"
+                cg.add_to_init([f"{G}=1/{r}"])
                 name = f"current_{cname}"
                 cg.add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
                 cg.add_ysum(kp, f"(-{name})")
@@ -767,7 +790,7 @@ class Analysis:
 
             elif isinstance(comp, Diode):
                 (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
-                cg.add_to_init(init_d)
+                cg.add_to_cinit(init_d)
                 cg.add_to_y_code(cinit)
                 cg.add_to_dy_code(dinit)
                 cg.add_ysum(kp, f"(-{curr})")
@@ -793,7 +816,7 @@ class Analysis:
                                  (dcb, dce, dcc)))) = \
                      comp.code(cname,f"sol[{kb}]", f"sol[{ke}]", f"sol[{kc}]")
 
-                cg.add_to_init(init_t)
+                cg.add_to_cinit(init_t)
                 cg.add_to_y_code(cinit)
                 cg.add_ysum(kb, f"({cb})")
                 cg.add_ysum(ke, f"({ce})")
@@ -832,7 +855,8 @@ class Analysis:
                     # sol[k] current through capacitor
                     # sol[sny] voltage accross capacitor
                     # state_vec(sn) voltage of last iteration
-                    capa = comp.get_capa(variables)
+                    capa1 = comp.get_capacitance()
+                    capa = cg.get_value_code(capa1)
                     cg.add_ysum(kp, f"sol[{k}]")
                     cg.add_ysum(kn, f"-(sol[{k}])")
                     cg.add_ysum(k, f"sol[{kp}] - sol[{kn}] - sol[{sny}]")
@@ -860,7 +884,8 @@ class Analysis:
                 if transient:
                     sn = self.state_index(part)
                     sny = self.state_index_y(part)
-                    induc = comp.get_induc(variables)
+                    induc1 = comp.get_inductance()
+                    induc = cg.get_value_code(induc1)
                     # sol[k] current through inductor
                     # sol[sny] also current through conductor
                     # state_vec(sn) current through conductor of last ieteration
@@ -911,14 +936,31 @@ class Analysis:
         cg.add_to_y_code(["return res",""])
         cg.add_to_dy_code(["return res",""])
         cg.add_to_cur_code(["return res"])
-        cg.add_to_init([""])
-        l =  cg.init + cg.y_code + cg.dy_code + cg.cur_code
+
+        cg.add_to_init([f"self.variables = [0] * {len(cg.variables)}"])
+        vard = {}
+        for (var, k) in cg.variables.items():
+            vard[var.name] = k
+            cg.add_to_init([f"self.variables[{k}] = {var.default}"])
+        cg.add_to_init([f"self.variable_map= {repr(vard)}",
+                        "for (k,v) in variables.items():",
+                        "     self.set_variable(k,v)"])
+
+
+        x = ["    def set_variable(self, name, value):",
+             "        if not name in self.variable_map:",
+             "            raise Exception('unknown variable')",
+             "        self.variables[self.variable_map[name]] = value",
+             ""]
+
+
+        l =  cg.init + cg.component_init + [""] + x + cg.y_code + cg.dy_code + cg.cur_code
         code = "\n".join(l)
         d = {}
+        #        print(code)
         exec(code,d)
         bla = d["bla"]
-        computer = bla()
-        return computer
+        return bla
 
     def _compute_state_vec(self, capa_voltages, induc_currents):
         state_vec = np.zeros(self.state_size())
@@ -991,7 +1033,10 @@ class Analysis:
         else:
             state_vec = None
 
-        computer = self.generate_code(variables,transient)
+        bla = self.generate_code(transient)
+        computer = bla(variables)
+        for (k,v) in variables.items():
+            computer.set_variable(k,v)
 
         def f(x):
             return computer.y(time, x, state_vec, 0)
@@ -1090,7 +1135,8 @@ class Analysis:
         time_list = []
 
         sol = res.solution_vec
-        computer = self.generate_code(variables,True)
+        bla = self.generate_code(True)
+        computer = bla(variables or {})
         while time < maxtime:
             res = self.solve_internal(time,
                     maxit,

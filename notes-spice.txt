@@ -329,13 +329,46 @@ Vor der Simulation werden die Variablen gesetzt, dann muss ausgwertet werden und
 Für jeden SubCircuit braucheh wir code der die Variablen bei der Instanzierung durcgschleust.
 
 
+2022-06-17_09:31
+Ich habe Variablen jetzt so eingebaut das sie auf dem Compute Object
+gesetzt werden können. Theoretisch.
+
+Ablauf mit Variablen bisher:
+Das Compute Object wird erzeugt und Variablen hart rein codiert.
+Schlecht, ich will das Compute Object mehrmals benutzen, eben mit  verschiedenen Variablen.
+Dann habe ich auch die Gewissheit das die Lösungsvektoren kompatibel sind. (Sweep!)
 
 
+Es sollte aber so funktionieren dass das Compute Object erzeugt wird und
+dann Variablen auf dem Object gesetzt werden können.
+
+Problem:
+Die Logik für die Objekte liegt in Transistor oder Dioden Objects.
+Diese werden einmal instanziert. Wenn man Parameter zu einem beliebigen Zeitpunkt
+setzen kann, dann müssen diese Objekte auch wissen was Variablen.
 
 
+Alternative Implementierung:
+Es wird dir Klasse generiert.
+Es wird das Compute Objekt immer wieder neu instanziert.
+Und im Konstruktor werden die Objekte erzeugt.
+Für die  Konstruktor Parameter werden dann die Variablen gezogen.
+
+Der Konstruktor Aufruf wird in den Code reingeneriert.
 
 
+Erzeugung des Compute Objects dann
+mit Compute(vraiablen)
 
+in
+def __init__(self, variables):
+    self.set_variables(variables)
+    
+    t1 = NNPNTransistor(1,2,3,Var_mybeta)
+
+man  könnte auch Vektoren oder ähnliches übergeben.
+
+self.set_variables maps variables  as names to  members  of the  class.
 
 
 
