@@ -1,7 +1,6 @@
 """ simple routines for experimenting with nodal analysis """
 
 import collections
-import math
 import numbers
 import numpy as np
 from . import solving
@@ -25,18 +24,6 @@ class Component:
     def get_ports(self):
         """return the ports of this component"""
         raise NotImplementedError("method 'get_ports' is not implemented")
-
-    def get_val(self, var_or_num, variables):
-        if isinstance(var_or_num, numbers.Number):
-            return var_or_num
-        if isinstance(var_or_num, Variable):
-            val = variables.get(var_or_num.name, None)
-            if val is None:
-                if var_or_num.default is None:
-                    raise Exception(f"did not find value for variable '{var_or_num.name}' in '{self.name}'")
-                return var_or_num.default
-            return val
-        raise Exception("bug")
 
 class Node2(Component):
     """a component with just two ports"""
@@ -122,9 +109,9 @@ class PieceWiseLinearVoltage(Voltage):
     def code(self, cg, cname):
         a = list(self.pairs)
         a.sort(key=lambda x: x[0])
-        vx  = list([x for (x,y) in a])
+        vx  = list(x for (x,y) in a)
 
-        vy  = "[" + ", ".join(list([cg.get_value_code(y) for (x,y) in a])) + "]"
+        vy  = "[" + ", ".join(list(cg.get_value_code(y) for (x,y) in a)) + "]"
 
         init = [f"self.{cname} = NPieceWiseLinearVoltage({vx},  {vy})"]
         voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
