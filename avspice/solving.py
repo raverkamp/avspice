@@ -103,6 +103,8 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
 
     while True:
         alfa = max(alfa / 1.1, 0)
+        if alfa < 1e-3:
+            alfa = 0
         res = solve(solution_vec, f, df, abstol, reltol, maxiter,
                             alfa=alfa)
         if isinstance(res, str):
