@@ -45,8 +45,8 @@ def voltage_control(_):
     z = zener("Z5", 5)
     net.add_subcircuit("Z", z, ("0", "m"))
 
-    #    rv = Variable("rv", 10e3)
-    net.addR("rm", 110e3, "VCC", "m")
+    rv = Variable("rv", 10e3)
+    net.addR("rm", rv, "VCC", "m")
 
     tt = NPNTransistor("tt", 1e-12, 25e-3, 100, 10)
 
@@ -59,7 +59,7 @@ def voltage_control(_):
     y = []
     sol_vec = None
     for v in drange (0, 10,0.01):
-        res = ana.analyze(variables={"v": v}, start_solution_vec=sol_vec)
+        res = ana.analyze(variables={"v": v, "rv": 10e3}, start_solution_vec=sol_vec)
         if not isinstance(res, str):
             x.append(v)
             y.append(res.get_voltage("RL.p"))

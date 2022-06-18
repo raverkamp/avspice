@@ -363,7 +363,7 @@ class Analysis:
             elif isinstance(comp, Resistor):
                 r = cg.get_value_code(comp.get_resistance())
                 G = f"self.{cname}_G"
-                cg.add_to_init([f"{G}=1/{r}"])
+                cg.add_to_cinit([f"{G}=1/{r}"])
                 name = f"current_{cname}"
                 cg.add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
                 cg.add_ysum(kp, f"(-{name})")
@@ -547,7 +547,7 @@ class Analysis:
         l =  cg.init + cg.component_init + [""] + x + cg.y_code + cg.dy_code + cg.cur_code
         code = "\n".join(l)
         d = {}
-        #print(code)
+        #        print(code)
         exec(code,d)
         bla = d["bla"]
         return bla
