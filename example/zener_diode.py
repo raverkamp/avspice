@@ -9,10 +9,10 @@ from avspice.util import drange
 def zener(name, v):
     d =Diode("D", 1e-8, 25e-3)
     cutoff = 40
-    d =Diode(name, 1e-8, 25e-3, lcut_off=-cutoff, rcut_off=cutoff)
+    d = Diode(name, 1e-8, 25e-3, lcut_off=-cutoff, rcut_off=cutoff)
     sc =  SubCircuit(("p", "n"))
-    sc.add_component("Df", d, ("p", "n"))
-    sc.add_component("Dr", d, ("m", "p"))
+    sc.add("Df", d, ("p", "n"))
+    sc.add("Dr", d, ("m", "p"))
     sc.addV("v",v, "n", "m")
     return sc
 
@@ -21,7 +21,7 @@ def kennlinie(_):
     v = Variable("v")
     net.addV("V", v, "VCC", "0")
     z = zener("Z5", 5)
-    net.add_subcircuit("Z", z, ("VCC", "0"))
+    net.add("Z", z, ("VCC", "0"))
     ana = Analysis(net)
 
     x = []
@@ -43,15 +43,15 @@ def voltage_control(_):
     net.addV("V", v, "VCC", "0")
 
     z = zener("Z5", 5)
-    net.add_subcircuit("Z", z, ("0", "m"))
+    net.add("Z", z, ("0", "m"))
 
     rv = Variable("rv", 10e3)
     net.addR("rm", rv, "VCC", "m")
 
     tt = NPNTransistor("tt", 1e-12, 25e-3, 100, 10)
 
-    net.add_component("T1", tt, ("m","VCC", "o1"))
-    net.add_component("T2", tt, ("o1", "VCC", "o"))
+    net.add("T1", tt, ("m","VCC", "o1"))
+    net.add("T2", tt, ("o1", "VCC", "o"))
     net.addR("RL", 100, "o", "0")
     ana = Analysis(net)
 

@@ -371,6 +371,12 @@ class Network:
         c = SubCircuitComponent(subcircuit)
         self.add_component(name,  c, nodes)
 
+    def add(self, name, x, nodes):
+        if isinstance(x, SubCircuit):
+            self.add_subcircuit(name,x,nodes)
+        elif isinstance(x, Component):
+            self.add_component(name,x,nodes)
+
 
 class Circuit(Network):
     """toplevel circuit"""
