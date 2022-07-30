@@ -1,3 +1,5 @@
+"""utility methods"""
+
 import math
 import sys
 
@@ -70,9 +72,9 @@ def find_pos(v, x):
         if i == -1:
             return -1
         if x >= v[i]:
-            return i 
+            return i
         i-=1
-        
+
 def linear_interpolate(x, y, t):
     i = find_pos(x,t)
     if i == -1:
@@ -85,3 +87,18 @@ def linear_interpolate(x, y, t):
     by = y[i+1]
     return ay + (t-ax)/ (bx-ax) * (by-ay)
 
+def smooth_step(left, right, x):
+    x = (x- left) /  (right - left)
+    if x<=0:
+        return 0.0
+    if x>=1:
+        return 1.0
+    return 3 * x * x  - 2 * x * x * x
+
+def dsmooth_step(left, right, x):
+    x = (x- left) /   (right - left)
+    if x<=0:
+        return 0.0
+    if x>=1:
+        return 0.0
+    return (6 * x - 6 * x * x) /  (right - left)

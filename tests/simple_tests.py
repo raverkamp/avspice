@@ -5,7 +5,7 @@ import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
     Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage
-from avspice.util import  explin, dexplin, linear_interpolate
+from avspice.util import  explin, dexplin, linear_interpolate, smooth_step, dsmooth_step
 
 from avspice import ncomponents
 
@@ -75,6 +75,42 @@ class TestMath(unittest.TestCase):
         self.assertEqual(linear_interpolate([1],[5],1),5)
         self.assertEqual(linear_interpolate([1],[5],2),5)
 
+    def test_smoothstep(self):
+        l = -3
+        r = 5
+        f = 1/(r - l)
+        d =  smooth_step(l, r, l - 0.01)
+        self.assertEqual(d,0.0)
+        d =  smooth_step(l, r, r + 0.01)
+        self.assertEqual(d,1.0)
+
+        d =  smooth_step(l, r, (r+l)/2)
+        self.assertEqual(d,0.5)
+
+        d =  smooth_step(l, r, l + 1e-2)
+        self.assertTrue( 3*  pow(0.9e-2*f,2)< d < 3*  pow(1.1e-2*f,2))
+
+        d =  smooth_step(l, r, r - 1e-2)
+        self.assertTrue( 3*  pow(0.9e-2*f,2)<  1-d < 3*  pow(1.1e-2*f,2))
+
+    def test_dsmoothstep(self):
+        l = -3
+        r = 5
+        f = 1/(r - l)
+
+        d =  dsmooth_step(l, r, l - 0.01)
+        self.assertEqual(d,0.0)
+        d =  dsmooth_step(l, r, r + 0.01)
+        self.assertEqual(d,0.0)
+
+        d =  dsmooth_step(l, r, (r+l)/2)
+        self.assertEqual(d,1.5*f)
+
+        d =  dsmooth_step(l, r, l + 1e-2)
+        self.assertTrue( 6*  0.9e-2 *f *f< d < 6* 1.1e-2*f*f)
+
+        d =  dsmooth_step(l, r, r - 1e-2)
+        self.assertTrue( 6 *  0.9e-2*f * f <  d < 3*  1.1e-2*f*f)
 
 
 class TestSolve(unittest.TestCase):
