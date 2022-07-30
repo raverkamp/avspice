@@ -35,6 +35,27 @@ def kennlinie(args):
     fig.tight_layout()
     plt.show()
 
+def zkennlinie(args):
+    zd = ncomponents.NZDiode(5, 1e-8, 25e-3, 1e-8, 25e-3)
+    (fig, (ax1, ax2, ax3)) = plt.subplots(3)
+    x = []
+    y = []
+    dy = []
+    sy = []
+    for v in drange(-5.5,0.5,0.001):
+        cu = zd.current(v)
+        dcu = zd.diff_current(v)
+        x.append(v)
+        y.append(cu)
+        dy.append(dcu)
+        sy.append(math.copysign(1,cu))
+    ax1.plot(x,y)
+    ax2.plot(x,dy)
+    ax3.plot(x, sy)
+    plt.show()
+      
+    
+    
 
 def main():
     parser = argparse.ArgumentParser(prog='Datenblatt')
@@ -42,6 +63,9 @@ def main():
 
     parser_k = subparsers.add_parser('k', help='k help')
     parser_k.set_defaults(func=kennlinie)
+
+    parser_z = subparsers.add_parser('z', help='z  diode help')
+    parser_z.set_defaults(func=zkennlinie)
     
     args = parser.parse_args()
     if hasattr(args, "func"):

@@ -1,7 +1,7 @@
 """complex unit tests"""
 import unittest
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
-    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage
+    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage, ZDiode
 
 
 
@@ -51,6 +51,40 @@ class TestZener(unittest.TestCase):
         current_05 = res.get_current("V.p")
         self.assertTrue(4 <current_05  < 6)
 
+
+    def test_2(self):
+        net = Circuit()
+        v = Variable("v")
+        net.addV("V", v, "VCC", "0")
+        z = ZDiode("Z5", 5, 1e-8, 25e-3)
+        net.add("Z", z, ("VCC", "0"))
+        ana = Analysis(net)
+
+        res = ana.analyze(variables={"v": -5.5})
+        print(res)
+        current_55 = res.get_current("V.p")
+        self.assertTrue(current_55 < -4.5)
+
+        res = ana.analyze(variables={"v": -3})
+        current_3 = res.get_current("V.p")
+        print(current_3)
+        self.assertTrue(-1e-7 <current_3  < 0)
+
+        res = ana.analyze(variables={"v": 0.1})
+        current_01 = res.get_current("V.p")
+        self.assertTrue(0 <current_01  < 0.0001)
+
+        res = ana.analyze(variables={"v": 0.3})
+        current_03 = res.get_current("V.p")
+        self.assertTrue(0 <current_03  < 0.002)
+
+        res = ana.analyze(variables={"v": 0.4})
+        current_04 = res.get_current("V.p")
+        self.assertTrue(0.05 <current_04  < 0.1)
+
+        res = ana.analyze(variables={"v": 0.5})
+        current_05 = res.get_current("V.p")
+        self.assertTrue(4 <current_05  < 6)
 
 
 if __name__ == '__main__':

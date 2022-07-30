@@ -2,6 +2,7 @@
 import collections
 import numbers
 from . import util
+
 class Variable:
     """a variable"""
     def __init__(self, name, default=None):
@@ -131,6 +132,33 @@ class Diode(Node2):
 
     def __repr__(self):
         return f"<Diode {self.name}>"
+
+class ZDiode(Node2):
+    """solid state diode"""
+    def __init__(self, name, vcut, Is, Nut, IsZ=None, NutZ=None,    lcut_off = -40, rcut_off=40):
+        super().__init__(name)
+        assert isinstance(name, str)
+        assert isinstance(vcut, numbers.Number)
+
+        self.Is = Is
+        self.Nut = Nut
+        self.vcut = vcut
+        self.IsZ = Is if IsZ is None else IsZ
+        self.NutZ = Nut if NutZ is None else NutZ
+
+        self.lcut_off = lcut_off
+        self.rcut_off = rcut_off
+
+    def code(self, cname, dvname):
+        init = [f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
+                f"{self.IsZ}, {self.NutZ}, {self.lcut_off},{self.rcut_off})"]
+        curr = ([], f"self.{cname}.current({dvname})")
+        dcurr = ([], f"self.{cname}.diff_current({dvname})")
+        return (init, curr, dcurr)
+
+    def __repr__(self):
+        return f"<Diode {self.name}>"
+
 
 class Capacitor(Node2):
     """ a capacitor"""

@@ -3,7 +3,7 @@
 import numpy as np
 from .circuits import Voltage, Current, NPNTransistor, PNPTransistor, Circuit, SubCircuit,\
                      Inductor, Capacitor, Resistor, Diode, SubCircuitComponent, Part, Node2, \
-                     Variable
+                     Variable, ZDiode
 from . import solving
 from . import util
 
@@ -130,7 +130,7 @@ class CodeGenerator:
             "",
             "class Computer:",
             "    def __init__(self, variables):",
-            "        from avspice.ncomponents import NDiode, NNPNTransistor, NPNPTransistor,"
+            "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor, NPNPTransistor,"
                     + "NVoltage, NSineVoltage, NSawVoltage, NPieceWiseLinearVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",
@@ -378,7 +378,7 @@ class Analysis:
                                     f"res[{curr_index_p}] = ({name})",
                                     f"res[{curr_index_n}] =  -({name})"])
 
-            elif isinstance(comp, Diode):
+            elif isinstance(comp, Diode) or isinstance(comp, ZDiode):
                 (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
                 cg.add_to_cinit(init_d)
                 cg.add_to_y_code(cinit)

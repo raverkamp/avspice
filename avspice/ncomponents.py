@@ -1,7 +1,9 @@
+""" the numerical components"""
 import math
-from .util import explin, dexplin
+import numbers
+from .util import explin, dexplin, smooth_step, dsmooth_step
 from . import util
-""" numerical components"""
+
 
 
 class NVoltage:
@@ -15,7 +17,7 @@ class NVoltage:
         return self.v
 
 class NSineVoltage:
-
+    """sine voltage source"""
     def __init__(self, v, f):
         assert isinstance(v, (float,int))
         assert isinstance(f, (float,int))
@@ -28,7 +30,7 @@ class NSineVoltage:
         return self.v * math.sin(2 * math.pi * self.f * time)
 
 class NSawVoltage:
-
+    """savw voltage source"""
     def __init__(self, v, f):
         self.v = v
         self.f = f
@@ -37,6 +39,7 @@ class NSawVoltage:
         return self.v * util.saw_tooth(self.f, time)
 
 class NPieceWiseLinearVoltage:
+    """piecewise linear volatge source"""
     def __init__(self, vx, vy):
         self.vx = vx
         self.vy = vy
@@ -50,6 +53,7 @@ class NDiode:
         self.Is = Is
         self.Nut = Nut
 
+
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
@@ -58,6 +62,40 @@ class NDiode:
 
     def diff_current(self, dv):
         return self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
+
+class NZDiode:
+    """solid state Z-diode"""
+    def __init__(self, vcut, Is, Nut, IsZ, NutZ, lcut_off = -40, rcut_off=40):
+        assert isinstance(vcut, numbers.Number)
+        self.vcut = vcut
+        self.Is = Is
+        self.Nut = Nut
+        self.IsZ = IsZ
+        self.NutZ = NutZ
+
+        self.lcut_off = lcut_off
+        self.rcut_off = rcut_off
+
+    def current(self, v):
+        pp = self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
+        nn = self.IsZ * ( #1-
+                         explin((-self.vcut)/self.NutZ, self.lcut_off, self.rcut_off)-
+                         explin((-self.vcut-v)/self.NutZ, self.lcut_off, self.rcut_off))
+        a = smooth_step(-self.vcut/2,0, v)
+        return nn + a * (pp-nn)
+
+    def diff_current(self, dv):
+        pp = self.Is * (explin(dv/self.Nut, self.lcut_off, self.rcut_off)-1)
+        nn = self.IsZ * (explin((-self.vcut)/self.NutZ, self.lcut_off, self.rcut_off)
+                         -explin((-self.vcut-dv)/self.NutZ, self.lcut_off, self.rcut_off))
+
+        dpp =   self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
+        dnn =   (self.IsZ * (1/self.NutZ)
+                 * dexplin((-self.vcut - dv)/self.NutZ, self.lcut_off, self.rcut_off))
+        a = smooth_step(-self.vcut/2,0, dv)
+        da = dsmooth_step(-self.vcut/2,0, dv)
+
+        return dnn + a * (dpp - dnn)  + da * (pp - nn)
 
 class NNPNTransistor:
 
@@ -98,7 +136,6 @@ class NNPNTransistor:
 
     def IC(self, vbe, vbc):
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
-
     def d_IC_vbe(self, vbe):
         return self.IS * self.d_t1_vbe(vbe)
 
@@ -125,6 +162,8 @@ class NNPNTransistor:
         return self.IS * self.d_t1_vbc(vbc)
 
 class NPNPTransistor:
+
+    """PNP transistor"""
 
     def __init__(self, IS:float, VT:float, beta_F:float, beta_R:float,
                  lcutoff:float = -40,
