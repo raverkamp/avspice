@@ -1,4 +1,4 @@
-"""circuit definition"""
+"""circuit definition and components"""
 import collections
 import numbers
 from . import util

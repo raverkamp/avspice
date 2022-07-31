@@ -78,24 +78,17 @@ class NZDiode:
 
     def current(self, v):
         pp = self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
-        nn = self.IsZ * ( #1-
-                         explin((-self.vcut)/self.NutZ, self.lcut_off, self.rcut_off)-
+        nn = self.IsZ * (explin((-self.vcut)/self.NutZ, self.lcut_off, self.rcut_off)-
                          explin((-self.vcut-v)/self.NutZ, self.lcut_off, self.rcut_off))
-        a = smooth_step(-self.vcut/2,0, v)
-        return nn + a * (pp-nn)
+        return nn + pp
 
     def diff_current(self, dv):
-        pp = self.Is * (explin(dv/self.Nut, self.lcut_off, self.rcut_off)-1)
-        nn = self.IsZ * (explin((-self.vcut)/self.NutZ, self.lcut_off, self.rcut_off)
-                         -explin((-self.vcut-dv)/self.NutZ, self.lcut_off, self.rcut_off))
-
         dpp =   self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
         dnn =   (self.IsZ * (1/self.NutZ)
                  * dexplin((-self.vcut - dv)/self.NutZ, self.lcut_off, self.rcut_off))
-        a = smooth_step(-self.vcut/2,0, dv)
-        da = dsmooth_step(-self.vcut/2,0, dv)
 
-        return dnn + a * (dpp - dnn)  + da * (pp - nn)
+
+        return dnn + dpp
 
 class NNPNTransistor:
 
