@@ -1,7 +1,8 @@
 """complex unit tests"""
 import unittest
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
-    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage, ZDiode
+    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage, ZDiode,\
+    FET
 
 
 
@@ -86,6 +87,24 @@ class TestZener(unittest.TestCase):
         current_05 = res.get_current("V.p")
         self.assertTrue(4 <current_05  < 6)
 
+class TestFET(unittest.TestCase):
+    "FET tests"
+    def test_1(self):
+        net = Circuit()
+        v = 6
+        net.addV("V", v, "VCC", "0")
+
+        net.addV("VG",7, "VCG", "0")
+
+        net.addR("R1", 100, "VCC", "D")
+        net.addR("R2", 1, "S", "0")
+
+        net.add("F", FET("F", 1), ("VCG", "D", "S"))
+
+        ana = Analysis(net)
+        res = ana.analyze()
+        current = res.get_current("F.S")
+        self.assertTrue(0.058 < current < 0.06)
 
 if __name__ == '__main__':
     unittest.main()

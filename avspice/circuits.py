@@ -332,6 +332,38 @@ class PNPTransistor(Component):
 
         return (initt, (cinit, curr), (dinit,d))
 
+class FET(Component):
+    """ a FET"""
+    def __init__(self, name, vth):
+        super().__init__(name)
+        self.vth = vth
+
+    def get_ports(self):
+        return ("G", "D", "S")
+
+    def code(self, name, vg, vd, vs):
+        prefix =  name
+        me = "self." + prefix + "_"
+        initt = [f"{me} = NFET({self.vth})"]
+
+        vgs = f"{prefix}_vgs"
+        vds = f"{prefix}_vds"
+
+        cinit = [f"{vgs}  = {vg} - {vs}",
+                 f"{vds} = {vd} - {vs}"]
+        curr = f"{me}.IS({vgs}, {vds})"
+
+        dinit = cinit
+        #  g d s
+        d = (dinit,
+             f"{me}.d_IS_vgs({vgs},{vds})",
+             f"{me}.d_IS_vds({vgs},{vds})",
+             f"(-{me}.d_IS_vgs({vgs},{vds}) - {me}.d_IS_vds({vgs},{vds}))")
+
+        return (initt, (cinit,curr), d)
+
+
+
 Part =  collections.namedtuple("Part", ("name","component", "connections"))
 
 class Network:

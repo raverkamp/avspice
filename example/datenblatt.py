@@ -53,9 +53,22 @@ def zkennlinie(args):
     ax2.plot(x,dy)
     ax3.plot(x, sy)
     plt.show()
-      
-    
-    
+
+def fkennlinie(args):
+    x = []
+    y = []
+    fet = ncomponents.FET()
+    (fig, ax1) = plt.subplots(1)
+    for vgs in [1.01, 2, 3, 4, 5]:
+        x = []
+        y = []
+        for vds in drange(0,7,0.01):
+            x.append(vds)
+            y.append(fet.IS(vgs,vds))
+        ax1.plot(x,y,label=f"{vgs}")
+    ax1.legend()
+    plt.show()
+       
 
 def main():
     parser = argparse.ArgumentParser(prog='Datenblatt')
@@ -66,6 +79,11 @@ def main():
 
     parser_z = subparsers.add_parser('z', help='z  diode help')
     parser_z.set_defaults(func=zkennlinie)
+
+
+    parser_fet = subparsers.add_parser('f', help='fet help')
+    parser_fet.set_defaults(func=fkennlinie)
+
     
     args = parser.parse_args()
     if hasattr(args, "func"):

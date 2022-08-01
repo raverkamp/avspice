@@ -221,3 +221,47 @@ class NPNPTransistor:
 
     def d_IE_vbc(self, vbc):
         return self.IS * self.d_t1_vbc(vbc)
+
+class NFET:
+    """FET"""
+
+    def __init__(self, vth):
+        self.vth = vth # threshold voltage
+        self.id0 = 1e-5
+        self.vt = 25e-3 # temperature voltage
+        self.n = 1
+        self.knp =  1.0/5.0
+
+    #S is ground
+    def IS(self, vgs, vds):
+        if vds < 0:
+            #we should use the body diode!
+            return 0
+        if vgs < self.vth:
+            return self.id0 * math.exp((vgs - self.vth)/(self.vt * self.n))
+
+        if vgs - self.vth > vds:
+            return self.knp * ((vgs -self.vth) * vds - vds * vds/2) + self.id0
+
+        return self.knp * (vgs-self.vth) * (vgs-self.vth)/2 + self.id0
+
+    def d_IS_vgs(self, vgs, vds):
+        if vds <0:
+            return 0
+        if vgs < self.vth:
+            return self.id0  * math.exp((vgs-self.vth)/(self.vt * self.n)) / (self.vt * self.n)
+        if vgs - self.vth > vds:
+            return self.knp * (vgs-self.vth)
+
+        return self.knp * 2 * (vgs - self.vth)
+
+
+    def d_IS_vds(self, vgs, vds):
+        if vds <0:
+            return 0
+        if vgs < self.vth:
+            return 0
+        if vgs - self.vth > vds:
+            return self.knp * (vgs-self.vth - vds)
+
+        return 0

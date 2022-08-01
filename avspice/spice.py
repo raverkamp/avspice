@@ -3,7 +3,7 @@
 import numpy as np
 from .circuits import Voltage, Current, NPNTransistor, PNPTransistor, Circuit, SubCircuit,\
                      Inductor, Capacitor, Resistor, Diode, SubCircuitComponent, Part, Node2, \
-                     Variable, ZDiode
+                     Variable, ZDiode, FET
 from . import solving
 from . import util
 
@@ -130,7 +130,8 @@ class CodeGenerator:
             "",
             "class Computer:",
             "    def __init__(self, variables):",
-            "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor, NPNPTransistor,"
+            "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
+                     + " NPNPTransistor, NFET, "
                     + "NVoltage, NSineVoltage, NSawVoltage, NPieceWiseLinearVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",
@@ -378,7 +379,7 @@ class Analysis:
                                     f"res[{curr_index_p}] = ({name})",
                                     f"res[{curr_index_n}] =  -({name})"])
 
-            elif isinstance(comp, Diode) or isinstance(comp, ZDiode):
+            elif isinstance(comp, (Diode, ZDiode)):
                 (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
                 cg.add_to_cinit(init_d)
                 cg.add_to_y_code(cinit)
@@ -422,6 +423,7 @@ class Analysis:
                 cg.add_dysum(ke, ke, f"({dee})")
                 cg.add_dysum(ke, kc, f"({dec})")
 
+
                 cg.add_dysum(kc, kb, f"({dcb})")
                 cg.add_dysum(kc, ke, f"({dce})")
                 cg.add_dysum(kc, kc, f"({dcc})")
@@ -435,6 +437,45 @@ class Analysis:
                 cg.add_to_cur_code([f"res[{curr_index_B}] = -({cb})",
                                   f"res[{curr_index_E}] =  -({ce})",
                                   f"res[{curr_index_C}] =  -({cc})"])
+
+            elif isinstance(comp, FET):
+                kg = self.node_index(nodes[0])
+                kd = self.node_index(nodes[1])
+                ks = self.node_index(nodes[2])
+                (init_fet, (cinit, cu),
+                    (dinit, dcg, dcd, dcs)) = comp.code(cname,
+                                                        f"sol[{kg}]",
+                                                        f"sol[{kd}]",
+                                                        f"sol[{ks}]" )
+                cg.add_to_cinit(init_fet)
+                cg.add_to_y_code(cinit)
+                cg.add_ysum(kd, f"(-{cu})")
+                cg.add_ysum(ks, f"({cu})")
+
+                cg.add_to_dy_code(dinit)
+
+                cg.add_dysum(kd, kg, f"(-{dcg})")
+                cg.add_dysum(ks, kg, f"({dcg})")
+
+                cg.add_dysum(kd,kd,  f"(-{dcd})")
+                cg.add_dysum(ks,kd,  f"({dcd})")
+
+                cg.add_dysum(kd,ks,  f"(-{dcs})")
+                cg.add_dysum(ks,ks,  f"({dcs})")
+
+                curr_index_D  = self.curr_index(part.name, "D")
+                curr_index_S  = self.curr_index(part.name, "S")
+
+                cg.add_to_cur_code(cinit)
+                cg.add_to_cur_code([f"res[{curr_index_D}]= -({cu})",
+                                     f"res[{curr_index_S}]= ({cu})"])
+
+
+
+
+
+
+
 
             elif isinstance(comp, Capacitor):
                 k = self.capa_index(part)
