@@ -110,8 +110,7 @@ class TestMath(unittest.TestCase):
         self.assertTrue( 6*  0.9e-2 *f *f< d < 6* 1.1e-2*f*f)
 
         d =  dsmooth_step(l, r, r - 1e-2)
-        self.assertTrue( 6 *  0.9e-2*f * f <  d < 3*  1.1e-2*f*f)
-
+        self.assertTrue( 6 *  0.9e-2*f * f <  d < 6*  1.1e-2*f*f)
 
 class TestSolve(unittest.TestCase):
 
@@ -709,7 +708,6 @@ class TestVoltageTransient(unittest.TestCase):
         net.addR("R2",10,"1", "0")
         ana = Analysis(net)
         res = ana.transient(5,0.01)
-        time = res.get_time()
 
         def vat(t):
             return res.get_voltage_at(t, "R1.n")
