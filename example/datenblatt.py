@@ -32,12 +32,16 @@ def kennlinie(args):
             sol = res.solution_vec
         ax.plot(x,y,label=("IC for IB={0}".format(i)))
     ax.legend()
+    ax.set_ylabel("Current(C)")
+    ax.set_xlabel("Voltage(CE)")
+    fig.suptitle("NPN Curve")
     fig.tight_layout()
     plt.show()
 
 def zkennlinie(args):
     zd = ncomponents.NZDiode(5, 1e-8, 25e-3, 1e-8, 25e-3)
     (fig, (ax1, ax2, ax3)) = plt.subplots(3)
+    fig.suptitle('Curves of z-diode', fontsize=16)
     x = []
     y = []
     dy = []
@@ -50,14 +54,17 @@ def zkennlinie(args):
         dy.append(dcu)
         sy.append(math.copysign(1,cu))
     ax1.plot(x,y)
+    ax1.set_title("current")
     ax2.plot(x,dy)
+    ax2.set_title("d current")
     ax3.plot(x, sy)
+    ax3.set_title("sign(current)")
     plt.show()
 
 def fkennlinie(args):
     x = []
     y = []
-    fet = ncomponents.FET()
+    fet = ncomponents.NFET(1)
     (fig, ax1) = plt.subplots(1)
     for vgs in [1.01, 2, 3, 4, 5]:
         x = []
@@ -65,7 +72,10 @@ def fkennlinie(args):
         for vds in drange(0,7,0.01):
             x.append(vds)
             y.append(fet.IS(vgs,vds))
-        ax1.plot(x,y,label=f"{vgs}")
+        ax1.plot(x,y,label=f"v(gs)={vgs}")
+
+    ax1.set_xlabel("voltage(ds)")
+    ax1.set_ylabel("current(ds)")
     ax1.legend()
     plt.show()
        
@@ -74,14 +84,14 @@ def main():
     parser = argparse.ArgumentParser(prog='Datenblatt')
     subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name')
 
-    parser_k = subparsers.add_parser('k', help='k help')
+    parser_k = subparsers.add_parser('npn', help='npn curce')
     parser_k.set_defaults(func=kennlinie)
 
-    parser_z = subparsers.add_parser('z', help='z  diode help')
+    parser_z = subparsers.add_parser('zdiode', help='z diode curve')
     parser_z.set_defaults(func=zkennlinie)
 
 
-    parser_fet = subparsers.add_parser('f', help='fet help')
+    parser_fet = subparsers.add_parser('fet', help='fet curve')
     parser_fet.set_defaults(func=fkennlinie)
 
     
