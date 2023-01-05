@@ -371,5 +371,16 @@ man  könnte auch Vektoren oder ähnliches übergeben.
 self.set_variables maps variables  as names to  members  of the  class.
 
 
+2022-12-30_15:18
 
+neues Python neues pyenv
 
+python -m venv pyenv
+
+und
+
+. init.sh
+
+pip install  -r requirements.txt
+
+Ist -r der richtige Switch?
