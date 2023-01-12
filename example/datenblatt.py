@@ -61,25 +61,6 @@ def zkennlinie(args):
     ax3.set_title("sign(current)")
     plt.show()
 
-def fkennlinie(args):
-    x = []
-    y = []
-    fet = ncomponents.NFET(1)
-    (fig, ax1) = plt.subplots(1)
-    for vgs in [1.01, 2, 3, 4, 5]:
-        x = []
-        y = []
-        for vds in drange(0,7,0.01):
-            x.append(vds)
-            y.append(fet.IS(vgs,vds))
-        ax1.plot(x,y,label=f"v(gs)={vgs}")
-
-    ax1.set_xlabel("voltage(ds)")
-    ax1.set_ylabel("current(ds)")
-    ax1.legend()
-    plt.show()
-       
-
 def main():
     parser = argparse.ArgumentParser(prog='Datenblatt')
     subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name')
@@ -89,11 +70,6 @@ def main():
 
     parser_z = subparsers.add_parser('zdiode', help='z diode curve')
     parser_z.set_defaults(func=zkennlinie)
-
-
-    parser_fet = subparsers.add_parser('fet', help='fet curve')
-    parser_fet.set_defaults(func=fkennlinie)
-
     
     args = parser.parse_args()
     if hasattr(args, "func"):

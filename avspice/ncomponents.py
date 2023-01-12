@@ -240,9 +240,10 @@ class NFET:
         if vgs < self.vth:
             return self.id0 * math.exp((vgs - self.vth)/(self.vt * self.n))
 
-        if vgs - self.vth > vds:
+        if vds < vgs - self.vth:
             return self.knp * ((vgs -self.vth) * vds - vds * vds/2) + self.id0
 
+        # vds >= vgs - self.vth:
         return self.knp * (vgs-self.vth) * (vgs-self.vth)/2 + self.id0
 
     def d_IS_vgs(self, vgs, vds):
@@ -261,7 +262,8 @@ class NFET:
             return 0
         if vgs < self.vth:
             return 0
-        if vgs - self.vth > vds:
+        if vds < vgs - self.vth:
             return self.knp * (vgs-self.vth - vds)
 
+        # vds >= vgs - self.vth
         return 0
