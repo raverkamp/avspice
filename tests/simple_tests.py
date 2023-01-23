@@ -5,7 +5,7 @@ import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
     Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage
-from avspice.util import  explin, dexplin, linear_interpolate, smooth_step, dsmooth_step
+from avspice.util import  explin, dexplin, linear_interpolate, smooth_step, dsmooth_step, ndiff
 
 from avspice import ncomponents
 
@@ -111,6 +111,21 @@ class TestMath(unittest.TestCase):
 
         d =  dsmooth_step(l, r, r - 1e-2)
         self.assertTrue( 6 *  0.9e-2*f * f <  d < 6*  1.1e-2*f*f)
+
+    def test_ndiff(self):
+        def f(x):
+            return x**3 + 5*x
+
+        def df(x):
+            return 3 * x**2 + 5
+
+        def ndf(x):
+            return ndiff(f,x)
+
+        self.assertAlmostEqual(df(1)/ndf(1.0),1)
+        self.assertAlmostEqual(df(1e10)/ndf(1e10), 1)
+        self.assertAlmostEqual(df(2e-5)/ndf(2e-5), 1)
+
 
 class TestSolve(unittest.TestCase):
 

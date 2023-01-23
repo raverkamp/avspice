@@ -102,3 +102,15 @@ def dsmooth_step(left, right, x):
     if x>=1:
         return 0.0
     return (6 * x - 6 * x * x) /  (right - left)
+
+def eps():
+    return sys.float_info.epsilon
+
+def ndiff(fun, x):
+    eps05 = math.sqrt(eps())
+    if abs(x) < eps05:
+        h = eps05
+    else:
+        h = eps05 * abs(x)
+
+    return (fun(x+h) - fun(x-h))/( 2  *h)
