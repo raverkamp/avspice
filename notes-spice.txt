@@ -384,3 +384,9 @@ und
 pip install  -r requirements.txt
 
 Ist -r der richtige Switch?
+
+2023-01-12_16:35
+Der bestehende FET Code ist Mist.
+Ich implementioere jetzt JFETs.
+
+Dazu muss man erstmal die Formeln finden.

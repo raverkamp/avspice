@@ -25,7 +25,6 @@ class NSineVoltage:
         self.v = v
         self.f = f
 
-
     def voltage(self, time):
         return self.v * math.sin(2 * math.pi * self.f * time)
 
@@ -267,3 +266,102 @@ class NFET:
 
         # vds >= vgs - self.vth
         return 0
+
+
+class NJFETn:
+    """n channel JFET
+
+    the wikipedia entry is not that great
+    https://www.mathworks.com/help/sps/ref/nchanneljfet.html is OK
+
+
+    In general V_D > V_S, i.e. D is at +, S is at -
+
+    component is naturally on, depletion mode
+
+    V_G must be less than V_S, this will lower the current from D to S.
+    If V_G < V_th than no current flows. V_th: threshold voltage
+
+
+    if V_G is larger than V_S or V_D than a diode current will flow to respctive gate.
+
+    if V_S > V_D the component works as well but a little but different, since
+    the component is not symmetric.
+
+
+    Assumption V_DS >= 0
+
+
+    off:
+    V_GS <  V_th:  I_D = 0
+
+    independent of V_DS
+
+    linear:
+    0 < V_DS < V_GS – V_th
+    I_D = beta * V_DS(2(V_GS – V_th) – V_DS)(1 +  lambda V_DS)
+
+    saturated:
+    V_GS - V_th < V_DS
+    I_D = beta ( V_GS -V_th) ^2 * (1 + lambda V_DS)
+
+    beta transconductnace parameter
+    lambda channel length parameter
+
+
+
+    if V_D < V_S, i.e. V_DS <0 then its the same formula:
+    I_D(V_GS, V_DS)
+     = - I_D(V_GD, V_SD)
+     =  -I(V_GS - V_DS, -V_DS)
+    
+    
+    
+    """
+
+
+    def __init__(self, v_th, beta, lambda_):
+        self.v_th = v_th # threshold voltage
+        self.beta = beta
+        self.lambda_ = lambda_
+
+    # S is ground
+
+    def ID(self, vgs, vds):
+        if vds >= 0:
+            if vgs < self.v_th:
+                return 0
+            if vds <= vgs - self.v_th:
+                return self.beta * vds * ( 2* ( vgs -self.v_th) - vds) * ( 1+ self.lambda_ * vds)
+            else:
+                return self.beta * (vgs - self.v_th) **2 * (1+ self.lambda_ * vds)
+        else:
+            return -  self.ID(vgs-vds, -vds)
+
+    def d_ID_vgs(self, vgs, vds):
+        if vds >=0:
+            if vgs < self.v_th:
+                return 0
+            if vds <= vgs - self.v_th:
+                return self.beta * vds * 2 * ( 1 + self.lambda_ * vds)
+            else:
+                return self.beta * 2 * (vgs - self.v_th) * (1 + self.lambda_ * vds)
+        else:
+            return - self.d_ID_vgs(vgs-vds, -vds)
+
+    def d_ID_vds(self, vgs, vds):
+        if vds >= 0:
+            if vgs < self.v_th:
+                return 0
+            if vds <= vgs - self.v_th:
+                return self.beta * (
+                                    2* (vgs - self.v_th)
+                                  + (2 * self.lambda_ *(vgs - self.v_th) -1) * 2* vds
+                                  - self.lambda_ * 3 * vds**2 
+                                    )
+
+            
+            else:
+                return self.beta * (vgs - self.v_th) ** 2 * self.lambda_
+        else:
+            return self.d_ID_vgs(vgs-vds,-vds)  +  self.d_ID_vds(vgs-vds,-vds)
