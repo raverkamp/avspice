@@ -3,7 +3,7 @@
 import numpy as np
 from .circuits import Voltage, Current, NPNTransistor, PNPTransistor, Circuit, SubCircuit,\
                      Inductor, Capacitor, Resistor, Diode, SubCircuitComponent, Part, Node2, \
-                     Variable, ZDiode, FET
+                     Variable, ZDiode, FET, JFET
 from . import solving
 from . import util
 
@@ -131,7 +131,7 @@ class CodeGenerator:
             "class Computer:",
             "    def __init__(self, variables):",
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
-                     + " NPNPTransistor, NFET, "
+                     + " NPNPTransistor, NFET, NJFETn,"
                     + "NVoltage, NSineVoltage, NSawVoltage, NPieceWiseLinearVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",
@@ -438,7 +438,7 @@ class Analysis:
                                   f"res[{curr_index_E}] =  -({ce})",
                                   f"res[{curr_index_C}] =  -({cc})"])
 
-            elif isinstance(comp, FET):
+            elif isinstance(comp, FET) or isinstance(comp, JFET):
                 kg = self.node_index(nodes[0])
                 kd = self.node_index(nodes[1])
                 ks = self.node_index(nodes[2])
@@ -469,12 +469,6 @@ class Analysis:
                 cg.add_to_cur_code(cinit)
                 cg.add_to_cur_code([f"res[{curr_index_D}]= -({cu})",
                                      f"res[{curr_index_S}]= ({cu})"])
-
-
-
-
-
-
 
 
             elif isinstance(comp, Capacitor):

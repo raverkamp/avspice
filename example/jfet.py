@@ -2,7 +2,7 @@
 import argparse
 
 import matplotlib.pyplot as plt
-from avspice import util, ncomponents
+from avspice import util, ncomponents, JFET, Network, Circuit, Variable, Analysis
 
 
 def kennlinie_njfet(args):
@@ -36,9 +36,9 @@ def kennlinie_njfet(args):
 
         for vds in util.drange(0,7,0.01):
             x.append(vds)
-            y.append(njfet.ID(vgs,vds))
-            dy.append(njfet.d_ID_vds(vgs,vds))
-            ndy.append(util.ndiff(lambda x: njfet.ID(vgs,x),vds))
+            y.append(njfet.IS(vgs,vds))
+            dy.append(njfet.d_IS_vds(vgs,vds))
+            ndy.append(util.ndiff(lambda x: njfet.IS(vgs,x),vds))
         ax1.plot(x,y,label=f"v(gs)={vgs}")
         ax2.plot(x,dy,label=f"v(gs)={vgs}")
         ax2b.plot(x,ndy,label=f"v(gs)={vgs}")
@@ -67,9 +67,9 @@ def kennlinie_njfet(args):
         ndy = []
         for vgs in util.drange(args.vth,0,0.01):
             x.append(vgs)
-            y.append(njfet.ID(vgs,vds))
-            dy.append(njfet.d_ID_vgs(vgs,vds))
-            ndy.append(util.ndiff(lambda x: njfet.ID(x,vds), vgs))
+            y.append(njfet.IS(vgs,vds))
+            dy.append(njfet.d_IS_vgs(vgs,vds))
+            ndy.append(util.ndiff(lambda x: njfet.IS(x,vds), vgs))
 
         ax3.plot(x,y,label=f"v(ds)={vds}")
         ax4.plot(x,dy,label=f"v(ds)={vds}")
@@ -129,9 +129,9 @@ def kennlinie_njfet_invers(args):
             vds = -vsd
             vgs = vds + vgd
             x.append(vds)
-            y.append(njfet.ID(vgs,vds))
-            dy.append(njfet.d_ID_vds(vgs,vds))
-            ndy.append(util.ndiff(lambda x: njfet.ID(vgs,x),vds))
+            y.append(njfet.IS(vgs,vds))
+            dy.append(njfet.d_IS_vds(vgs,vds))
+            ndy.append(util.ndiff(lambda x: njfet.IS(vgs,x),vds))
 
         ax1.plot(x,y,label=f"v(gd)={vgd}")
         ax2.plot(x,dy,label=f"v(gd)={vgd}")
@@ -150,9 +150,9 @@ def kennlinie_njfet_invers(args):
         ndy =[]
         for vgd in util.drange(args.vth,0,0.01):
             x.append(vgd)
-            y.append(njfet.ID(vds,vds+vgd))
-            dy.append(njfet.d_ID_vgs(vgs,vds+vgd))
-            ndy.append(util.ndiff(lambda x: njfet.ID(x,vgd),vds+vgd))
+            y.append(njfet.IS(vds,vds+vgd))
+            dy.append(njfet.d_IS_vgs(vgs,vds+vgd))
+            ndy.append(util.ndiff(lambda x: njfet.IS(x,vgd),vds+vgd))
 
         ax3.plot(x,y,label=f"v(ds)={vds}")
         ax4.plot(x,dy,label=f"v(ds)={vds}")
@@ -165,8 +165,36 @@ def kennlinie_njfet_invers(args):
     fig.tight_layout()
     plt.show()
 
+def simple(args):
+    from avspice.circuits import JFET
+    vth = -2
+    beta = 1 #args.beta
+    lambda_ = vars(args)["lambda"]
 
+    jfet = JFET("jfet",vth, beta, lambda_)
+    
+    net = Circuit()
+    net.add_component("jfet", jfet, ("G", "D", "0"))
 
+    vcc = 9
+
+    net.addV("vcc", vcc, "D","0")
+
+    net.addV("vc", Variable("vc"), "G", "0")
+
+    ana = Analysis(net)
+    vc = []
+    current_d = []
+    for v in util.drange(vth,0, 0.01):
+        res = ana.analyze(variables= {"vc":v})
+        vc.append(v)
+        current_d.append(-res.get_current("jfet.D"))
+
+    (fig, ax1) = plt.subplots(1)
+    fig.suptitle(f"Inverse Kennlinie JFET(vth={vth}, beta={beta}, lambda={lambda_})")
+    ax1.plot(vc, current_d)
+    fig.tight_layout()
+    plt.show()
 
 def main():
     parser = argparse.ArgumentParser(prog='JFet')
@@ -186,6 +214,11 @@ def main():
     parser_ki.add_argument("beta", type=float)
     parser_ki.add_argument("lambda", type=float)
 
+    parser_simple = subparsers.add_parser('simple', help='simple circuit')
+    parser_simple.add_argument("lambda", type=float)
+    
+    parser_simple.set_defaults(func=simple)
+
 
     args = parser.parse_args()
 
@@ -193,5 +226,6 @@ def main():
         args.func(args)
     else:
         parser.print_usage()
+
 
 main()

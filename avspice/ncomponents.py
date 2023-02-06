@@ -327,7 +327,7 @@ class NJFETn:
 
     # S is ground
 
-    def ID(self, vgs, vds):
+    def IS(self, vgs, vds):
         if vds >= 0:
             if vgs < self.v_th:
                 return 0
@@ -336,9 +336,9 @@ class NJFETn:
             else:
                 return self.beta * (vgs - self.v_th) **2 * (1+ self.lambda_ * vds)
         else:
-            return -  self.ID(vgs-vds, -vds)
+            return -  self.IS(vgs-vds, -vds)
 
-    def d_ID_vgs(self, vgs, vds):
+    def d_IS_vgs(self, vgs, vds):
         if vds >=0:
             if vgs < self.v_th:
                 return 0
@@ -347,9 +347,9 @@ class NJFETn:
             else:
                 return self.beta * 2 * (vgs - self.v_th) * (1 + self.lambda_ * vds)
         else:
-            return - self.d_ID_vgs(vgs-vds, -vds)
+            return - self.d_IS_vgs(vgs-vds, -vds)
 
-    def d_ID_vds(self, vgs, vds):
+    def d_IS_vds(self, vgs, vds):
         if vds >= 0:
             if vgs < self.v_th:
                 return 0
@@ -364,4 +364,4 @@ class NJFETn:
             else:
                 return self.beta * (vgs - self.v_th) ** 2 * self.lambda_
         else:
-            return self.d_ID_vgs(vgs-vds,-vds)  +  self.d_ID_vds(vgs-vds,-vds)
+            return self.d_IS_vgs(vgs-vds,-vds)  +  self.d_IS_vds(vgs-vds,-vds)
