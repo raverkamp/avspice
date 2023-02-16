@@ -3,6 +3,14 @@ import collections
 import numbers
 from . import util
 
+
+# for codee generation hsi returne by Node2 components like resistors, diodes and current sources
+Node2Code = collections.namedtuple("Node2Code",["component_init", # initialization code for component
+                                                "current_init", # initialization code for  current computation
+                                                "current",  # expression of current
+                                                "dcurrent_init", #initialization code for derivative of current computation
+                                                "dcurrent"])  # expression for diff of current
+
 class Variable:
     """a variable"""
     def __init__(self, name, default=None):
@@ -42,6 +50,15 @@ class Resistor(Node2):
     def __repr__(self):
         return f"<Resistor {self._ohm}>"
 
+    def code(self, generator, cname, dvname):
+        r =  generator.get_value_code(self.get_resistance())
+        G = f"self.{cname}_G"
+        return Node2Code(component_init=[f"{G}=1/{r}"],
+                         current_init =[],
+                         current = f"{G}*({dvname})",
+                         dcurrent_init = [],
+                         dcurrent = f"{G}")
+
 class Current(Node2):
     """current source"""
     def __init__(self, name, amp):
@@ -51,9 +68,9 @@ class Current(Node2):
     def __repr__(self):
         return f"<Current {self.name}>"
 
-    def code(self, cg):
-        x = cg.get_value_code(self.amp)
-        return ([], ([],f"{x}"))
+    def code(self, generator, cname, dvname):
+        x = generator.get_value_code(self.amp)
+        return Node2Code(component_init = [], current_init = [], current =f"-{x}", dcurrent_init = [], dcurrent = "0")
 
 class Voltage(Node2):
     """voltage source"""
@@ -124,11 +141,13 @@ class Diode(Node2):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code(self, cname, dvname):
-        init = [f"self.{cname} = NDiode({self.Is},{self.Nut},{self.lcut_off},{self.rcut_off})"]
-        curr = ([], f"self.{cname}.current({dvname})")
-        dcurr = ([], f"self.{cname}.diff_current({dvname})")
-        return (init, curr, dcurr)
+    def code(self, generator, cname, dvname):
+        return Node2Code(component_init=[f"self.{cname} = " +
+                                         f" NDiode({self.Is},{self.Nut},{self.lcut_off},{self.rcut_off})"],
+                         current_init = [],
+                         current = f"self.{cname}.current({dvname})",
+                         dcurrent_init = [],
+                         dcurrent =  f"self.{cname}.diff_current({dvname})")
 
     def __repr__(self):
         return f"<Diode {self.name}>"
@@ -149,12 +168,14 @@ class ZDiode(Node2):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code(self, cname, dvname):
-        init = [f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
-                f"{self.IsZ}, {self.NutZ}, {self.lcut_off},{self.rcut_off})"]
-        curr = ([], f"self.{cname}.current({dvname})")
-        dcurr = ([], f"self.{cname}.diff_current({dvname})")
-        return (init, curr, dcurr)
+    def code(self, generator, cname, dvname):
+        return Node2Code(component_init=[f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
+                               f"{self.IsZ}, {self.NutZ}, {self.lcut_off},{self.rcut_off})"],
+                         current_init = [],
+                         current = f"self.{cname}.current({dvname})",
+                         dcurrent_init = [],
+                         dcurrent =  f"self.{cname}.diff_current({dvname})")
+
 
     def __repr__(self):
         return f"<Diode {self.name}>"

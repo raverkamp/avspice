@@ -350,51 +350,22 @@ class Analysis:
                 cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
                                     f"res[{curr_index_n}] = -(sol[{k}])"])
 
-            elif isinstance(comp, Current):
-                (cinit, (pre, expr)) = comp.code(cg)
-                cg.add_to_cinit(cinit)
-                cg.add_to_y_code(pre)
-                cg.add_ysum(kp, f"({expr})")
-                cg.add_ysum(kn, f"(-({expr}))")
+            elif isinstance(comp, (Diode, ZDiode, Resistor, Current)):
+                code = comp.code(cg, cname, f"sol[{kp}]- sol[{kn}]")
+                cg.add_to_cinit(code.component_init)
+                cg.add_to_y_code(code.current_init)
+                cg.add_to_dy_code(code.dcurrent_init)
+                cg.add_ysum(kp, f"(-{code.current})")
+                cg.add_ysum(kn, f"({code.current})")
 
-                cg.add_to_cur_code(pre)
-                cg.add_to_cur_code([f"res[{curr_index_p}] = -({expr})",
-                                 f"res[{curr_index_n}] = {expr}"])
+                cg.add_dysum(kp, kp, f"(-{code.dcurrent})")
+                cg.add_dysum(kp, kn, f"{code.dcurrent}")
+                cg.add_dysum(kn, kp, f"{code.dcurrent}")
+                cg.add_dysum(kn, kn, f"(-{code.dcurrent})")
 
-            elif isinstance(comp, Resistor):
-                r = cg.get_value_code(comp.get_resistance())
-                G = f"self.{cname}_G"
-                cg.add_to_cinit([f"{G}=1/{r}"])
-                name = f"current_{cname}"
-                cg.add_to_y_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}"])
-                cg.add_ysum(kp, f"(-{name})")
-                cg.add_ysum(kn, f"{name}")
-
-                cg.add_dysum(kp, kp, f"(-{G})")
-                cg.add_dysum(kp, kn, f"{G}")
-                cg.add_dysum(kn, kp, f"{G}")
-                cg.add_dysum(kn, kn, f"(-{G})")
-
-                cg.add_to_cur_code([f"{name} = (sol[{kp}] - sol[{kn}]) * {G}",
-                                    f"res[{curr_index_p}] = ({name})",
-                                    f"res[{curr_index_n}] =  -({name})"])
-
-            elif isinstance(comp, (Diode, ZDiode)):
-                (init_d, (cinit, curr), (dinit,dcurr)) = comp.code(cname,f"sol[{kp}]- sol[{kn}]")
-                cg.add_to_cinit(init_d)
-                cg.add_to_y_code(cinit)
-                cg.add_to_dy_code(dinit)
-                cg.add_ysum(kp, f"(-{curr})")
-                cg.add_ysum(kn, f"({curr})")
-
-                cg.add_dysum(kp, kp, f"(-{dcurr})")
-                cg.add_dysum(kp, kn, f"{dcurr}")
-                cg.add_dysum(kn, kp, f"{dcurr}")
-                cg.add_dysum(kn, kn, f"(-{dcurr})")
-
-                cg.add_to_cur_code(cinit)
-                cg.add_to_cur_code([f"res[{curr_index_p}] = {curr}",
-                                  f"res[{curr_index_n}] =  -({curr})"])
+                cg.add_to_cur_code(code.current_init)
+                cg.add_to_cur_code([f"res[{curr_index_p}] = {code.current}",
+                                  f"res[{curr_index_n}] =  -({code.current})"])
 
             elif isinstance(comp, (NPNTransistor, PNPTransistor)):
                 kb = self.node_index(nodes[0])
@@ -582,7 +553,7 @@ class Analysis:
         l =  cg.init + cg.component_init + [""] + x + cg.y_code + cg.dy_code + cg.cur_code
         code = "\n".join(l)
         d = {}
-        #        print(code)
+        #print(code)
         exec(code,d)
         bla = d["bla"]
         return bla
