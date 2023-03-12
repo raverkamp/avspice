@@ -4,7 +4,7 @@ import unittest
 import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
-    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage,NPNTransistorAsNPort
+    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage
 
 from avspice.util import  explin, dexplin, linear_interpolate, smooth_step, dsmooth_step, ndiff
 
@@ -41,23 +41,6 @@ class TestNPortTransistor(unittest.TestCase):
         net.addR("re", 10, "E", "0")
         net.addR("rb", 10e3, "vb", "B")
         net.addR("rc", 10, "vcc", "C")
-        tt = NPNTransistorAsNPort("Model T1",1e-12, 25e-3, 100, 10)
-        net.add_component("t1", tt, ("B", "C", "E"))
-
-        ana = Analysis(net)
-        res = ana.analyze(maxit=50)
-        self.assertAlmostEqual(res.get_current("t1.C")/res.get_current("t1.B"),100,places=5)
-
-        self.assertAlmostEqual(res.y_norm, 0)
-
-
-    def test_trans1b(self):
-        net = Circuit()
-        net.addV("vc", 6, "vcc", "0")
-        net.addV("vb", 1, "vb","0")
-        net.addR("re", 10, "E", "0")
-        net.addR("rb", 10e3, "vb", "B")
-        net.addR("rc", 10, "vcc", "C")
         tt = NPNTransistor("Model T1",1e-12, 25e-3, 100, 10)
         net.add_component("t1", tt, ("B", "C", "E"))
 
@@ -66,12 +49,11 @@ class TestNPortTransistor(unittest.TestCase):
         self.assertAlmostEqual(res.get_current("t1.C")/res.get_current("t1.B"),100,places=5)
 
         self.assertAlmostEqual(res.y_norm, 0)
-
         
     def test_trans2(self):
         net = Circuit()
         net.addV("vc",Variable("vc"), "vcc", "0")
-        tt = NPNTransistorAsNPort("", 1e-12, 25e-3, 100, 10)
+        tt = NPNTransistor("", 1e-12, 25e-3, 100, 10)
         net.add_component("t1", tt, ("B", "C", "0"))
         net.addR("rc", 10, "vcc", "C")
         net.addR("rb", 10e3, "vcc", "B")

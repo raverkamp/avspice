@@ -2,9 +2,9 @@
 
 import pprint as pp
 import numpy as np
-from .circuits import Voltage, Current, NPNTransistor, PNPTransistor, Circuit, SubCircuit,\
-                     Inductor, Capacitor, Resistor, Diode, SubCircuitComponent, Part, Node2, \
-                     NPort, Variable, ZDiode, FET, JFET
+from .circuits import Voltage, Node2, Node2Current, PNPTransistor, Circuit, SubCircuit,\
+                     Inductor, Capacitor, SubCircuitComponent, Part, \
+                     NPort, Variable, FET, JFET
 from . import solving
 from . import util
 
@@ -358,7 +358,7 @@ class Analysis:
                 cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
                                     f"res[{curr_index_n}] = -(sol[{k}])"])
 
-            elif isinstance(comp, (Diode, ZDiode, Resistor, Current)):
+            elif isinstance(comp, Node2Current):
                 code = comp.code(cg, cname, f"sol[{kp}]- sol[{kn}]")
                 cg.add_to_cinit(code.component_init)
                 cg.add_to_y_code(code.current_init)
@@ -375,7 +375,7 @@ class Analysis:
                 cg.add_to_cur_code([f"res[{curr_index_p}] = {code.current}",
                                   f"res[{curr_index_n}] =  -({code.current})"])
 
-            elif isinstance(comp, (NPNTransistor, PNPTransistor)):
+            elif isinstance(comp, (PNPTransistor)):
                 kb = self.node_index(nodes[0])
                 ke = self.node_index(nodes[2])
                 kc = self.node_index(nodes[1])
