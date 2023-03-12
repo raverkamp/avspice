@@ -1,15 +1,35 @@
 """circuit definition and components"""
 import collections
 import numbers
+import pprint as pp
 from . import util
 
 
+
 # for codee generation hsi returne by Node2 components like resistors, diodes and current sources
-Node2Code = collections.namedtuple("Node2Code",["component_init", # initialization code for component
-                                                "current_init", # initialization code for  current computation
-                                                "current",  # expression of current
-                                                "dcurrent_init", #initialization code for derivative of current computation
-                                                "dcurrent"])  # expression for diff of current
+Node2Code = collections.namedtuple("Node2Code",[
+    # initialization code for component
+    "component_init",
+    # initialization code for  current computation
+    "current_init",
+    # expression of current
+    "current",
+    #initialization code for derivative of current computation
+    "dcurrent_init",
+    # expression for diff of current
+    "dcurrent"])
+
+NodeNCode = collections.namedtuple("NodeNCode", [
+    # initialization code for component
+    "component_init",
+    # initialization code for  current computation
+    "current_init",
+    # expression of current
+    "current",
+    # initialization code for derivative of current computation
+    "dcurrent_init",
+    # expression for diff of current
+    "dcurrent"])
 
 class Variable:
     """a variable"""
@@ -69,8 +89,14 @@ class Current(Node2):
         return f"<Current {self.name}>"
 
     def code(self, generator, cname, dvname):
+        _ = cname
+        _ = dvname
         x = generator.get_value_code(self.amp)
-        return Node2Code(component_init = [], current_init = [], current =f"-{x}", dcurrent_init = [], dcurrent = "0")
+        return Node2Code(component_init = [],
+                         current_init = [],
+                         current =f"-{x}",
+                         dcurrent_init = [],
+                         dcurrent = "0")
 
 class Voltage(Node2):
     """voltage source"""
@@ -142,12 +168,15 @@ class Diode(Node2):
         self.rcut_off = rcut_off
 
     def code(self, generator, cname, dvname):
-        return Node2Code(component_init=[f"self.{cname} = " +
-                                         f" NDiode({self.Is},{self.Nut},{self.lcut_off},{self.rcut_off})"],
-                         current_init = [],
-                         current = f"self.{cname}.current({dvname})",
-                         dcurrent_init = [],
-                         dcurrent =  f"self.{cname}.diff_current({dvname})")
+        _ = generator
+        return Node2Code(
+            component_init =
+            [f"self.{cname} = " +
+             f" NDiode({self.Is},{self.Nut},{self.lcut_off},{self.rcut_off})"],
+            current_init = [],
+            current = f"self.{cname}.current({dvname})",
+            dcurrent_init = [],
+            dcurrent =  f"self.{cname}.diff_current({dvname})")
 
     def __repr__(self):
         return f"<Diode {self.name}>"
@@ -169,12 +198,14 @@ class ZDiode(Node2):
         self.rcut_off = rcut_off
 
     def code(self, generator, cname, dvname):
-        return Node2Code(component_init=[f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
-                               f"{self.IsZ}, {self.NutZ}, {self.lcut_off},{self.rcut_off})"],
-                         current_init = [],
-                         current = f"self.{cname}.current({dvname})",
-                         dcurrent_init = [],
-                         dcurrent =  f"self.{cname}.diff_current({dvname})")
+        _ = generator
+        return Node2Code(
+            component_init=[f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
+                            f"{self.IsZ}, {self.NutZ}, {self.lcut_off},{self.rcut_off})"],
+            current_init = [],
+            current = f"self.{cname}.current({dvname})",
+            dcurrent_init = [],
+            dcurrent =  f"self.{cname}.diff_current({dvname})")
 
 
     def __repr__(self):
@@ -415,6 +446,92 @@ class JFET(Component):
              f"(-{me}.d_IS_vgs({vgs},{vds}) - {me}.d_IS_vds({vgs},{vds}))")
 
         return (initt, (cinit,curr), d)
+
+class NPort(Component):
+    """Nport"""
+
+    def get_ports(self):
+        """return the ports of this component"""
+        raise NotImplementedError("method 'get_ports' is not implemented")
+
+    def code(self, name, voltages):
+        raise NotImplementedError("method 'get_voltages' is not implemented")
+
+class NPNTransistorAsNPort(NPort):
+    """an NPN Transistir implemented as NPort"""
+
+    def __init__(self, name:str, IS:float, VT:float, beta_F:float, beta_R:float,
+                 cutoff:float =40):
+        super().__init__(name)
+        self.IS = IS
+        self.VT = VT
+        self.beta_F = beta_F
+        self.beta_R = beta_R
+
+        self.lcutoff = -cutoff
+        self.rcutoff = cutoff
+
+    def __repr__(self):
+        return f"<Transistor {self.name}>"
+
+    def get_ports(self):
+        return ("B", "C", "E")
+
+    def code(self, name, voltages):
+        prefix = name
+        me = "self." + prefix + "_"
+        initt = [f"{me} = NNPNTransistor({self.IS}, {self.VT},"
+                 +f" {self.beta_F}, {self.beta_R}, {self.lcutoff}, {self.rcutoff})"]
+        vbe = f"{prefix}_vbe"
+        vbc = f"{prefix}_vbc"
+
+        nb = voltages["B"]
+        ne = voltages["E"]
+        nc = voltages["C"]
+
+        cinit =[f"{vbe} = {nb}- {ne}",
+                f"{vbc} = {nb}- {nc}"]
+
+
+        currents = {"B" : f"(-{me}.IB({vbe}, {vbc}))",
+                    "E" : f"{me}.IE({vbe}, {vbc})",
+                    "C":  f"(-{me}.IC({vbe}, {vbc}))"}
+
+        ib_vbe = f"{prefix}_ib_vbe"
+        ib_vbc = f"{prefix}_ib_vbc"
+
+        ie_vbe = f"{prefix}_ie_vbe"
+        ie_vbc = f"{prefix}_ie_vbc"
+
+        ic_vbe = f"{prefix}_ic_vbe"
+        ic_vbc = f"{prefix}_ic_vbc"
+
+
+        dinit = (cinit+
+            [f"{ib_vbe}= {me}.d_IB_vbe({vbe})",
+             f"{ib_vbc}= {me}.d_IB_vbc({vbc})",
+
+             f"{ie_vbe}= {me}.d_IE_vbe({vbe})",
+             f"{ie_vbc}= {me}.d_IE_vbc({vbc})",
+
+             f"{ic_vbe}= {me}.d_IC_vbe({vbe})",
+             f"{ic_vbc}= {me}.d_IC_vbc({vbc})"])
+
+        dcurrent = {"B": {"B": f"(-{ib_vbe}-{ib_vbc})",
+                          "E": ib_vbe,
+                          "C": ib_vbc},
+                    "E": {"B": f"{ie_vbe} + {ie_vbc}",
+                          "E": f"(-{ie_vbe})",
+                          "C": f"(-{ie_vbc})"},
+                    "C": {"B": f"(-{ic_vbe} - {ic_vbc})",
+                          "E": f"{ic_vbe}",
+                          "C": f"{ic_vbc}"}}
+
+        return NodeNCode(component_init=initt,
+                         current_init=cinit,
+                         current=currents,
+                         dcurrent_init=dinit,
+                         dcurrent=dcurrent)
 
 
 Part =  collections.namedtuple("Part", ("name","component", "connections"))

@@ -1,6 +1,7 @@
+"""the solver module of avspice"""
+
 import collections
 import numpy as np
-
 
 def reldiff(x,y):
     return abs(x-y) /  max(abs(x), abs(y))
@@ -94,11 +95,13 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
         res = solve(solution_vec, f, df, abstol, reltol, maxiter, alfa=alfa)
         if not isinstance(res, str):
             solution_vec = res.x
-            print(f"got start with alfa={alfa}")
+            if verbose:
+                print(f"got start with alfa={alfa}")
             break
         alfa = (alfa + 1) / 2
     if isinstance(res,str):
-        print("failed getting initial solution")
+        if verbose:
+            print("failed getting initial solution")
         return "failed getting initial solution"
 
     while True:
@@ -108,7 +111,8 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
         res = solve(solution_vec, f, df, abstol, reltol, maxiter,
                             alfa=alfa)
         if isinstance(res, str):
-            print(f"fail at alfa={alfa}")
+            if verbose:
+                print(f"fail at alfa={alfa}")
             return res
         if alfa <=0:
             break

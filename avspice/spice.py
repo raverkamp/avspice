@@ -1,11 +1,13 @@
 """ simple routines for experimenting with nodal analysis """
 
+import pprint as pp
 import numpy as np
 from .circuits import Voltage, Current, NPNTransistor, PNPTransistor, Circuit, SubCircuit,\
                      Inductor, Capacitor, Resistor, Diode, SubCircuitComponent, Part, Node2, \
-                     Variable, ZDiode, FET, JFET
+                     NPort, Variable, ZDiode, FET, JFET
 from . import solving
 from . import util
+
 
 
 
@@ -279,6 +281,12 @@ class Analysis:
     def node_index(self, node):
         return self.node_list.index(node)
 
+    def port_node_index(self, part, port):
+        component = part.component
+        x = component.get_ports().index(port)
+        node = part.connections[x]
+        return self.node_index(node)
+
     def voltage_index(self, voltage):
         return self.voltage_list.index(voltage) + len(self.node_list)
 
@@ -441,6 +449,31 @@ class Analysis:
                 cg.add_to_cur_code([f"res[{curr_index_D}]= -({cu})",
                                      f"res[{curr_index_S}]= ({cu})"])
 
+            elif isinstance(comp, NPort):
+                ports = comp.get_ports()
+                voltages = {}
+                i  = 0
+                for port in ports:
+                    voltages[port] = f"sol[{self.port_node_index(part, port)}]"
+                code = comp.code(cname, voltages)
+                cg.add_to_cinit(code.component_init)
+                cg.add_to_y_code(code.current_init)
+                cg.add_to_dy_code(code.dcurrent_init)
+
+                for port in ports:
+                    pindex = self.port_node_index(part, port)
+                    cg.add_ysum(pindex, code.current[port])
+                    for portd in ports:
+                        x = code.dcurrent[port][portd]
+                        if not (x is None):
+                            dpindex = self.port_node_index(part, portd)
+                            cg.add_dysum(pindex, dpindex, x)
+
+                cg.add_to_cur_code(code.current_init)
+                for port in ports:
+                    pindex = self.curr_index(part.name, port)
+                    cu = code.current[port]
+                    cg.add_to_cur_code([f"res[{pindex}]= -({cu})"])
 
             elif isinstance(comp, Capacitor):
                 k = self.capa_index(part)
@@ -553,7 +586,7 @@ class Analysis:
         l =  cg.init + cg.component_init + [""] + x + cg.y_code + cg.dy_code + cg.cur_code
         code = "\n".join(l)
         d = {}
-        #print(code)
+
         exec(code,d)
         bla = d["bla"]
         return bla
@@ -757,7 +790,7 @@ class Analysis:
             if a < max_timestep:
                 timestep = a
                 print("inc step", time, timestep)
-            ((sol_x, sol_y, sol_ny, sol_cond, sol_iterations), voltages, currents) = res
+            ((sol_x, _sol_y, _sol_ny, _sol_cond, _sol_iterations), voltages, currents) = res
             time_list.append(time)
             voltage_list.append(voltages)
             current_list.append(currents)

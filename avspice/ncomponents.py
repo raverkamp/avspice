@@ -14,6 +14,7 @@ class NVoltage:
         self.v = v
 
     def voltage(self, time):
+        _ = time
         return self.v
 
 class NSineVoltage:
@@ -314,9 +315,9 @@ class NJFETn:
     I_D(V_GS, V_DS)
      = - I_D(V_GD, V_SD)
      =  -I(V_GS - V_DS, -V_DS)
-    
-    
-    
+
+
+
     """
 
 
@@ -357,10 +358,10 @@ class NJFETn:
                 return self.beta * (
                                     2* (vgs - self.v_th)
                                   + (2 * self.lambda_ *(vgs - self.v_th) -1) * 2* vds
-                                  - self.lambda_ * 3 * vds**2 
+                                  - self.lambda_ * 3 * vds**2
                                     )
 
-            
+
             else:
                 return self.beta * (vgs - self.v_th) ** 2 * self.lambda_
         else:
