@@ -373,7 +373,7 @@ class Analysis:
 
                 cg.add_to_cur_code(code.current_init)
                 cg.add_to_cur_code([f"res[{curr_index_p}] = {code.current}",
-                                  f"res[{curr_index_n}] =  -({code.current})"])
+                                    f"res[{curr_index_n}] =  -({code.current})"])
 
             elif isinstance(comp, NPort):
                 ports = comp.get_ports()

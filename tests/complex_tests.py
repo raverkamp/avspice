@@ -106,5 +106,37 @@ class TestFET(unittest.TestCase):
         current = res.get_current("F.D")
         self.assertTrue(0.058 < current < 0.06)
 
+class TestCurrentSource(unittest.TestCase):
+    "sweep for current source"
+
+    def test1(self):
+        net = Circuit()
+        v = 10
+        re = 10e3
+        r1 = 1e3
+        r2 = 10e3
+        net.addV("V", v, "V", "0")
+        rl = Variable("RL")
+        net.addR("RL", rl, "V", "C")
+        net.addR("R1", r1, "V","B")
+        net.addR("R2", r2, "B","0")
+        net.addR("RE", re, "E", "0")
+        t1 = NPNTransistor("Model T1",1e-12, 25e-3, 100, 10)
+        net.add_component("t1", t1, ("B", "C", "E"))
+
+        # a simple current source, the voltage drop across the transsistor is 0.5 V
+        # so the voltage at E should be (10 - 0.5) * re/(re+r1)
+        # and current is (10 -0.5) /(re +r1)
+        cu_approx = (v - 0.5)/ (re + r1)
+
+        ana =Analysis (net)
+        x = 1
+        while x < re * ( v/(v - 0.5) - 1):
+            res = ana.analyze(variables={"RL": x})
+            cu = res.get_current("RL.p")
+            self.assertTrue(abs(1-cu/cu_approx) <0.05)
+            x = x * 2
+
+
 if __name__ == '__main__':
     unittest.main()
