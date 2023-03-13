@@ -50,6 +50,16 @@ class Component:
         """return the ports of this component"""
         raise NotImplementedError("method 'get_ports' is not implemented")
 
+class NPort(Component):
+    """Nport"""
+
+    def get_ports(self):
+        """return the ports of this component"""
+        raise NotImplementedError("method 'get_ports' is not implemented")
+
+    def code(self, name, voltages):
+        raise NotImplementedError("method 'get_voltages' is not implemented")
+
 class Node2(Component):
     """a component with just two ports"""
 
@@ -246,7 +256,7 @@ class Inductor(Node2):
         return f"<Inductor {self.name}>"
 
 
-class PNPTransistor(Component):
+class PNPTransistor(NPort):
 
 
     """
@@ -283,10 +293,13 @@ class PNPTransistor(Component):
         self.lcutoff = -cutoff
         self.rcutoff = cutoff
 
+    def __repr__(self):
+        return f"<NPNTransistor {self.name}>"
+
     def get_ports(self):
         return ("B", "C", "E")
 
-    def code(self, name, vb, ve, vc):
+    def code(self, name, voltages):
         prefix = name
         me = "self." + prefix + "_"
         initt = [f"{me} = NPNPTransistor({self.IS}, {self.VT}, {self.beta_F},"
@@ -294,29 +307,38 @@ class PNPTransistor(Component):
         vbe = f"{prefix}_vbe"
         vbc = f"{prefix}_vbc"
 
-        cinit =[f"{vbe} = {vb}- {ve}",
-                f"{vbc} = {vb}- {vc}"]
-        curr = (f"-{me}.IB({vbe}, {vbc})",
-                f"-{me}.IE({vbe}, {vbc})",
-                f"-{me}.IC({vbe}, {vbc})")
+        nb = voltages["B"]
+        ne = voltages["E"]
+        nc = voltages["C"]
+
+        cinit =[f"{vbe} = {nb}- {ne}",
+                f"{vbc} = {nb}- {nc}"]
+
+        currents = {"B": f"-{me}.IB({vbe}, {vbc})",
+                    "E":  f"-{me}.IE({vbe}, {vbc})",
+                    "C": f"-{me}.IC({vbe}, {vbc})"}
 
         dinit = cinit
 
-        d = ((f"-{me}.d_IB_vbe({vbe})- {me}.d_IB_vbc({vbc})",
-             f"{me}.d_IB_vbe({vbe})",
-             f"{me}.d_IB_vbc({vbc})"),
+        dcurrent = {"B": {"B": f"-{me}.d_IB_vbe({vbe})- {me}.d_IB_vbc({vbc})",
+                          "E": f"{me}.d_IB_vbe({vbe})",
+                          "C": f"{me}.d_IB_vbc({vbc})"},
 
-             (f"-{me}.d_IE_vbe({vbe}) - {me}.d_IE_vbc({vbc})",
-              f"{me}.d_IE_vbe({vbe})",
-              f"{me}.d_IE_vbc({vbc})"),
+                    "E": {"B": f"-{me}.d_IE_vbe({vbe}) - {me}.d_IE_vbc({vbc})",
+                          "E": f"{me}.d_IE_vbe({vbe})",
+                          "C": f"{me}.d_IE_vbc({vbc})"},
 
-             (f"-{me}.d_IC_vbe({vbe}) - {me}.d_IC_vbc({vbc})",
-              f"{me}.d_IC_vbe({vbe})",
-              f"{me}.d_IC_vbc({vbc})"))
+                    "C": {"B": f"-{me}.d_IC_vbe({vbe}) - {me}.d_IC_vbc({vbc})",
+                          "E":  f"{me}.d_IC_vbe({vbe})",
+                          "C": f"{me}.d_IC_vbc({vbc})"}}
 
-        return (initt, (cinit, curr), (dinit,d))
+        return NodeNCode(component_init=initt,
+                         current_init=cinit,
+                         current=currents,
+                         dcurrent_init=dinit,
+                         dcurrent=dcurrent)
 
-class FET(Component):
+class FET(NPort):
     """ a FET"""
     def __init__(self, name, vth):
         super().__init__(name)
@@ -325,7 +347,7 @@ class FET(Component):
     def get_ports(self):
         return ("G", "D", "S")
 
-    def code(self, name, vg, vd, vs):
+    def code(self, name, voltages):
         prefix =  name
         me = "self." + prefix + "_"
         initt = [f"{me} = NFET({self.vth})"]
@@ -333,20 +355,35 @@ class FET(Component):
         vgs = f"{prefix}_vgs"
         vds = f"{prefix}_vds"
 
-        cinit = [f"{vgs}  = {vg} - {vs}",
-                 f"{vds} = {vd} - {vs}"]
-        curr = f"{me}.IS({vgs}, {vds})"
+        ng = voltages["G"]
+        nd = voltages["D"]
+        ns = voltages["S"]
+
+        cinit = [f"{vgs}  = {ng} - {ns}",
+                 f"{vds} = {nd} - {ns}"]
+
+        currents = {"G": "0",
+                    "S": f"{me}.IS({vgs}, {vds})",
+                    "D": f"(-{me}.IS({vgs}, {vds}))"}
 
         dinit = cinit
         #  g d s
-        d = (dinit,
-             f"{me}.d_IS_vgs({vgs},{vds})",
-             f"{me}.d_IS_vds({vgs},{vds})",
-             f"(-{me}.d_IS_vgs({vgs},{vds}) - {me}.d_IS_vds({vgs},{vds}))")
+        dcurrent = {"G": {"G": "0",
+                          "S": "0",
+                          "D": "0"},
+                    "S": {"G":  f"{me}.d_IS_vgs({vgs},{vds})",
+                          "D":  f"{me}.d_IS_vds({vgs},{vds})",
+                          "S":  f"(-{me}.d_IS_vgs({vgs},{vds}) - {me}.d_IS_vds({vgs},{vds}))"},
+                    "D": {"G":  f"(-{me}.d_IS_vgs({vgs},{vds}))",
+                          "D":  f"(-{me}.d_IS_vds({vgs},{vds}))",
+                          "S":  f"({me}.d_IS_vgs({vgs},{vds}) + {me}.d_IS_vds({vgs},{vds}))"}}
 
-        return (initt, (cinit,curr), d)
-
-class JFET(Component):
+        return NodeNCode(component_init=initt,
+                         current_init=cinit,
+                         current=currents,
+                         dcurrent_init=dinit,
+                         dcurrent=dcurrent)
+class JFET(NPort):
     """ a JFET"""
     def __init__(self, name, vth, beta, lambda_):
         super().__init__(name)
@@ -358,7 +395,7 @@ class JFET(Component):
     def get_ports(self):
         return ("G", "D", "S")
 
-    def code(self, name, vg, vd, vs):
+    def code(self, name, voltages):
         prefix =  name
         me = "self." + prefix + "_"
         initt = [f"{me} = NJFETn({self.vth},{self.beta}, {self.lambda_})"]
@@ -366,28 +403,32 @@ class JFET(Component):
         vgs = f"{prefix}_vgs"
         vds = f"{prefix}_vds"
 
-        cinit = [f"{vgs}  = {vg} - {vs}",
-                 f"{vds} = {vd} - {vs}"]
-        curr = f"{me}.IS({vgs}, {vds})"
+        ng = voltages["G"]
+        nd = voltages["D"]
+        ns = voltages["S"]
+
+        cinit = [f"{vgs}  = {ng} - {ns}",
+                 f"{vds} = {nd} - {ns}"]
+
+        curr = {"G": "0",
+                "S": f"{me}.IS({vgs}, {vds})",
+                "D": f"(-{me}.IS({vgs}, {vds}))"}
 
         dinit = cinit
         #  g d s
-        d = (dinit,
-             f"{me}.d_IS_vgs({vgs},{vds})",
-             f"{me}.d_IS_vds({vgs},{vds})",
-             f"(-{me}.d_IS_vgs({vgs},{vds}) - {me}.d_IS_vds({vgs},{vds}))")
+        dcurr = {"G": { "G": 0, "S": "0", "D": "0"},
+                 "S": {"G":  f"{me}.d_IS_vgs({vgs},{vds})",
+                       "D":  f"{me}.d_IS_vds({vgs},{vds})",
+                       "S":  f"(-{me}.d_IS_vgs({vgs},{vds}) - {me}.d_IS_vds({vgs},{vds}))"},
+                 "D": {"G":  f"(-{me}.d_IS_vgs({vgs},{vds}))",
+                       "D":  f"(-{me}.d_IS_vds({vgs},{vds}))",
+                       "S":  f"({me}.d_IS_vgs({vgs},{vds}) + {me}.d_IS_vds({vgs},{vds}))"}}
 
-        return (initt, (cinit,curr), d)
-
-class NPort(Component):
-    """Nport"""
-
-    def get_ports(self):
-        """return the ports of this component"""
-        raise NotImplementedError("method 'get_ports' is not implemented")
-
-    def code(self, name, voltages):
-        raise NotImplementedError("method 'get_voltages' is not implemented")
+        return NodeNCode(component_init=initt,
+                         current_init=cinit,
+                         current=curr,
+                         dcurrent_init=dinit,
+                         dcurrent=dcurr)
 
 class NPNTransistor(NPort):
     """an NPN Transistir implemented as NPort
@@ -427,7 +468,7 @@ class NPNTransistor(NPort):
         self.rcutoff = cutoff
 
     def __repr__(self):
-        return f"<Transistor {self.name}>"
+        return f"<NPNTransistor {self.name}>"
 
     def get_ports(self):
         return ("B", "C", "E")

@@ -103,7 +103,7 @@ class TestFET(unittest.TestCase):
 
         ana = Analysis(net)
         res = ana.analyze()
-        current = res.get_current("F.S")
+        current = res.get_current("F.D")
         self.assertTrue(0.058 < current < 0.06)
 
 if __name__ == '__main__':

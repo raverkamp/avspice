@@ -2,9 +2,9 @@
 
 import pprint as pp
 import numpy as np
-from .circuits import Voltage, Node2, Node2Current, PNPTransistor, Circuit, SubCircuit,\
+from .circuits import Voltage, Node2, Node2Current, Circuit, SubCircuit,\
                      Inductor, Capacitor, SubCircuitComponent, Part, \
-                     NPort, Variable, FET, JFET
+                     NPort, Variable
 from . import solving
 from . import util
 
@@ -374,80 +374,6 @@ class Analysis:
                 cg.add_to_cur_code(code.current_init)
                 cg.add_to_cur_code([f"res[{curr_index_p}] = {code.current}",
                                   f"res[{curr_index_n}] =  -({code.current})"])
-
-            elif isinstance(comp, (PNPTransistor)):
-                kb = self.node_index(nodes[0])
-                ke = self.node_index(nodes[2])
-                kc = self.node_index(nodes[1])
-
-                (init_t, (cinit, (cb,ce,cc)),
-                         (dinit,((dbb, dbe, dbc),
-                                 (deb, dee, dec),
-                                 (dcb, dce, dcc)))) = \
-                     comp.code(cname,f"sol[{kb}]", f"sol[{ke}]", f"sol[{kc}]")
-
-                cg.add_to_cinit(init_t)
-                cg.add_to_y_code(cinit)
-                cg.add_ysum(kb, f"({cb})")
-                cg.add_ysum(ke, f"({ce})")
-                cg.add_ysum(kc, f"({cc})")
-
-                cg.add_to_dy_code(dinit)
-
-                cg.add_dysum(kb, kb, f"({dbb})")
-                cg.add_dysum(kb, ke, f"({dbe})")
-                cg.add_dysum(kb, kc, f"({dbc})")
-
-                cg.add_dysum(ke, kb, f"({deb})")
-                cg.add_dysum(ke, ke, f"({dee})")
-                cg.add_dysum(ke, kc, f"({dec})")
-
-
-                cg.add_dysum(kc, kb, f"({dcb})")
-                cg.add_dysum(kc, ke, f"({dce})")
-                cg.add_dysum(kc, kc, f"({dcc})")
-
-                cg.add_to_cur_code(cinit)
-
-                curr_index_B  = self.curr_index(part.name, "B")
-                curr_index_E  = self.curr_index(part.name, "E")
-                curr_index_C  = self.curr_index(part.name, "C")
-
-                cg.add_to_cur_code([f"res[{curr_index_B}] = -({cb})",
-                                  f"res[{curr_index_E}] =  -({ce})",
-                                  f"res[{curr_index_C}] =  -({cc})"])
-
-            elif isinstance(comp, FET) or isinstance(comp, JFET):
-                kg = self.node_index(nodes[0])
-                kd = self.node_index(nodes[1])
-                ks = self.node_index(nodes[2])
-                (init_fet, (cinit, cu),
-                    (dinit, dcg, dcd, dcs)) = comp.code(cname,
-                                                        f"sol[{kg}]",
-                                                        f"sol[{kd}]",
-                                                        f"sol[{ks}]" )
-                cg.add_to_cinit(init_fet)
-                cg.add_to_y_code(cinit)
-                cg.add_ysum(kd, f"(-{cu})")
-                cg.add_ysum(ks, f"({cu})")
-
-                cg.add_to_dy_code(dinit)
-
-                cg.add_dysum(kd, kg, f"(-{dcg})")
-                cg.add_dysum(ks, kg, f"({dcg})")
-
-                cg.add_dysum(kd,kd,  f"(-{dcd})")
-                cg.add_dysum(ks,kd,  f"({dcd})")
-
-                cg.add_dysum(kd,ks,  f"(-{dcs})")
-                cg.add_dysum(ks,ks,  f"({dcs})")
-
-                curr_index_D  = self.curr_index(part.name, "D")
-                curr_index_S  = self.curr_index(part.name, "S")
-
-                cg.add_to_cur_code(cinit)
-                cg.add_to_cur_code([f"res[{curr_index_D}]= -({cu})",
-                                     f"res[{curr_index_S}]= ({cu})"])
 
             elif isinstance(comp, NPort):
                 ports = comp.get_ports()
