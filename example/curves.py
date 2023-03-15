@@ -1,23 +1,18 @@
-import matplotlib as mp
+"""plots of transistor kennlinien and aone circuit"""
+
+import argparse
 import matplotlib.pyplot as plt
-from avspice import *
-import argparse
-import sys
-from avspice.util import *
-from avspice  import ncomponents
+from avspice import NPNTransistor, Circuit, Analysis, Variable
+from avspice.util import drange
+from avspice.ncomponents import NNPNTransistor
 
-import math
-
-import argparse
-
-
-nnpntransistor = ncomponents.NNPNTransistor(1e-12, 25e-3, 100, 10,-40, 40)
+nnpntransistor = NNPNTransistor(1e-12, 25e-3, 100, 10,-40, 40)
 
 npntransistor = NPNTransistor("", 1e-12, 25e-3, 100, 10)
 
 
-def plot1(args):
-
+def model(args):
+    _ = args
     t = nnpntransistor
     fig, (ax1, ax2) = plt.subplots(2)
     vbs = list(drange(0.2, 0.5, 0.01))
@@ -52,11 +47,11 @@ def plot1(args):
     ax2.plot(vbs,ic, label="ic")
     ax2.legend()
 
-    plt.ion()
+    fig.tight_layout()
     plt.show()
-    input()
 
-def plot2(args):
+def circuit(args):
+    _ = args
     x = list(drange(0, 2, 0.01))
     y = []
     z = []
@@ -64,7 +59,7 @@ def plot2(args):
     iy = []
 
     tt = npntransistor
- 
+
     net = Circuit()
     net.addV("vc", 5, "v", "0")
     net.addV("vb", Variable("vb"), "vb","0")
@@ -72,14 +67,14 @@ def plot2(args):
     net.addR("rb", 1e3, "vb", "B")
     net.add_component("t1", tt, ("B", "C", "0"))
     ana = Analysis(net)
-    
+
     for vb in x:
         res = ana.analyze(maxit=30, start_solution_vec=sol, variables={"vb": vb})
         if isinstance(res, str):
-            print("no covergence at: {0}".format(v))
+#            print("no covergence at: {0}".format(v))
             y.append(None)
             z.append(None)
-            iy.appned(None)
+            iy.append(None)
             sol = None
         else:
             y.append(res.get_current("rc.p"))
@@ -91,23 +86,27 @@ def plot2(args):
     ax1.set_xlabel("V(B,E)")
     ax1.set_ylabel("current")
     ax1.legend()
-    
+
     ax2.set_xlabel("V(B,E)")
-    ax2.set_ylabel("current")    
+    ax2.set_ylabel("current")
     ax2.plot(x,z, color="black", label="I(B)")
     ax2.legend()
-    
+
     fig.tight_layout()
     plt.show()
-    
+
 def main():
-    (cmd, args) = getargs()
-    if cmd == "1":
-        plot1(args)
-    elif cmd == "2":
-        plot2(args)
-    else:
-        raise Exception("unknown commnd: {0}".format(cmd))
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(required=True)
+
+    parser_kennlinie = subparsers.add_parser('model')
+    parser_kennlinie.set_defaults(func=model)
+
+    parser_control = subparsers.add_parser('circuit')
+    parser_control.set_defaults(func=circuit)
+
+    args = parser.parse_args()
+    args.func(args)
 
 main()
-

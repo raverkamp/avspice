@@ -4,6 +4,8 @@ import sys
 
 import matplotlib as mp
 import matplotlib.pyplot as plt
+import matplotlib.ticker
+
 from avspice import *
 from avspice.util import *
 
@@ -53,11 +55,6 @@ def plot2(args):
     input()
 
 def plot3(args):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('cpot', type=float)
-    parser.add_argument('cutoff', type=float)
-
-    args = parser.parse_args(args)
     t = NNPNTransistor(1e-12, 25e-3, 100, 10, -40, 40)
     x = list(drange(-0.5, 3.5, 0.01))
     vc = args.cpot
@@ -280,7 +277,7 @@ def rlc(args):
     ax.plot(res.get_time(), res.get_current("r1.p"), label="current", color="blue")
     f = 1/(math.sqrt(capa*indu) * 2 * math.pi)
     ax.set_title(f"RLC r={rv}, c={capa}, l={indu}, freq={f}")
-    import  matplotlib.ticker
+
     formatterx = matplotlib.ticker.EngFormatter("s")
     formattery = matplotlib.ticker.EngFormatter("A")
     ax.xaxis.set_major_formatter(formatterx)
@@ -326,28 +323,44 @@ def tricky(args):
 
 
 def main():
-    (cmd, args) = getargs()
-    if cmd == "1":
-        plot1(args)
-    elif cmd == "2":
-        plot2(args)
-    elif cmd == "3":
-        plot3(args)
-    elif cmd == "4":
-        plot4(args)
-    elif cmd == "5":
-        plot5(args)
-    elif cmd == "e":
-        emitter(args)
-    elif cmd == "saw":
-        saw1(args)
-    elif cmd == "emitter":
-        emitterschaltung(args)
-    elif cmd == "rlc":
-        rlc(args)
-    elif cmd == "tricky":
-        tricky(args)
-    else:
-        raise Exception("unknown commnd: {0}".format(cmd))
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(required=True)
+
+    parser_1 = subparsers.add_parser('1')
+    parser_1.set_defaults(func=plot1)
+
+    parser_2 = subparsers.add_parser('2')
+    parser_2.set_defaults(func=plot2)
+
+    parser_3 = subparsers.add_parser('3')
+    parser_3.set_defaults(func=plot3)
+
+    parser_3.add_argument('cpot', type=float)
+    parser_3.add_argument('cutoff', type=float)
+
+    parser_4 = subparsers.add_parser('4')
+    parser_4.set_defaults(func=plot4)
+
+    parser_5 = subparsers.add_parser('5')
+    parser_5.set_defaults(func=plot5)
+
+    parser_e = subparsers.add_parser('e')
+    parser_e.set_defaults(func=emitter)
+
+    parser_saw = subparsers.add_parser('saw')
+    parser_saw.set_defaults(func=saw1)
+
+    parser_emitter = subparsers.add_parser('emitter')
+    parser_emitter.set_defaults(func=emitterschaltung)
+
+    parser_rlc = subparsers.add_parser('rlc')
+    parser_rlc.set_defaults(func=rlc)
+
+    parser_tricky = subparsers.add_parser('tricky')
+    parser_tricky.set_defaults(func=tricky)
+
+
+    args = parser.parse_args()
+    args.func(args)
 
 main()

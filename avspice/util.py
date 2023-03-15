@@ -3,12 +3,6 @@
 import math
 import sys
 
-def getargs():
-    args = sys.argv
-    if len(args) < 2:
-        raise Exception("Expecting at least one argument")
-    return (args[1], args[2:])
-
 def drange(start, end, step=None):
     x = float(start)
     if step is None:
