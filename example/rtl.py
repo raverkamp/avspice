@@ -1,6 +1,6 @@
 """ resistor transistor logic"""
 import argparse
-from avspice import *
+from avspice import SubCircuit, Circuit, Analysis, Variable, NPNTransistor
 
 
 tnpn =  NPNTransistor("TT", 1e-12, 25e-3,100, 10)
@@ -70,8 +70,8 @@ def cmd_not(args):
     ana = Analysis(net)
 
     res= ana.analyze(variables={"vi":args.vi})
-    print(f"----   not1 vi={args.vi} -----")
     res.display()
+    print(f"----   not1({args.vi}) -> {res.get_voltage('ro.p')} -----")
 
 
 def cmd_not_not(args):
@@ -98,8 +98,8 @@ def cmd_not_not(args):
     ana = Analysis(net)
 
     res= ana.analyze(variables={"vi": args.vi})
-    print(f"----   not2 vi={args.vi} -----")
     res.display()
+    print(f"----   not2({args.vi}) -> {res.get_voltage('ro2.p')}  -----")
 
 def cmd_nor2(args):
     net = Circuit()
@@ -126,8 +126,8 @@ def cmd_nor2(args):
     ana = Analysis(net)
 
     res= ana.analyze(variables={"vi1": args.vi1, "vi2": args.vi2})
-    print(f"----   nor2 vi={args.vi1} {args.vi2} -----")
     res.display()
+    print(f"----   nor2({args.vi1}, {args.vi2}) -> {res.get_voltage('ro.p')} -----")
 
 def cmd_or2(args):
     net = Circuit()
@@ -152,8 +152,9 @@ def cmd_or2(args):
     ana = Analysis(net)
 
     res= ana.analyze(variables={"vi1": args.vi1, "vi2": args.vi2})
-    print(f"----   or2 vi={args.vi1} {args.vi2} -----")
     res.display()
+    ro_p = res.get_voltage("ro.p")
+    print(f"----   or2({args.vi1}, {args.vi2}) --> {ro_p}---")
 
 
 def cmd_or4(args):
@@ -186,12 +187,15 @@ def cmd_or4(args):
     print(f"----   or4 vi={args.vi1} {args.vi2} -----")
     res.display()
     o =  res.get_voltage("ro.p")
-    print(f"Outout: {o}")
+    print(f"----   or4({args.vi1}, {args.vi2}, {args.vi3}, {args.vi3}) -> {o} ----")
 
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser( prog='RTL-Examples',
+                    description=
+"""Resistor Translogic circuits arguments are at the input voltages
+1 is about 3.8V, 0 is less than 0.5V""")
     subparsers = parser.add_subparsers(required=True)
 
     p_not = subparsers.add_parser('not')
