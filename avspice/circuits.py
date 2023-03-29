@@ -529,7 +529,10 @@ class NPNTransistor(NPort):
                          dcurrent_init=dinit,
                          dcurrent=dcurrent)
 
-
+# utility class for for networks
+# name: a name of the component in a network,
+# component:  the component itself, e.g. transistor BC238, a resistor with a specific resistance
+# connections: the mapping  of the ports of the component to nodes in the network
 Part =  collections.namedtuple("Part", ("name","component", "connections"))
 
 class Network:
@@ -537,17 +540,18 @@ class Network:
         It only contains the topology"""
 
     def __init__(self):
-        self.parts = []
-        self.node_list = []
-        self.part_dict = {}
+        self.parts = [] # the list of parts
+        self.node_list = [] # the list of nodes
+        self.part_dict = {} # mapping from part name to parts
 
     def add_component(self, name:str, comp: Component, nodes):
         assert isinstance(name, str), "name parameter must be a string"
         assert isinstance(comp, Component), "component parameter must be a component"
-        ports = comp.get_ports()
-        assert len(ports) == len(nodes)
         if name in self.part_dict:
-            raise Exception(f"part with name {name} already exists")
+            raise Exception(f"a part with name {name} already exists")
+        ports = comp.get_ports()
+        if  not len(ports) == len(nodes):
+            raise Exception(f"for part {name} #ports={len(ports)} and #connections={len(nodes)} do not match")
         for node in nodes:
             assert isinstance(node, str)
             if not node in self.node_list:

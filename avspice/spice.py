@@ -209,37 +209,47 @@ class Analysis:
     def __init__(self, circuit):
         assert isinstance(circuit, Circuit), "need a circuit"
 
+        # the circuit which is might contain subcrcuits is flattened into one
+        # big circuit without subcircuits
+        # name of parts in subcircuits is prefixed
+        # the same for the nodes in subcicuits
+
         parts = []
         node_list = ["0"]
-        # the nodes are already absolute!
-        def add_sparts(prefix, sc, nodes):
+
+        def add_subcircuit_parts(prefix, sc, nodes):
+            # prefix is prefixed to name of nodes and parts
+            # sc is the circuit or subcircuit
+            # nodes the nodes the subcircuit is connected to
+            #    the nodes are already absolute!
             if isinstance(sc, SubCircuit):
                 export_nodes = sc.export_nodes
             else:
                 export_nodes = []
+
             for part in sc.parts:
-                newcons = []
+                new_connections = []
                 for con in part.connections:
                     i = export_nodes.index(con) if con in export_nodes else -1
                     if  i>=0:
                         x = nodes[i]
                     else:
                         x = prefix + con
-                    newcons.append(x)
+                    new_connections.append(x)
                     if not x in node_list:
                         node_list.append(x)
 
                 if isinstance(part.component, SubCircuitComponent):
                     sc = part.component.subcircuit
                     newprefix = prefix + part.name + "/"
-                    add_sparts(newprefix, sc, newcons)
+                    add_subcircuit_parts(newprefix, sc, new_connections)
                 else:
                     component = part.component
                     newname = prefix + part.name
-                    newpart = Part(newname, component, newcons)
+                    newpart = Part(newname, component, new_connections)
                     parts.append(newpart)
 
-        add_sparts("", circuit, [])
+        add_subcircuit_parts("", circuit, [])
 
         self.parts = parts
         self.node_list = node_list
@@ -345,6 +355,7 @@ class Analysis:
             if isinstance(comp, Voltage):
                 (vinit, (pre , expr)) = comp.code(cg, cname)
                 cg.add_to_cinit(vinit)
+                # the variable for the current through the voltage source
                 k = self.voltage_index(part)
                 cg.add_to_y_code(pre)
                 cg.add_ysum(kp, f"sol[{k}]")
@@ -359,6 +370,8 @@ class Analysis:
                                     f"res[{curr_index_n}] = -(sol[{k}])"])
 
             elif isinstance(comp, Node2Current):
+                # a simple componenet where the current depends o0nyl on the voltage
+                # across the component
                 code = comp.code(cg, cname, f"sol[{kp}]- sol[{kn}]")
                 cg.add_to_cinit(code.component_init)
                 cg.add_to_y_code(code.current_init)
@@ -430,6 +443,7 @@ class Analysis:
                     cg.add_to_cur_code([f"res[{curr_index_p}] = -(sol[{k}])",
                                         f"res[{curr_index_n}] = sol[{k}]"])
                 else:
+                    # sol[k] current through capacitor, for working point condition is this current is 0
                     cg.add_ysum(k, f"sol[{k}]")
                     cg.add_dysum(k, k, "1")
                     cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
