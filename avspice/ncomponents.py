@@ -9,47 +9,48 @@ from . import util
 class NVoltage:
     """voltage source"""
 
-    def __init__(self, v):
+    v:float
+    def __init__(self, v:float):
         assert isinstance(v, (float,int))
         self.v = v
 
-    def voltage(self, time):
+    def voltage(self, time:float)->float:
         _ = time
         return self.v
 
 class NSineVoltage:
     """sine voltage source"""
-    def __init__(self, v, f):
+    def __init__(self, v:float, f:float):
         assert isinstance(v, (float,int))
         assert isinstance(f, (float,int))
         assert f>0
         self.v = v
         self.f = f
 
-    def voltage(self, time):
+    def voltage(self, time:float)->float:
         return self.v * math.sin(2 * math.pi * self.f * time)
 
 class NSawVoltage:
     """savw voltage source"""
-    def __init__(self, v, f):
+    def __init__(self, v:float, f:float):
         self.v = v
         self.f = f
 
-    def voltage(self, time):
+    def voltage(self, time:float)->float:
         return self.v * util.saw_tooth(self.f, time)
 
 class NPieceWiseLinearVoltage:
     """piecewise linear volatge source"""
-    def __init__(self, vx, vy):
+    def __init__(self, vx:list[float], vy:list[float]):
         self.vx = vx
         self.vy = vy
 
-    def voltage(self, time):
+    def voltage(self, time:float)->float:
         return util.linear_interpolate(self.vx, self.vy, time)
 
 class NDiode:
     """solid state diode"""
-    def __init__(self, Is, Nut, lcut_off = -40, rcut_off=40):
+    def __init__(self, Is:float, Nut:float, lcut_off:float = -40, rcut_off:float=40):
         self.Is = Is
         self.Nut = Nut
 
@@ -57,15 +58,15 @@ class NDiode:
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def current(self, v):
+    def current(self, v:float)->float:
         return self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
 
-    def diff_current(self, dv):
+    def diff_current(self, dv:float) ->float:
         return self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
 
 class NZDiode:
     """solid state Z-diode"""
-    def __init__(self, vcut, Is, Nut, IsZ, NutZ, lcut_off = -40, rcut_off=40):
+    def __init__(self, vcut:float, Is:float, Nut:float, IsZ:float, NutZ:float, lcut_off:float = -40, rcut_off:float=40):
         assert isinstance(vcut, numbers.Number)
         self.vcut = vcut
         self.Is = Is
@@ -76,13 +77,13 @@ class NZDiode:
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def current(self, v):
+    def current(self, v:float) -> float:
         pp = self.Is * (explin(v/self.Nut, self.lcut_off, self.rcut_off)-1)
         nn = self.IsZ * (explin((-self.vcut)/self.NutZ, self.lcut_off, self.rcut_off)-
                          explin((-self.vcut-v)/self.NutZ, self.lcut_off, self.rcut_off))
         return nn + pp
 
-    def diff_current(self, dv):
+    def diff_current(self, dv:float)->float:
         dpp =   self.Is * (1/self.Nut) * dexplin(dv/self.Nut, self.lcut_off, self.rcut_off)
         dnn =   (self.IsZ * (1/self.NutZ)
                  * dexplin((-self.vcut - dv)/self.NutZ, self.lcut_off, self.rcut_off))
@@ -105,53 +106,53 @@ class NNPNTransistor:
         self.lcutoff = lcutoff
         self.rcutoff = rcutoff
 
-    def t1(self, vbe, vbc):
+    def t1(self, vbe:float, vbc:float)->float:
         return (explin(vbe/self.VT, self.lcutoff, self.rcutoff)
                 - explin(vbc/self.VT, self.lcutoff, self.rcutoff))
 
-    def d_t1_vbe(self, vbe):
+    def d_t1_vbe(self, vbe:float)->float:
         return dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
-    def d_t1_vbc(self, vbc):
+    def d_t1_vbc(self, vbc:float)->float:
         return -dexplin(vbc/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
-    def t2(self, vbc):
+    def t2(self, vbc:float)->float:
         return 1/self.beta_R *(explin(vbc/self.VT, self.lcutoff, self.rcutoff)-1)
 
-    def d_t2_vbc(self, vbc):
+    def d_t2_vbc(self, vbc:float)->float:
         return 1/self.beta_R * dexplin(vbc/self.VT, self.lcutoff, self.rcutoff) /self.VT
 
-    def t3(self, vbe):
+    def t3(self, vbe:float)->float:
         return 1/self.beta_F *(explin(vbe/self.VT, self.lcutoff, self.rcutoff)-1)
 
-    def d_t3_vbe(self, vbe):
+    def d_t3_vbe(self, vbe:float)->float:
         return 1/self.beta_F * dexplin(vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
-    def IC(self, vbe, vbc):
+    def IC(self, vbe:float, vbc:float)->float:
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
-    def d_IC_vbe(self, vbe):
+    
+    def d_IC_vbe(self, vbe:float)->float:
         return self.IS * self.d_t1_vbe(vbe)
 
-    def d_IC_vbc(self, vbc):
+    def d_IC_vbc(self, vbc:float)->float:
         return self.IS * (self.d_t1_vbc(vbc) - self.d_t2_vbc(vbc))
 
-    def IB(self, vbe, vbc):
+    def IB(self, vbe:float, vbc:float)->float:
         return self.IS * (self.t2(vbc) + self.t3(vbe))
 
-    def d_IB_vbe(self, vbe):
+    def d_IB_vbe(self, vbe:float)->float:
         return self.IS * self.d_t3_vbe(vbe)
 
-    def d_IB_vbc(self, vbc):
+    def d_IB_vbc(self, vbc:float)->float:
         return self.IS * self.d_t2_vbc(vbc)
 
-
-    def IE(self, vbe, vbc):
+    def IE(self, vbe:float, vbc:float)->float:
         return self.IS * (self.t1(vbe, vbc) + self.t3(vbe))
 
-    def d_IE_vbe(self, vbe):
+    def d_IE_vbe(self, vbe:float)->float:
         return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
 
-    def d_IE_vbc(self, vbc):
+    def d_IE_vbc(self, vbc:float)->float:
         return self.IS * self.d_t1_vbc(vbc)
 
 class NPNPTransistor:
@@ -170,62 +171,62 @@ class NPNPTransistor:
         self.lcutoff = lcutoff
         self.rcutoff = rcutoff
 
-    def t1(self, vbe, vbc):
+    def t1(self, vbe:float, vbc:float)->float:
         return (explin(-vbe/self.VT, self.lcutoff, self.rcutoff)
                 - explin(-vbc/self.VT, self.lcutoff, self.rcutoff))
 
-    def d_t1_vbe(self, vbe):
+    def d_t1_vbe(self, vbe:float)->float:
         return -dexplin(-vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
-    def d_t1_vbc(self, vbc):
+    def d_t1_vbc(self, vbc:float)->float:
         return dexplin(-vbc/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
-    def t2(self, vbc):
+    def t2(self, vbc:float)->float:
         return 1/self.beta_R *(explin(-vbc/self.VT, self.lcutoff, self.rcutoff)-1)
 
-    def d_t2_vbc(self, vbc):
+    def d_t2_vbc(self, vbc:float)->float:
         return -1/self.beta_R * dexplin(-vbc/self.VT, self.lcutoff, self.rcutoff) /self.VT
 
-    def t3(self, vbe):
+    def t3(self, vbe:float)->float:
         return 1/self.beta_F *(explin(-vbe/self.VT, self.lcutoff, self.rcutoff)-1)
 
-    def d_t3_vbe(self, vbe):
+    def d_t3_vbe(self, vbe:float)->float:
         return -1/self.beta_F * dexplin(-vbe/self.VT, self.lcutoff, self.rcutoff) / self.VT
 
     #---
-    def IC(self, vbe, vbc):
+    def IC(self, vbe:float, vbc:float)->float:
         return self.IS*(self.t2(vbc) - self.t1(vbe, vbc))
 
-    def d_IC_vbe(self, vbe):
+    def d_IC_vbe(self, vbe:float)->float:
         return -self.IS * self.d_t1_vbe(vbe)
 
-    def d_IC_vbc(self, vbc):
+    def d_IC_vbc(self, vbc:float)->float:
         return self.IS * (self.d_t2_vbc(vbc) - self.d_t1_vbc(vbc))
 
 
-    def IB(self, vbe, vbc):
+    def IB(self, vbe:float, vbc:float)->float:
         return -self.IS * (self.t2(vbc) + self.t3(vbe))
 
-    def d_IB_vbe(self, vbe):
+    def d_IB_vbe(self, vbe:float)->float:
         return -self.IS * self.d_t3_vbe(vbe)
 
-    def d_IB_vbc(self, vbc):
+    def d_IB_vbc(self, vbc:float)->float:
         return -self.IS * self.d_t2_vbc(vbc)
 
 
-    def IE(self, vbe, vbc):
+    def IE(self, vbe:float, vbc:float)->float:
         return self.IS * (self.t1(vbe, vbc) + self.t3(vbe))
 
-    def d_IE_vbe(self, vbe):
+    def d_IE_vbe(self, vbe:float)->float:
         return self.IS * (self.d_t1_vbe(vbe) + self.d_t3_vbe(vbe))
 
-    def d_IE_vbc(self, vbc):
+    def d_IE_vbc(self, vbc:float)->float:
         return self.IS * self.d_t1_vbc(vbc)
 
 class NFET:
     """FET"""
 
-    def __init__(self, vth):
+    def __init__(self, vth:float):
         self.vth = vth # threshold voltage
         self.id0 = 1e-5
         self.vt = 25e-3 # temperature voltage
@@ -233,7 +234,7 @@ class NFET:
         self.knp =  1.0/5.0
 
     #S is ground
-    def IS(self, vgs, vds):
+    def IS(self, vgs:float, vds:float)->float:
         if vds < 0:
             #we should use the body diode!
             return 0
@@ -246,7 +247,7 @@ class NFET:
         # vds >= vgs - self.vth:
         return self.knp * (vgs-self.vth) * (vgs-self.vth)/2 + self.id0
 
-    def d_IS_vgs(self, vgs, vds):
+    def d_IS_vgs(self, vgs:float, vds:float)->float:
         if vds <0:
             return 0
         if vgs < self.vth:
@@ -257,7 +258,7 @@ class NFET:
         return self.knp * 2 * (vgs - self.vth)
 
 
-    def d_IS_vds(self, vgs, vds):
+    def d_IS_vds(self, vgs:float, vds:float)->float:
         if vds <0:
             return 0
         if vgs < self.vth:
@@ -321,14 +322,14 @@ class NJFETn:
     """
 
 
-    def __init__(self, v_th, beta, lambda_):
+    def __init__(self, v_th:float, beta:float, lambda_:float):
         self.v_th = v_th # threshold voltage
         self.beta = beta
         self.lambda_ = lambda_
 
     # S is ground
 
-    def IS(self, vgs, vds):
+    def IS(self, vgs:float, vds:float)->float:
         if vds >= 0:
             if vgs < self.v_th:
                 return 0
@@ -339,7 +340,7 @@ class NJFETn:
         else:
             return -  self.IS(vgs-vds, -vds)
 
-    def d_IS_vgs(self, vgs, vds):
+    def d_IS_vgs(self, vgs:float, vds:float)->float:
         if vds >=0:
             if vgs < self.v_th:
                 return 0
@@ -350,7 +351,7 @@ class NJFETn:
         else:
             return - self.d_IS_vgs(vgs-vds, -vds)
 
-    def d_IS_vds(self, vgs, vds):
+    def d_IS_vds(self, vgs:float, vds:float)->float:
         if vds >= 0:
             if vgs < self.v_th:
                 return 0

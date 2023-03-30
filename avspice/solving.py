@@ -3,10 +3,17 @@
 import collections
 import numpy as np
 
-def reldiff(x,y):
+from collections.abc import Iterator
+from typing import Optional, Any, Callable, Union
+import numpy.typing as npt
+
+def reldiff(x:float,y:float) ->float:
     return abs(x-y) /  max(abs(x), abs(y))
 
-def close_enough(v1,v2, abstol, reltol):
+def close_enough(v1: npt.NDArray[np.float64],
+                 v2: npt.NDArray[np.float64],
+                 abstol: float,
+                 reltol:float) -> bool:
     for j in range(v1.size):
         x = v1[j]
         y = v2[j]
@@ -14,9 +21,16 @@ def close_enough(v1,v2, abstol, reltol):
             return False
     return True
 
-BasicSolution = collections.namedtuple('Solution', ['x', 'y', 'dfx', 'iterations', 'norm_y'])
+BasicSolution = collections.namedtuple('BasicSolution', ['x', 'y', 'dfx', 'iterations', 'norm_y'])
 
-def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
+def solve(xstart: npt.NDArray[np.float64],
+          f: Callable[[npt.NDArray[np.float64]],npt.NDArray[np.float64]],
+          df: Callable[[npt.NDArray[np.float64]],npt.NDArray[np.float64]],
+          abstol:float,
+          reltol:float,
+          maxiter:int=20,
+          alfa:Optional[float]=None,
+          verbose:bool=False) ->Union[BasicSolution,str]:
     iterations = 0
     if verbose:
         print("-----------------------------",xstart,alfa)
@@ -26,18 +40,18 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
         fx0 = f(x0)
         dalfa = np.identity(len(x)) * alfa
     else:
-        fx0 = None
-        dalfa = None
+        fx0 = np.zeros(len(x))
+        dalfa = np.identity(len(x))
 
     # has a root at x0 for alfa=1
     # alfa=0 equivalent to F(x)
-    def fn(x):
+    def fn(x: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         if alfa is None:
             return f(x)
         else:
             return f(x) + ((x-x0) - fx0) * alfa
 
-    def dfn(x):
+    def dfn(x:npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         if alfa is None:
             return df(x)
         else:
@@ -62,8 +76,9 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
         #    print("iteration", norm_y, x-xn)
         if close_enough(x, xn, abstol, reltol):
             return BasicSolution(x=xn, y=yn, dfx=dfx, iterations=iterations, norm_y=norm_y_n)
-        a = 1
-        k = 0
+        
+        a:float = 1
+        k:int = 0
 
         while True:
             # is there an improvement in the residual error?
@@ -84,7 +99,13 @@ def solve(xstart, f, df, abstol, reltol, maxiter=20, alfa=None, verbose=False):
 
 Solution = collections.namedtuple('Solution', ['solution', 'y', 'dfx', 'iterations', 'norm_y'])
 
-def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
+def solve_alfa(xstart:npt.NDArray[np.float64],
+               f: Callable[[npt.NDArray[np.float64]],npt.NDArray[np.float64]],
+               df: Callable[[npt.NDArray[np.float64]],npt.NDArray[np.float64]],
+               abstol:float,
+               reltol:float,
+               maxiter:int=20,
+               verbose:bool=False) -> Union[BasicSolution,str]:
     solution_vec = xstart
     res = solve(solution_vec, f, df, abstol, reltol, maxiter)
     if not isinstance(res, str):
@@ -120,7 +141,9 @@ def solve_alfa(xstart, f, df, abstol, reltol, maxiter=20, verbose=False):
     return res
     #    (sol, y, dfx, iterations, norm_y) = res
 
-def bisect(f, xl, xr):
+def bisect(f: Callable[[float],float],
+           xl:float,
+           xr:float)->float:
     assert xl < xr, "xl < xr required!"
     fr = f(xr)
     fl = f(xl)

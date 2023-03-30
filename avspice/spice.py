@@ -9,8 +9,6 @@ from . import solving
 from . import util
 
 
-
-
 class TransientResult:
     """result of a transient simulation"""
 
@@ -372,7 +370,7 @@ class Analysis:
             elif isinstance(comp, Node2Current):
                 # a simple componenet where the current depends o0nyl on the voltage
                 # across the component
-                code = comp.code(cg, cname, f"sol[{kp}]- sol[{kn}]")
+                code = comp.code2(cg, cname, f"sol[{kp}]- sol[{kn}]")
                 cg.add_to_cinit(code.component_init)
                 cg.add_to_y_code(code.current_init)
                 cg.add_to_dy_code(code.dcurrent_init)

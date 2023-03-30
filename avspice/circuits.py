@@ -4,6 +4,8 @@ import numbers
 import pprint as pp
 from . import util
 
+from collections.abc import Iterator
+from typing import Optional, Any, Callable, Union
 
 
 # for codee generation hsi returne by Node2 components like resistors, diodes and current sources
@@ -33,39 +35,41 @@ NodeNCode = collections.namedtuple("NodeNCode", [
 
 class Variable:
     """a variable"""
-    def __init__(self, name, default=None):
+    name:str
+    def __init__(self, name:str, default:Optional[float]=None) -> None:
         self.name = name
         assert default is None or isinstance(default, numbers.Number)
         self.default = default
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Variable {self.name}, {self.default}>"
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
-    def __init__(self, name):
+    name : str
+    def __init__(self, name:str):
         self.name = name
 
-    def get_ports(self):
+    def get_ports(self)->list[str]:
         """return the ports of this component"""
         raise NotImplementedError("method 'get_ports' is not implemented")
 
 class NPort(Component):
     """Nport"""
 
-    def get_ports(self):
+    def get_ports(self) -> list[str]:
         """return the ports of this component"""
         raise NotImplementedError("method 'get_ports' is not implemented")
 
-    def code(self, name, voltages):
-        raise NotImplementedError("method 'get_voltages' is not implemented")
+    def code(self, name:str, voltages:list[str])->Node2Code:
+        raise NotImplementedError("method 'code' is not implemented")
 
 class Node2(Component):
     """a component with just two ports"""
 
     #  __init__ is the same as for Component
 
-    def get_ports(self):
+    def get_ports(self) ->list[str]:
         return ["p", "n"]
 
 class Node2Current(Node2):
@@ -73,10 +77,13 @@ class Node2Current(Node2):
 
     components which conduct a current based solely on the applied voltage
     """
+    def code2(self, name:str, voltages:list[str])->Node2Code:
+        raise NotImplementedError("method 'code' is not implemented")
 
 class Resistor(Node2Current):
     """resistor"""
-    def __init__(self, name, ohm):
+    _ohm: Union[float, Variable]
+    def __init__(self, name:str, ohm: Union[float, Variable]):
         super().__init__(name)
         self._ohm = ohm
 
@@ -86,7 +93,7 @@ class Resistor(Node2Current):
     def __repr__(self):
         return f"<Resistor {self._ohm}>"
 
-    def code(self, generator, cname, dvname):
+    def code2(self, generator, cname, dvname):
         r =  generator.get_value_code(self.get_resistance())
         G = f"self.{cname}_G"
         return Node2Code(component_init=[f"{G}=1/{r}"],
@@ -104,7 +111,7 @@ class Current(Node2Current):
     def __repr__(self):
         return f"<Current {self.name}>"
 
-    def code(self, generator, cname, dvname):
+    def code2(self, generator, cname, dvname):
         _ = cname
         _ = dvname
         x = generator.get_value_code(self.amp)
@@ -183,7 +190,7 @@ class Diode(Node2Current):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code(self, generator, cname, dvname):
+    def code2(self, generator, cname, dvname):
         _ = generator
         return Node2Code(
             component_init =
@@ -213,7 +220,7 @@ class ZDiode(Node2Current):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code(self, generator, cname, dvname):
+    def code2(self, generator, cname, dvname):
         _ = generator
         return Node2Code(
             component_init=[f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
@@ -544,7 +551,7 @@ class Network:
         self.node_list = [] # the list of nodes
         self.part_dict = {} # mapping from part name to parts
 
-    def add_component(self, name:str, comp: Component, nodes):
+    def add_component(self, name:str, comp: Component, nodes:list[str]):
         assert isinstance(name, str), "name parameter must be a string"
         assert isinstance(comp, Component), "component parameter must be a component"
         if name in self.part_dict:
@@ -560,15 +567,15 @@ class Network:
         self.parts.append(part)
         self.part_dict[name] = part
 
-    def addR(self, name, ohm, p, n):
+    def addR(self, name:str, ohm:float, p:str, n:str):
         """add a curent source"""
         c = Resistor(name, ohm)
-        self.add_component(name, c, (p, n))
+        self.add_component(name, c, [p, n])
 
-    def addC(self, name, amp, p, n):
+    def addC(self, name:str, amp, p:str, n:str):
         """add a curent source"""
         c = Current(name, amp)
-        self.add_component(name, c, (p, n))
+        self.add_component(name, c, [p, n])
 
     def addV(self, name, volts, p , n):
         v = Voltage(name, volts)

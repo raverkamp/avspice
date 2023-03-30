@@ -3,7 +3,10 @@
 import math
 import sys
 
-def drange(start, end, step=None):
+from collections.abc import Iterator
+from typing import Optional, Any, Callable
+
+def drange(start:float, end:float, step:Optional[float]=None)->Iterator[float]:
     x = float(start)
     if step is None:
         s = 1.0
@@ -18,7 +21,7 @@ def drange(start, end, step=None):
     if x < end + s/2.0:
         yield end
 
-def saw_tooth(freq,t):
+def saw_tooth(freq:float, t:float) ->  float:
     t = 1.0 * t * freq
     t = t % 1
     if t<0.5:
@@ -27,7 +30,7 @@ def saw_tooth(freq,t):
         return 2 - t*2
 
 
-def explin(x: float, lcutoff: float, rcutoff:float):
+def explin(x: float, lcutoff: float, rcutoff:float) ->float:
     assert lcutoff  <= rcutoff, "cutoffs wrong"
 
     if x > rcutoff:
@@ -37,7 +40,7 @@ def explin(x: float, lcutoff: float, rcutoff:float):
     else:
         return math.exp(x)
 
-def dexplin(x:float, lcutoff:float, rcutoff:float):
+def dexplin(x:float, lcutoff:float, rcutoff:float) -> float:
     assert lcutoff  <= rcutoff, "cutoffs wrong"
 
     if x > rcutoff:
@@ -47,14 +50,14 @@ def dexplin(x:float, lcutoff:float, rcutoff:float):
     else:
         return math.exp(x)
 
-def is_str_seq(l):
+def is_str_seq(l:Any) -> bool:
     for x  in l:
         if not isinstance(x, str):
             return False
     return True
 
 
-def find_pos(v, x):
+def find_pos(v:list[float], x:float) -> int:
     """v is sorted double vector, x is double
        return largest i such that  x >= v[i], -1 if x< v[0]"""
     if len(v) == 0:
@@ -69,7 +72,7 @@ def find_pos(v, x):
             return i
         i-=1
 
-def linear_interpolate(x, y, t):
+def linear_interpolate(x:list[float], y:list[float], t:float) -> float:
     i = find_pos(x,t)
     if i == -1:
         return y[0]
@@ -81,7 +84,7 @@ def linear_interpolate(x, y, t):
     by = y[i+1]
     return ay + (t-ax)/ (bx-ax) * (by-ay)
 
-def smooth_step(left, right, x):
+def smooth_step(left:float, right:float, x:float) -> float:
     x = (x- left) /  (right - left)
     if x<=0:
         return 0.0
@@ -89,7 +92,7 @@ def smooth_step(left, right, x):
         return 1.0
     return 3 * x * x  - 2 * x * x * x
 
-def dsmooth_step(left, right, x):
+def dsmooth_step(left:float, right:float, x:float) -> float:
     x = (x- left) /   (right - left)
     if x<=0:
         return 0.0
@@ -97,10 +100,10 @@ def dsmooth_step(left, right, x):
         return 0.0
     return (6 * x - 6 * x * x) /  (right - left)
 
-def eps():
+def eps() -> float:
     return sys.float_info.epsilon
 
-def ndiff(fun, x):
+def ndiff(fun:Callable[[float], float], x:float) -> float:
     eps05 = math.sqrt(eps())
     if abs(x) < eps05:
         h = eps05
