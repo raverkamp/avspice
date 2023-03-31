@@ -130,7 +130,7 @@ class NNPNTransistor:
 
     def IC(self, vbe:float, vbc:float)->float:
         return self.IS*(self.t1(vbe, vbc) - self.t2(vbc))
-    
+
     def d_IC_vbe(self, vbe:float)->float:
         return self.IS * self.d_t1_vbe(vbe)
 

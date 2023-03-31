@@ -4,7 +4,10 @@ import math
 import sys
 
 from collections.abc import Iterator
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable,Union
+
+import numpy as np
+import numpy.typing as npt
 
 def drange(start:float, end:float, step:Optional[float]=None)->Iterator[float]:
     x = float(start)
@@ -57,7 +60,7 @@ def is_str_seq(l:Any) -> bool:
     return True
 
 
-def find_pos(v:list[float], x:float) -> int:
+def find_pos(v: Union[npt.NDArray[np.float64],list[float]], x:float) -> int:
     """v is sorted double vector, x is double
        return largest i such that  x >= v[i], -1 if x< v[0]"""
     if len(v) == 0:
@@ -72,7 +75,7 @@ def find_pos(v:list[float], x:float) -> int:
             return i
         i-=1
 
-def linear_interpolate(x:list[float], y:list[float], t:float) -> float:
+def linear_interpolate(x: Union[npt.NDArray[np.float64],list[float]], y:Union[npt.NDArray[np.float64],list[float]], t:float) -> float:
     i = find_pos(x,t)
     if i == -1:
         return y[0]

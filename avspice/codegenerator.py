@@ -14,11 +14,10 @@ class Variable:
     def __repr__(self)->str:
         return f"<Variable {self.name}, {self.default}>"
 
-
 class CodeGenerator:
     """utility class for code generation"""
 
-    def __init__(self, n:int, n_curr_ports:int, transient:bool):
+    def __init__(self, n:int, n_curr_ports:int, transient:bool)->None:
         self.n = n
         self.n_curr_ports = n_curr_ports
         #        if transient:
@@ -30,7 +29,7 @@ class CodeGenerator:
             "def bla(variables):",
             "   return Computer(variables)",
             "",
-            "class Computer:",
+            "class Computer(ComputerBase):",
             "    def __init__(self, variables):",
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
                      + " NPNPTransistor, NFET, NJFETn,"

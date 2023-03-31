@@ -57,7 +57,7 @@ class NPort(Component):
         """return the ports of this component"""
         raise NotImplementedError("method 'get_ports' is not implemented")
 
-    def code(self, name:str, voltages:list[str])->NodeNCode:
+    def code(self, name:str, voltages:dict[str,str])->NodeNCode:
         raise NotImplementedError("method 'code' is not implemented")
 
 class Node2(Component):
@@ -302,7 +302,7 @@ class PNPTransistor(NPort):
     def get_ports(self)->list[str]:
         return ["B", "C", "E"]
 
-    def code(self, name:str, voltages:list[str])->NodeNCode:
+    def code(self, name:str, voltages:dict[str,str])->NodeNCode:
         prefix = name
         me = "self." + prefix + "_"
         initt = [f"{me} = NPNPTransistor({self.IS}, {self.VT}, {self.beta_F},"
@@ -343,14 +343,14 @@ class PNPTransistor(NPort):
 
 class FET(NPort):
     """ a FET"""
-    def __init__(self, name, vth):
+    def __init__(self, name:str, vth:float):
         super().__init__(name)
         self.vth = vth
 
-    def get_ports(self):
-        return ("G", "D", "S")
+    def get_ports(self)->list[str]:
+        return ["G", "D", "S"]
 
-    def code(self, name, voltages):
+    def code(self, name:str, voltages:dict[str,str])->NodeNCode:
         prefix =  name
         me = "self." + prefix + "_"
         initt = [f"{me} = NFET({self.vth})"]
@@ -388,17 +388,17 @@ class FET(NPort):
                          dcurrent=dcurrent)
 class JFET(NPort):
     """ a JFET"""
-    def __init__(self, name, vth, beta, lambda_):
+    def __init__(self, name:str, vth:float, beta:float, lambda_:float):
         super().__init__(name)
         self.vth = vth
         self.vth = vth
         self.beta = beta
         self.lambda_ = lambda_
 
-    def get_ports(self):
-        return ("G", "D", "S")
+    def get_ports(self)->list[str]:
+        return ["G", "D", "S"]
 
-    def code(self, name, voltages):
+    def code(self, name:str, voltages:dict[str, str])->NodeNCode:
         prefix =  name
         me = "self." + prefix + "_"
         initt = [f"{me} = NJFETn({self.vth},{self.beta}, {self.lambda_})"]
@@ -470,13 +470,13 @@ class NPNTransistor(NPort):
         self.lcutoff = -cutoff
         self.rcutoff = cutoff
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<NPNTransistor {self.name}>"
 
-    def get_ports(self):
-        return ("B", "C", "E")
+    def get_ports(self)->list[str]:
+        return ["B", "C", "E"]
 
-    def code(self, name, voltages):
+    def code(self, name:str, voltages:dict[str,str])->NodeNCode:
         prefix = name
         me = "self." + prefix + "_"
         initt = [f"{me} = NNPNTransistor({self.IS}, {self.VT},"
@@ -542,12 +542,12 @@ class Network:
     """ this class describes the toplogy of an electrical network
         It only contains the topology"""
 
-    def __init__(self):
-        self.parts = [] # the list of parts
-        self.node_list = [] # the list of nodes
-        self.part_dict = {} # mapping from part name to parts
+    def __init__(self)->None:
+        self.parts:list[Part] = [] # the list of parts
+        self.node_list:list[str] = [] # the list of nodes
+        self.part_dict:dict[str,Part] = {} # mapping from part name to parts
 
-    def add_component(self, name:str, comp: Component, nodes:list[str]):
+    def add_component(self, name:str, comp: Component, nodes:list[str])->None:
         assert isinstance(name, str), "name parameter must be a string"
         assert isinstance(comp, Component), "component parameter must be a component"
         if name in self.part_dict:
@@ -563,48 +563,48 @@ class Network:
         self.parts.append(part)
         self.part_dict[name] = part
 
-    def addR(self, name:str, ohm:float, p:str, n:str):
+    def addR(self, name:str, ohm:float, p:str, n:str)->None:
         """add a curent source"""
         c = Resistor(name, ohm)
         self.add_component(name, c, [p, n])
 
-    def addC(self, name:str, amp, p:str, n:str):
+    def addC(self, name:str, amp: Union[Variable,float], p:str, n:str)->None:
         """add a curent source"""
         c = Current(name, amp)
         self.add_component(name, c, [p, n])
 
-    def addV(self, name, volts, p , n):
+    def addV(self, name:str, volts:Union[Variable, float], p:str , n:str)->None:
         v = Voltage(name, volts)
-        self.add_component(name, v, (p,n))
+        self.add_component(name, v, [p,n])
 
-    def addSineV(self, name, volts, frequency, p ,n):
+    def addSineV(self, name:str, volts: float, frequency:float, p:str, n:str)->None:
         v = SineVoltage(name, volts, frequency)
-        self.add_component(name, v, (p, n))
+        self.add_component(name, v, [p, n])
 
-    def addSawV(self, name, volts, frequency, p, n):
+    def addSawV(self, name:str, volts:float, frequency:float, p:str ,n:str)->None:
         v = SawVoltage(name, volts, frequency)
-        self.add_component(name, v, (p, n))
+        self.add_component(name, v, [p, n])
 
-    def addD(self, name, Is, Nut, p, n):
+    def addD(self, name:str, Is:float, Nut:float, p:str, n:str)->None:
         d = Diode(name, Is, Nut)
-        self.add_component(name, d, (p, n))
+        self.add_component(name, d, [p, n])
 
-    def addCapa(self, name, capa, p, n):
+    def addCapa(self, name:str, capa:float, p:str, n:str)->None:
         c = Capacitor(name, capa)
-        self.add_component(name, c, (p, n))
+        self.add_component(name, c, [p, n])
 
-    def addInduc(self, name, induc, p, n):
+    def addInduc(self, name:str, induc:float, p:str, n:str)->None:
         indu = Inductor(name, induc)
-        self.add_component(name, indu, (p, n))
+        self.add_component(name, indu, [p, n])
 
-    def add_subcircuit(self, name, subcircuit, nodes):
+    def add_subcircuit(self, name:str, subcircuit:'SubCircuit', nodes:list[str])->None:
         assert isinstance(subcircuit, SubCircuit)
-        assert isinstance(name, str)
+
         assert util.is_str_seq(nodes)
         c = SubCircuitComponent(subcircuit)
         self.add_component(name,  c, nodes)
 
-    def add(self, name, x, nodes):
+    def add(self, name:str, x:Union['SubCircuit',Component], nodes:list[str])->None:
         if isinstance(x, SubCircuit):
             self.add_subcircuit(name,x,nodes)
         elif isinstance(x, Component):
@@ -614,7 +614,7 @@ class Network:
 class Circuit(Network):
     """toplevel circuit"""
 
-    def __init__(self):
+    def __init__(self)->None:
         super().__init__()
         self.node_list.append("0")
 
@@ -622,17 +622,17 @@ class Circuit(Network):
 class SubCircuit(Network):
     """a sub circuit, reuse  in circuits"""
 
-    def __init__(self, export_nodes):
+    def __init__(self, export_nodes:list[str]):
         super().__init__()
         assert util.is_str_seq(export_nodes), "nodes must be a sequence of strings"
         self.export_nodes = list(export_nodes)
 
 class SubCircuitComponent(Component):
     """wrapper around a subcircuit in circuit"""
-    def __init__(self, subcircuit):
+    def __init__(self, subcircuit:SubCircuit):
         assert isinstance(subcircuit, SubCircuit)
         super().__init__("nix")
         self.subcircuit = subcircuit
 
-    def get_ports(self):
+    def get_ports(self)->list[str]:
         return self.subcircuit.export_nodes

@@ -4,8 +4,10 @@ import collections
 import numpy as np
 
 from collections.abc import Iterator
-from typing import Optional, Any, Callable, Union
+from typing import Optional, Any, Callable, Union, NamedTuple
 import numpy.typing as npt
+
+
 
 def reldiff(x:float,y:float) ->float:
     return abs(x-y) /  max(abs(x), abs(y))
@@ -21,7 +23,12 @@ def close_enough(v1: npt.NDArray[np.float64],
             return False
     return True
 
-BasicSolution = collections.namedtuple('BasicSolution', ['x', 'y', 'dfx', 'iterations', 'norm_y'])
+BasicSolution = NamedTuple('BasicSolution',
+                           [('x', npt.NDArray[np.float64]),
+                            ('y',npt.NDArray[np.float64]),
+                            ('dfx', npt.NDArray[np.float64]),
+                            ('iterations', int),
+                            ('norm_y', float)])
 
 def solve(xstart: npt.NDArray[np.float64],
           f: Callable[[npt.NDArray[np.float64]],npt.NDArray[np.float64]],
@@ -58,7 +65,7 @@ def solve(xstart: npt.NDArray[np.float64],
             return  df(x) + dalfa
 
     y = fn(x)
-    norm_y = np.linalg.norm(y)
+    norm_y = float(np.linalg.norm(y))
 
     while True:
         if iterations > maxiter:
@@ -71,12 +78,12 @@ def solve(xstart: npt.NDArray[np.float64],
             print(f"iteration {iterations}, norm_y={norm_y}, norm_dx={np.linalg.norm(dx)} ----")
         xn = x + dx
         yn =  fn(xn)
-        norm_y_n = np.linalg.norm(yn)
+        norm_y_n = float(np.linalg.norm(yn))
         #if iterations > 100:
         #    print("iteration", norm_y, x-xn)
         if close_enough(x, xn, abstol, reltol):
             return BasicSolution(x=xn, y=yn, dfx=dfx, iterations=iterations, norm_y=norm_y_n)
-        
+
         a:float = 1
         k:int = 0
 
@@ -92,12 +99,10 @@ def solve(xstart: npt.NDArray[np.float64],
             a = a/2
             xn = x + a * dx
             yn = fn(xn)
-            norm_y_n = np.linalg.norm(yn)
+            norm_y_n = float(np.linalg.norm(yn))
         x = xn
         y = yn
         norm_y = norm_y_n
-
-Solution = collections.namedtuple('Solution', ['solution', 'y', 'dfx', 'iterations', 'norm_y'])
 
 def solve_alfa(xstart:npt.NDArray[np.float64],
                f: Callable[[npt.NDArray[np.float64]],npt.NDArray[np.float64]],

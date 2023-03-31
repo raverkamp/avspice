@@ -4,22 +4,28 @@ import pprint as pp
 import numpy as np
 from .circuits import Voltage, Node2, Node2Current, Circuit, SubCircuit,\
                      Inductor, Capacitor, SubCircuitComponent, Part, \
-                     NPort, Variable
+                     NPort, Network
 from .codegenerator import CodeGenerator, Variable
 from . import solving
 from . import util
 
+from typing import TypeAlias, Union, Optional, Callable, Any, cast
+import numpy.typing as npt
 
-
+np_float_vec: TypeAlias = npt.NDArray[np.float64]
+float_vec: TypeAlias = Union[list[float], np_float_vec]
 
 class TransientResult:
     """result of a transient simulation"""
 
-    def __init__(self, time_points, voltages, currents):
+    def __init__(self,
+                 time_points: list[float],
+                 voltages: list[dict[str,float]],
+                 currents: list[dict[str,float]])->None:
         if len(time_points) == 0:
             raise Exception("init has length 0")
-        volts = {}
-        currs = {}
+        volts: dict[str,list[float]] = {}
+        currs: dict[str,list[float]] = {}
         self.start_time = time_points[0]
         self.end_time = time_points[len(time_points)-1]
         if len(time_points) != len(voltages) or len(time_points) != len(currents):
@@ -40,8 +46,8 @@ class TransientResult:
             for (k, val) in currs.items():
                 val.append(c[k])
 
-        self.voltages = {}
-        self.currents = {}
+        self.voltages: dict[str, np_float_vec] = {}
+        self.currents: dict[str, np_float_vec] = {}
         self.time = np.array(time_points)
 
         for (k, val) in volts.items():
@@ -50,29 +56,38 @@ class TransientResult:
         for (k, val) in currs.items():
             self.currents[k] = np.array(val)
 
-    def get_voltage(self, k):
+    def get_voltage(self, k:str)-> np_float_vec:
         return self.voltages[k]
 
-    def get_current(self, k):
+    def get_current(self, k:str)-> np_float_vec:
         return self.currents[k]
 
-    def get_time(self):
+    def get_time(self)-> np_float_vec:
         return self.time
 
-    def get_voltage_at(self, t, k):
+    def get_voltage_at(self, t:float, k:str)->float:
         return util.linear_interpolate(self.time, self.get_voltage(k), t)
 
-    def get_current_at(self, t, k):
+    def get_current_at(self, t:float, k:str)->float:
         return util.linear_interpolate(self.time, self.get_current(k), t)
 
 
 
 class Result:
     """result of an analysis run"""
-    def __init__(self, parts, analysis, iterations, solution_vec, y, y_norm, mat_cond, currents):
+    def __init__(self,
+                 parts:list[Part],
+                 analysis: 'Analysis',
+                 iterations:int,
+                 solution_vec:np_float_vec,
+                 y:np_float_vec,
+                 y_norm:float,
+                 mat_cond:float,
+                 currents:dict[str,float]):
+
         assert isinstance(parts, list)
         self.solution_vec = solution_vec
-        self.voltages = {}
+        self.voltages: dict[str,float] = {}
         self.iterations = iterations
         self.mat_cond = mat_cond
         self.y = y
@@ -89,22 +104,22 @@ class Result:
                 port_name = part.name +"."  + port
                 self.voltages[port_name] = solution_vec[k]
 
-    def get_voltages(self):
+    def get_voltages(self) ->dict[str,float]:
         return self.voltages
 
-    def get_currents(self):
+    def get_currents(self)->dict[str,float]:
         return self.currents
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return repr({"voltages": self.voltages, "currents": self.currents})
 
-    def get_voltage(self, portname):
+    def get_voltage(self, portname:str)->float:
         return self.voltages[portname]
 
-    def get_current(self, port):
+    def get_current(self, port:str)->float:
         return self.currents[port]
 
-    def display(self):
+    def display(self)->None:
         x = list(self.voltages.items())
         x.sort()
         print("--- Voltages ---")
@@ -117,10 +132,22 @@ class Result:
             print(k + " " + str(v))
 
 
+
+class ComputerBase:
+    def y(self, time:float,sol: np_float_vec,vec:np_float_vec, h: float)->np_float_vec:
+        raise NotImplementedError()
+
+    def dy(self, time:float,sol: np_float_vec,vec:np_float_vec, h: float)->np_float_vec:
+        raise NotImplementedError()
+
+    def currents(self, time:float,sol: np_float_vec,vec:np_float_vec)->np_float_vec:
+        raise NotImplementedError()
+
+
 class Analysis:
     """captures all data for analysis"""
 
-    def __init__(self, circuit):
+    def __init__(self, circuit: Circuit)->None:
         assert isinstance(circuit, Circuit), "need a circuit"
 
         # the circuit which is might contain subcrcuits is flattened into one
@@ -131,7 +158,7 @@ class Analysis:
         parts = []
         node_list = ["0"]
 
-        def add_subcircuit_parts(prefix, sc, nodes):
+        def add_subcircuit_parts(prefix:str, sc:Network, nodes:list[str])->None:
             # prefix is prefixed to name of nodes and parts
             # sc is the circuit or subcircuit
             # nodes the nodes the subcircuit is connected to
@@ -168,10 +195,10 @@ class Analysis:
         self.parts = parts
         self.node_list = node_list
 
-        self.voltage_list = []
-        self.capa_list = []
-        self.induc_list  = []
-        self.curr_port_list = []
+        self.voltage_list: list[Part] = []
+        self.capa_list: list[Part] = []
+        self.induc_list: list[Part]  = []
+        self.curr_port_list: list[tuple[str,str]] = []
 
         for part in self.parts:
             if isinstance(part.component, Voltage):
@@ -202,56 +229,56 @@ class Analysis:
 
 
 
-    def node_index(self, node):
+    def node_index(self, node:str)->int:
         return self.node_list.index(node)
 
-    def port_node_index(self, part, port):
+    def port_node_index(self, part:Part, port:str)->int:
         component = part.component
         x = component.get_ports().index(port)
         node = part.connections[x]
         return self.node_index(node)
 
-    def voltage_index(self, voltage):
+    def voltage_index(self, voltage:Part)->int:
         return self.voltage_list.index(voltage) + len(self.node_list)
 
-    def capa_index(self, capa):
+    def capa_index(self, capa:Part)->int:
         return self.capa_list.index(capa) + len(self.node_list) + len(self.voltage_list)
 
-    def induc_index(self, induc):
+    def induc_index(self, induc:Part)->int:
         return (self.induc_list.index(induc)
                 + len(self.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list))
 
-    def state_index(self, part):
+    def state_index(self, part:Part)->int:
         if isinstance(part.component, Capacitor):
             return self.capa_list.index(part)
         if isinstance(part.component, Inductor):
             return self.induc_list.index(part) + len(self.capa_list)
         raise Exception(f"no state index for component {part}")
 
-    def state_index_y(self, part):
+    def state_index_y(self, part:Part)->int:
         return (len(self.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list)
                 + len(self.induc_list)
                 + self.state_index(part))
 
-    def state_size(self):
+    def state_size(self)->int:
         return len(self.capa_list) + len(self.induc_list)
 
 
-    def _equation_size(self, transient):
+    def _equation_size(self, transient:bool)->int:
         return (len(self.node_list)
                 + len(self.voltage_list)
                 + len(self.capa_list)
                 + len(self.induc_list)
                 + (len(self.capa_list) + len(self.induc_list) if transient else 0))
 
-    def curr_index(self, partname, port):
+    def curr_index(self, partname:str, port:str)->int:
         return self.curr_port_list.index((partname, port))
 
-    def generate_code(self, transient):
+    def generate_code(self, transient:bool)->Callable[[dict[str,float]],ComputerBase]:
         n = self._equation_size(transient)
         cg = CodeGenerator(n, len(self.curr_port_list), transient)
 
@@ -286,21 +313,21 @@ class Analysis:
             elif isinstance(comp, Node2Current):
                 # a simple componenet where the current depends o0nyl on the voltage
                 # across the component
-                code = comp.code2(cg, cname, f"sol[{kp}]- sol[{kn}]")
-                cg.add_to_cinit(code.component_init)
-                cg.add_to_y_code(code.current_init)
-                cg.add_to_dy_code(code.dcurrent_init)
-                cg.add_ysum(kp, f"(-{code.current})")
-                cg.add_ysum(kn, f"({code.current})")
+                code2 = comp.code2(cg, cname, f"sol[{kp}]- sol[{kn}]")
+                cg.add_to_cinit(code2.component_init)
+                cg.add_to_y_code(code2.current_init)
+                cg.add_to_dy_code(code2.dcurrent_init)
+                cg.add_ysum(kp, f"(-{code2.current})")
+                cg.add_ysum(kn, f"({code2.current})")
 
-                cg.add_dysum(kp, kp, f"(-{code.dcurrent})")
-                cg.add_dysum(kp, kn, f"{code.dcurrent}")
-                cg.add_dysum(kn, kp, f"{code.dcurrent}")
-                cg.add_dysum(kn, kn, f"(-{code.dcurrent})")
+                cg.add_dysum(kp, kp, f"(-{code2.dcurrent})")
+                cg.add_dysum(kp, kn, f"{code2.dcurrent}")
+                cg.add_dysum(kn, kp, f"{code2.dcurrent}")
+                cg.add_dysum(kn, kn, f"(-{code2.dcurrent})")
 
-                cg.add_to_cur_code(code.current_init)
-                cg.add_to_cur_code([f"res[{curr_index_p}] = {code.current}",
-                                    f"res[{curr_index_n}] =  -({code.current})"])
+                cg.add_to_cur_code(code2.current_init)
+                cg.add_to_cur_code([f"res[{curr_index_p}] = {code2.current}",
+                                    f"res[{curr_index_n}] =  -({code2.current})"])
 
             elif isinstance(comp, NPort):
                 ports = comp.get_ports()
@@ -438,41 +465,45 @@ class Analysis:
 
 
         l =  cg.init + cg.component_init + [""] + x + cg.y_code + cg.dy_code + cg.cur_code
-        code = "\n".join(l)
-        d = {}
+        final_code = "\n".join(l)
+        d: dict[str, Any] = {"ComputerBase": ComputerBase}
 
-        exec(code,d)
+        exec(final_code,d)
         bla = d["bla"]
-        return bla
+        return bla # type: ignore
 
-    def _compute_state_vec(self, capa_voltages, induc_currents):
+    def _compute_state_vec(self, capa_voltages:dict[str,float], induc_currents:dict[str, float])->np_float_vec:
         state_vec = np.zeros(self.state_size())
 
         for part in self.parts:
             if isinstance(part.component, Capacitor):
                 k = self.state_index(part)
-                if capa_voltages and  part.name in capa_voltages:
+                if part.name in capa_voltages:
                     state_vec[k] = capa_voltages[part.name]
                 else:
                     raise Exception(f"no voltage given for capacitor {part.name}")
             if isinstance(part.component, Inductor):
                 k = self.state_index(part)
-                if induc_currents and part.name in induc_currents:
+                if part.name in induc_currents:
                     state_vec[k] = induc_currents[part.name]
                 else:
                     raise Exception(f"no  current given for inductor {part.name}")
 
         return state_vec
 
-    def _compute_currents(self, bla, time, sol, state_vec):
-        res = {}
+    def _compute_currents(self,
+                          bla: ComputerBase,
+                          time: float,
+                          sol: np_float_vec,
+                          state_vec: np_float_vec)->dict[str, float]:
+        res: dict[str, float] = {}
         cv = bla.currents(time, sol,state_vec)
         for  (name, port) in self.curr_port_list:
             res[name + "." +port] = cv[self.curr_index(name, port)]
         return res
 
-    def _compute_voltages(self, parts, solution_vec):
-        voltages = {}
+    def _compute_voltages(self, parts:list[Part], solution_vec:np_float_vec)->dict[str, float]:
+        voltages: dict[str, float] = {}
         for part in parts:
             ports = part.component.get_ports()
             nodes = part.connections
@@ -484,17 +515,17 @@ class Analysis:
         return voltages
 
     def analyze(self,
-                maxit=20,
-                start_solution_vec=None,
-                abstol= 1e-8,
-                reltol= 1e-6,
-                variables=None,
-                capa_voltages=None,
-                induc_currents=None,
-                start_voltages=None,
-                time =0,
-                transient=False,
-                compute_cond=False):
+                maxit:int=20,
+                start_solution_vec:Optional[np_float_vec] =None,
+                abstol: float= 1e-8,
+                reltol: float= 1e-6,
+                variables: Optional[dict[str, float]]=None,
+                capa_voltages: Optional[dict[str, float]]=None,
+                induc_currents: Optional[dict[str, float]]=None,
+                start_voltages: Optional[dict[str, float]]=None,
+                time:float =0,
+                transient:bool=False,
+                compute_cond:bool=False)-> Union[str, Result]:
 
         n = self._equation_size(transient)
         if start_solution_vec is None:
@@ -511,17 +542,17 @@ class Analysis:
         solution_vec = solution_vec0
 
         if transient:
-            state_vec = self._compute_state_vec(capa_voltages, induc_currents)
+            state_vec = self._compute_state_vec(capa_voltages or {}, induc_currents or {})
         else:
-            state_vec = None
+            state_vec = np.zeros(1) #None
 
         bla = self.generate_code(transient)
         computer = bla(variables or {})
 
-        def f(x):
+        def f(x:np_float_vec)->np_float_vec:
             return computer.y(time, x, state_vec, 0)
 
-        def Df(x):
+        def Df(x:np_float_vec)-> np_float_vec:
             return computer.dy(time, x, state_vec, 0)
 
         res = solving.solve_alfa(solution_vec, f, Df, abstol, reltol, maxit)
@@ -531,7 +562,7 @@ class Analysis:
                 cond =  np.linalg.cond(dfx,'fro')
             else:
                 cond=None
-            norm_y = np.linalg.norm(y)
+            norm_y = float(np.linalg.norm(y))
             currents = self._compute_currents(computer, time, sol, state_vec)
             return Result(self.parts,
                           self,
@@ -546,27 +577,31 @@ class Analysis:
 
 
     def solve_internal(self,
-                       time,
-                       maxit,
-                       start_sol,
-                       state_vec,
-                       abstol,
-                       reltol,
-                       c,
-                       compute_cond,
-                       h):
+                       time: float,
+                       maxit: int,
+                       start_sol: np_float_vec,
+                       state_vec: np_float_vec,
+                       abstol: float,
+                       reltol: float,
+                       c: ComputerBase,
+                       compute_cond: bool,
+                       h: float) -> Union[str,
+                                          tuple[
+                                              tuple[np_float_vec, np_float_vec, float, Optional[float],int],
+                                              dict[str, float],
+                                              dict[str,float]]]:
 
-        def f(x):
+        def f(x: np_float_vec)->np_float_vec:
             return c.y(time, x, state_vec, h)
 
-        def Df(x):
+        def Df(x: np_float_vec)->np_float_vec:
             return c.dy(time, x, state_vec, h)
 
         res = solving.solve(start_sol, f, Df, abstol, reltol, maxit)
         if isinstance(res, str):
             return res
         if compute_cond:
-            cond =  np.linalg.cond(res.dfx,'fro')
+            cond =  float(np.linalg.cond(res.dfx,'fro'))
         else:
             cond=None
         currents = self._compute_currents(c, time, res.x, state_vec)
@@ -575,17 +610,17 @@ class Analysis:
 
 
     def transient(self,
-                  maxtime,
-                  timestep,
-                  maxit=20,
-                  start_solution_vec=None,
-                  abstol= 1e-8,
-                  reltol= 1e-6,
-                  variables=None,
-                  capa_voltages=None,
-                  induc_currents=None,
-                  start_voltages=None,
-                  compute_cond=False):
+                  maxtime: float,
+                  timestep: float,
+                  maxit:int=20,
+                  start_solution_vec: Optional[np_float_vec]=None,
+                  abstol:float= 1e-8,
+                  reltol:float= 1e-6,
+                  variables: Optional[dict[str, float]]=None,
+                  capa_voltages: Optional[dict[str, float]]=None,
+                  induc_currents: Optional[dict[str, float]]=None,
+                  start_voltages: Optional[dict[str, float]]=None,
+                  compute_cond: bool=False) ->TransientResult:
 
         capa_voltages = capa_voltages or {}
         induc_currents = induc_currents or {}
@@ -594,27 +629,27 @@ class Analysis:
         max_timestep =  timestep
 
         min_timestep = timestep / 10000.0
-        res = self.analyze(maxit=maxit,
-                           start_solution_vec=start_solution_vec,
-                           capa_voltages=capa_voltages,
-                           induc_currents=induc_currents,
-                           variables=variables,
-                           start_voltages=start_voltages,
-                           time=time,
-                           abstol=abstol,
-                           reltol=reltol,
-                           transient=True,
-                           compute_cond=compute_cond)
-        if isinstance(res, str):
+        res0 = self.analyze(maxit=maxit,
+                            start_solution_vec=start_solution_vec,
+                            capa_voltages=capa_voltages,
+                            induc_currents=induc_currents,
+                            variables=variables,
+                            start_voltages=start_voltages,
+                            time=time,
+                            abstol=abstol,
+                            reltol=reltol,
+                            transient=True,
+                            compute_cond=compute_cond)
+        if isinstance(res0, str):
             raise Exception("can not find inital solution")
 
         state_vec = self._compute_state_vec(capa_voltages, induc_currents)
 
-        voltage_list = []
-        current_list = []
-        time_list = []
+        voltage_list: list[dict[str, float]] = []
+        current_list: list[dict[str, float]] = []
+        time_list: list[float] = []
 
-        sol = res.solution_vec
+        sol = res0.solution_vec
         bla = self.generate_code(True)
         computer = bla(variables or {})
         while time < maxtime:
@@ -660,8 +695,8 @@ class Analysis:
             time += timestep
         return TransientResult(time_list,  voltage_list, current_list)
 
-
-def pivot(res):
+"""
+def pivot(res:Result):
     time = []
     volts = {}
     currs = {}
@@ -681,3 +716,4 @@ def pivot(res):
         currs[k] = np.array(currs[k])
 
     return (np.array(time),volts,currs)
+"""
