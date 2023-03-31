@@ -1,16 +1,17 @@
 """ simple routines for experimenting with nodal analysis """
 
 import pprint as pp
+from typing import TypeAlias, Union, Optional, Callable, Any
 import numpy as np
+import numpy.typing as npt
+
 from .circuits import Voltage, Node2, Node2Current, Circuit, SubCircuit,\
                      Inductor, Capacitor, SubCircuitComponent, Part, \
                      NPort, Network
-from .codegenerator import CodeGenerator, Variable
+from .codegenerator import CodeGenerator
 from . import solving
 from . import util
 
-from typing import TypeAlias, Union, Optional, Callable, Any, cast
-import numpy.typing as npt
 
 np_float_vec: TypeAlias = npt.NDArray[np.float64]
 float_vec: TypeAlias = Union[list[float], np_float_vec]
@@ -280,7 +281,7 @@ class Analysis:
 
     def generate_code(self, transient:bool)->Callable[[dict[str,float]],ComputerBase]:
         n = self._equation_size(transient)
-        cg = CodeGenerator(n, len(self.curr_port_list), transient)
+        cg = CodeGenerator(n, len(self.curr_port_list))
 
         counter = 0
         for part in self.parts:
@@ -694,26 +695,3 @@ class Analysis:
 
             time += timestep
         return TransientResult(time_list,  voltage_list, current_list)
-
-"""
-def pivot(res:Result):
-    time = []
-    volts = {}
-    currs = {}
-    for (t,v,c) in res:
-        time.append(t)
-        for k in v:
-            if not k in volts:
-                volts[k] = []
-            volts[k].append(v[k])
-        for k in c:
-            if not k in currs:
-                currs[k] = []
-            currs[k].append(c[k])
-    for k in volts:
-        volts[k] = np.array(volts[k])
-    for k in currs:
-        currs[k] = np.array(currs[k])
-
-    return (np.array(time),volts,currs)
-"""

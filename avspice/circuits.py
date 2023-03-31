@@ -1,13 +1,14 @@
 """circuit definition and components"""
+
 import collections
+from typing import Optional, Union
+
 import numbers
 import pprint as pp
 from . import util
 
 from .codegenerator import CodeGenerator, Variable
 
-from collections.abc import Iterator
-from typing import Optional, Any, Callable, Union
 
 
 # for codee generation hsi returne by Node2 components like resistors, diodes and current sources
@@ -142,7 +143,6 @@ class SineVoltage(Voltage):
         v = cg.get_value_code(self._volts)
         f = cg.get_value_code(self._frequency)
         init = [f"self.{cname} = NSineVoltage({v}, {f})"]
-        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
 class SawVoltage(Voltage):
@@ -170,9 +170,8 @@ class PieceWiseLinearVoltage(Voltage):
         vy  = "[" + ", ".join(list(cg.get_value_code(y) for (x,y) in a)) + "]"
 
         init = [f"self.{cname} = NPieceWiseLinearVoltage({vx},  {vy})"]
-        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
-        
+
 
 
 class Diode(Node2Current):

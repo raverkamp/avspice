@@ -1,7 +1,7 @@
 """ the numerical components"""
 import math
 import numbers
-from .util import explin, dexplin, smooth_step, dsmooth_step
+from .util import explin, dexplin
 from . import util
 
 

@@ -1,7 +1,7 @@
 """class variable  and codegenerator"""
-from collections.abc import Iterator
+
 import numbers
-from typing import Optional, Any, Callable, Union
+from typing import Optional, Union
 
 class Variable:
     """a variable"""
@@ -17,13 +17,10 @@ class Variable:
 class CodeGenerator:
     """utility class for code generation"""
 
-    def __init__(self, n:int, n_curr_ports:int, transient:bool)->None:
+    def __init__(self, n:int, n_curr_ports:int)->None:
         self.n = n
         self.n_curr_ports = n_curr_ports
-        #        if transient:
         h_par = ", h"
-        #       else:
-        #          h_par = ""
         self.component_init:list[str] = []
         self.init = [
             "def bla(variables):",

@@ -1,10 +1,8 @@
 """the solver module of avspice"""
 
-import collections
-import numpy as np
+from typing import Optional, Callable, Union, NamedTuple
 
-from collections.abc import Iterator
-from typing import Optional, Any, Callable, Union, NamedTuple
+import numpy as np
 import numpy.typing as npt
 
 
