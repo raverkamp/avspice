@@ -4,6 +4,8 @@ import numbers
 import pprint as pp
 from . import util
 
+from .codegenerator import CodeGenerator, Variable
+
 from collections.abc import Iterator
 from typing import Optional, Any, Callable, Union
 
@@ -33,16 +35,10 @@ NodeNCode = collections.namedtuple("NodeNCode", [
     # expression for diff of current
     "dcurrent"])
 
-class Variable:
-    """a variable"""
-    name:str
-    def __init__(self, name:str, default:Optional[float]=None) -> None:
-        self.name = name
-        assert default is None or isinstance(default, numbers.Number)
-        self.default = default
-
-    def __repr__(self)->str:
-        return f"<Variable {self.name}, {self.default}>"
+VoltageCode = collections.namedtuple("VoltageCode", [
+    "init",
+    "pre",
+    "expr"])
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
@@ -61,7 +57,7 @@ class NPort(Component):
         """return the ports of this component"""
         raise NotImplementedError("method 'get_ports' is not implemented")
 
-    def code(self, name:str, voltages:list[str])->Node2Code:
+    def code(self, name:str, voltages:list[str])->NodeNCode:
         raise NotImplementedError("method 'code' is not implemented")
 
 class Node2(Component):
@@ -77,7 +73,7 @@ class Node2Current(Node2):
 
     components which conduct a current based solely on the applied voltage
     """
-    def code2(self, name:str, voltages:list[str])->Node2Code:
+    def code2(self, generator:CodeGenerator, cname:str, dvname:str)->Node2Code:
         raise NotImplementedError("method 'code' is not implemented")
 
 class Resistor(Node2Current):
@@ -87,13 +83,13 @@ class Resistor(Node2Current):
         super().__init__(name)
         self._ohm = ohm
 
-    def get_resistance(self):
+    def get_resistance(self)->Union[Variable,float]:
         return self._ohm
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Resistor {self._ohm}>"
 
-    def code2(self, generator, cname, dvname):
+    def code2(self, generator:CodeGenerator, cname:str, dvname:str)->Node2Code:
         r =  generator.get_value_code(self.get_resistance())
         G = f"self.{cname}_G"
         return Node2Code(component_init=[f"{G}=1/{r}"],
@@ -104,14 +100,14 @@ class Resistor(Node2Current):
 
 class Current(Node2Current):
     """current source"""
-    def __init__(self, name, amp):
+    def __init__(self, name:str, amp:Union[Variable, float]):
         super().__init__(name)
         self.amp = amp
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Current {self.name}>"
 
-    def code2(self, generator, cname, dvname):
+    def code2(self, generator:CodeGenerator, cname:str, dvname:str)->Node2Code:
         _ = cname
         _ = dvname
         x = generator.get_value_code(self.amp)
@@ -123,19 +119,18 @@ class Current(Node2Current):
 
 class Voltage(Node2):
     """voltage source"""
-    def __init__(self, name:str, volts):
+    def __init__(self, name:str, volts:Union[Variable,float]):
         super().__init__(name)
         assert isinstance(volts, (numbers.Number, Variable)), "volts must be a variable or a number"
         self._volts = volts
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Voltage {self._volts}>"
 
-    def code(self, cg, cname):
+    def codev(self, cg:CodeGenerator, cname:str)-> VoltageCode:
         v = cg.get_value_code(self._volts)
         init = [f"self.{cname} = NVoltage({v})"]
-        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
-        return (init, voltage)
+        return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
 class SineVoltage(Voltage):
     """sine voltage"""
@@ -143,12 +138,12 @@ class SineVoltage(Voltage):
         super().__init__(name, volts)
         self._frequency = frequency
 
-    def code(self, cg, cname):
+    def codev(self, cg:CodeGenerator, cname:str) -> VoltageCode:
         v = cg.get_value_code(self._volts)
         f = cg.get_value_code(self._frequency)
         init = [f"self.{cname} = NSineVoltage({v}, {f})"]
         voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
-        return (init, voltage)
+        return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
 class SawVoltage(Voltage):
     """saw voltage"""
@@ -156,19 +151,18 @@ class SawVoltage(Voltage):
         super().__init__(name, volts)
         self._frequency = frequency
 
-    def code(self, cg, cname):
+    def codev(self, cg:CodeGenerator, cname:str)->VoltageCode:
         v = cg.get_value_code(self._volts)
         init = [f"self.{cname} = NSawVoltage({v}, {self._frequency})"]
-        voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
-        return (init, voltage)
+        return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
 class PieceWiseLinearVoltage(Voltage):
     """piecewise linear voltage"""
-    def __init__(self, name:str, pairs):
+    def __init__(self, name:str, pairs:list[tuple[float,Union[Variable,float]]]):
         super().__init__(name,0)
         self.pairs = list(pairs)
 
-    def code(self, cg, cname):
+    def codev(self, cg:CodeGenerator, cname:str)->VoltageCode:
         a = list(self.pairs)
         a.sort(key=lambda x: x[0])
         vx  = list(x for (x,y) in a)
@@ -177,12 +171,13 @@ class PieceWiseLinearVoltage(Voltage):
 
         init = [f"self.{cname} = NPieceWiseLinearVoltage({vx},  {vy})"]
         voltage = ([f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
-        return (init, voltage)
+        return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
+        
 
 
 class Diode(Node2Current):
     """solid state diode"""
-    def __init__(self, name, Is, Nut, lcut_off = -40, rcut_off=40):
+    def __init__(self, name:str, Is:float, Nut:float, lcut_off:float = -40, rcut_off:float=40):
         super().__init__(name)
         self.Is = Is
         self.Nut = Nut
@@ -190,7 +185,7 @@ class Diode(Node2Current):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code2(self, generator, cname, dvname):
+    def code2(self, generator:CodeGenerator, cname:str, dvname:str)-> Node2Code:
         _ = generator
         return Node2Code(
             component_init =
@@ -201,12 +196,13 @@ class Diode(Node2Current):
             dcurrent_init = [],
             dcurrent =  f"self.{cname}.diff_current({dvname})")
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Diode {self.name}>"
 
 class ZDiode(Node2Current):
     """solid state diode"""
-    def __init__(self, name, vcut, Is, Nut, IsZ=None, NutZ=None,    lcut_off = -40, rcut_off=40):
+    def __init__(self, name:str, vcut:float, Is:float, Nut:float, IsZ:Optional[float]=None, NutZ:Optional[float]=None,
+                 lcut_off:float = -40, rcut_off:float=40):
         super().__init__(name)
         assert isinstance(name, str)
         assert isinstance(vcut, numbers.Number)
@@ -220,7 +216,7 @@ class ZDiode(Node2Current):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code2(self, generator, cname, dvname):
+    def code2(self, generator:CodeGenerator, cname:str, dvname:str)-> Node2Code:
         _ = generator
         return Node2Code(
             component_init=[f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
@@ -231,35 +227,35 @@ class ZDiode(Node2Current):
             dcurrent =  f"self.{cname}.diff_current({dvname})")
 
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Diode {self.name}>"
 
 
 class Capacitor(Node2):
     """ a capacitor"""
 
-    def __init__(self, name, capa):
+    def __init__(self, name:str, capa:float):
         super().__init__(name)
         self._capa = capa
 
-    def get_capacitance(self):
+    def get_capacitance(self)->float:
         return self._capa
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Capacitor {self.name}>"
 
 
 class Inductor(Node2):
     """inductor"""
 
-    def __init__(self, name, induc):
+    def __init__(self, name:str, induc:float):
         super().__init__(name)
         self.induc = induc
 
-    def get_inductance(self):
+    def get_inductance(self)->float:
         return self.induc
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<Inductor {self.name}>"
 
 
@@ -300,13 +296,13 @@ class PNPTransistor(NPort):
         self.lcutoff = -cutoff
         self.rcutoff = cutoff
 
-    def __repr__(self):
+    def __repr__(self)->str:
         return f"<NPNTransistor {self.name}>"
 
-    def get_ports(self):
-        return ("B", "C", "E")
+    def get_ports(self)->list[str]:
+        return ["B", "C", "E"]
 
-    def code(self, name, voltages):
+    def code(self, name:str, voltages:list[str])->NodeNCode:
         prefix = name
         me = "self." + prefix + "_"
         initt = [f"{me} = NPNPTransistor({self.IS}, {self.VT}, {self.beta_F},"
