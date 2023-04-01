@@ -229,56 +229,58 @@ class ComputerBase:
         raise NotImplementedError()
 
 
+def flattenCircuit(circuit:Circuit) -> tuple[list[Part],list[str]]:
+    # the circuit which is might contain subcrcuits is flattened into one
+    # big circuit without subcircuits
+    # name of parts in subcircuits is prefixed
+    # the same for the nodes in subcicuits
+
+    parts = []
+    node_list = ["0"]
+
+    def add_subcircuit_parts(prefix:str, sc:Network, nodes:list[str])->None:
+        # prefix is prefixed to name of nodes and parts
+        # sc is the circuit or subcircuit
+        # nodes the nodes the subcircuit is connected to
+        #    the nodes are already absolute!
+        if isinstance(sc, SubCircuit):
+            export_nodes = sc.export_nodes
+        else:
+            export_nodes = []
+
+        for part in sc.parts:
+            new_connections = []
+            for con in part.connections:
+                i = export_nodes.index(con) if con in export_nodes else -1
+                if  i>=0:
+                    x = nodes[i]
+                else:
+                    x = prefix + con
+                new_connections.append(x)
+                if not x in node_list:
+                    node_list.append(x)
+
+            if isinstance(part.component, SubCircuitComponent):
+                sc = part.component.subcircuit
+                newprefix = prefix + part.name + "/"
+                add_subcircuit_parts(newprefix, sc, new_connections)
+            else:
+                component = part.component
+                newname = prefix + part.name
+                newpart = Part(newname, component, new_connections)
+                parts.append(newpart)
+
+    add_subcircuit_parts("", circuit, [])
+    return (parts, node_list)
+
 class Analysis:
     """captures all data for analysis"""
 
     def __init__(self, circuit: Circuit)->None:
         assert isinstance(circuit, Circuit), "need a circuit"
 
-        # the circuit which is might contain subcrcuits is flattened into one
-        # big circuit without subcircuits
-        # name of parts in subcircuits is prefixed
-        # the same for the nodes in subcicuits
+        (self.parts, self.node_list) = flattenCircuit(circuit)
 
-        parts = []
-        node_list = ["0"]
-
-        def add_subcircuit_parts(prefix:str, sc:Network, nodes:list[str])->None:
-            # prefix is prefixed to name of nodes and parts
-            # sc is the circuit or subcircuit
-            # nodes the nodes the subcircuit is connected to
-            #    the nodes are already absolute!
-            if isinstance(sc, SubCircuit):
-                export_nodes = sc.export_nodes
-            else:
-                export_nodes = []
-
-            for part in sc.parts:
-                new_connections = []
-                for con in part.connections:
-                    i = export_nodes.index(con) if con in export_nodes else -1
-                    if  i>=0:
-                        x = nodes[i]
-                    else:
-                        x = prefix + con
-                    new_connections.append(x)
-                    if not x in node_list:
-                        node_list.append(x)
-
-                if isinstance(part.component, SubCircuitComponent):
-                    sc = part.component.subcircuit
-                    newprefix = prefix + part.name + "/"
-                    add_subcircuit_parts(newprefix, sc, new_connections)
-                else:
-                    component = part.component
-                    newname = prefix + part.name
-                    newpart = Part(newname, component, new_connections)
-                    parts.append(newpart)
-
-        add_subcircuit_parts("", circuit, [])
-
-        self.parts = parts
-        self.node_list = node_list
 
         self.voltage_list: list[Part] = []
         self.capa_list: list[Part] = []
@@ -303,7 +305,7 @@ class Analysis:
         d={}
         for n in self.node_list:
             d[n] = 0
-        for p in parts:
+        for p in self.parts:
             for c in p.connections:
                 d[c] =d[c] +1
         for (k,v) in d.items():
