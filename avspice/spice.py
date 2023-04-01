@@ -389,6 +389,7 @@ class Analysis:
                 cg.add_to_y_code(codev.pre)
                 cg.add_ysum(kp, f"sol[{k}]")
                 cg.add_ysum(kn, f"(-sol[{k}])")
+                # equation k is for the voltage difference
                 cg.add_ysum(k,f"(sol[{kp}] - sol[{kn}]) - ({codev.expr})")
                 cg.add_dysum(kp, k, "1")
                 cg.add_dysum(kn, k, "-1")
@@ -399,7 +400,7 @@ class Analysis:
                                     f"res[{curr_index_n}] = -(sol[{k}])"])
 
             elif isinstance(comp, Node2Current):
-                # a simple componenet where the current depends o0nyl on the voltage
+                # a simple componenet where the current depends onyl on the voltage
                 # across the component
                 code2 = comp.code2(valueCode, cname, f"sol[{kp}]- sol[{kn}]")
                 cg.add_to_cinit(code2.component_init)
@@ -472,11 +473,14 @@ class Analysis:
                     cg.add_to_cur_code([f"res[{curr_index_p}] = -(sol[{k}])",
                                         f"res[{curr_index_n}] = sol[{k}]"])
                 else:
-                    # sol[k] current through capacitor, for working point condition is this current is 0
+                    # sol[k] current through capacitor, for working point condition is
+                    # this current is 0
+                    # this is a dummy equation
                     cg.add_ysum(k, f"sol[{k}]")
                     cg.add_dysum(k, k, "1")
                     cg.add_to_cur_code([f"res[{curr_index_p}] = sol[{k}]",
                                         f"res[{curr_index_n}] = -(sol[{k}])"])
+
             elif isinstance(comp, Inductor):
                 k = self.induc_index(part)
                 if transient:
