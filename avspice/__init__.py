@@ -5,6 +5,6 @@ from .circuits import Voltage, Current, NPNTransistor, PNPTransistor, Circuit, S
                      Network, PieceWiseLinearVoltage, SineVoltage, SawVoltage, ZDiode,\
                      FET, JFET
 
-from .codegenerator import Variable
+from .variable import Variable
 
 from .spice import Analysis

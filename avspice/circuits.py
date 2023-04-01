@@ -1,15 +1,15 @@
 """circuit definition and components"""
 
 import collections
-from typing import Optional, Union
+from typing import Optional, Union, Callable, TypeAlias
 
 import numbers
 import pprint as pp
 from . import util
 
-from .codegenerator import CodeGenerator, Variable
+from .variable import Variable
 
-
+ValueCode: TypeAlias = Callable[[Union[Variable,float]],str]
 
 # for codee generation hsi returne by Node2 components like resistors, diodes and current sources
 Node2Code = collections.namedtuple("Node2Code",[
@@ -74,7 +74,7 @@ class Node2Current(Node2):
 
     components which conduct a current based solely on the applied voltage
     """
-    def code2(self, generator:CodeGenerator, cname:str, dvname:str)->Node2Code:
+    def code2(self, valueCode:ValueCode, cname:str, dvname:str)->Node2Code:
         raise NotImplementedError("method 'code' is not implemented")
 
 class Resistor(Node2Current):
@@ -90,8 +90,8 @@ class Resistor(Node2Current):
     def __repr__(self) -> str:
         return f"<Resistor {self._ohm}>"
 
-    def code2(self, generator:CodeGenerator, cname:str, dvname:str)->Node2Code:
-        r =  generator.get_value_code(self.get_resistance())
+    def code2(self, valueCode:ValueCode, cname:str, dvname:str)->Node2Code:
+        r =  valueCode(self.get_resistance())
         G = f"self.{cname}_G"
         return Node2Code(component_init=[f"{G}=1/{r}"],
                          current_init =[],
@@ -108,10 +108,10 @@ class Current(Node2Current):
     def __repr__(self)->str:
         return f"<Current {self.name}>"
 
-    def code2(self, generator:CodeGenerator, cname:str, dvname:str)->Node2Code:
+    def code2(self, valueCode:ValueCode, cname:str, dvname:str)->Node2Code:
         _ = cname
         _ = dvname
-        x = generator.get_value_code(self.amp)
+        x = valueCode(self.amp)
         return Node2Code(component_init = [],
                          current_init = [],
                          current =f"-{x}",
@@ -128,8 +128,8 @@ class Voltage(Node2):
     def __repr__(self)->str:
         return f"<Voltage {self._volts}>"
 
-    def codev(self, cg:CodeGenerator, cname:str)-> VoltageCode:
-        v = cg.get_value_code(self._volts)
+    def codev(self, valueCode:ValueCode, cname:str)-> VoltageCode:
+        v = valueCode(self._volts)
         init = [f"self.{cname} = NVoltage({v})"]
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
@@ -139,9 +139,9 @@ class SineVoltage(Voltage):
         super().__init__(name, volts)
         self._frequency = frequency
 
-    def codev(self, cg:CodeGenerator, cname:str) -> VoltageCode:
-        v = cg.get_value_code(self._volts)
-        f = cg.get_value_code(self._frequency)
+    def codev(self, valueCode:ValueCode, cname:str) -> VoltageCode:
+        v = valueCode(self._volts)
+        f = valueCode(self._frequency)
         init = [f"self.{cname} = NSineVoltage({v}, {f})"]
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
@@ -151,8 +151,8 @@ class SawVoltage(Voltage):
         super().__init__(name, volts)
         self._frequency = frequency
 
-    def codev(self, cg:CodeGenerator, cname:str)->VoltageCode:
-        v = cg.get_value_code(self._volts)
+    def codev(self, valueCode:ValueCode, cname:str)->VoltageCode:
+        v = valueCode(self._volts)
         init = [f"self.{cname} = NSawVoltage({v}, {self._frequency})"]
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
@@ -162,12 +162,12 @@ class PieceWiseLinearVoltage(Voltage):
         super().__init__(name,0)
         self.pairs = list(pairs)
 
-    def codev(self, cg:CodeGenerator, cname:str)->VoltageCode:
+    def codev(self, valueCode:ValueCode, cname:str)->VoltageCode:
         a = list(self.pairs)
         a.sort(key=lambda x: x[0])
         vx  = list(x for (x,y) in a)
 
-        vy  = "[" + ", ".join(list(cg.get_value_code(y) for (x,y) in a)) + "]"
+        vy  = "[" + ", ".join(list(valueCode(y) for (x,y) in a)) + "]"
 
         init = [f"self.{cname} = NPieceWiseLinearVoltage({vx},  {vy})"]
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
@@ -184,8 +184,8 @@ class Diode(Node2Current):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code2(self, generator:CodeGenerator, cname:str, dvname:str)-> Node2Code:
-        _ = generator
+    def code2(self, valueCode:ValueCode, cname:str, dvname:str)-> Node2Code:
+        _ = valueCode
         return Node2Code(
             component_init =
             [f"self.{cname} = " +
@@ -215,8 +215,8 @@ class ZDiode(Node2Current):
         self.lcut_off = lcut_off
         self.rcut_off = rcut_off
 
-    def code2(self, generator:CodeGenerator, cname:str, dvname:str)-> Node2Code:
-        _ = generator
+    def code2(self, valueCode:ValueCode, cname:str, dvname:str)-> Node2Code:
+        _ = valueCode
         return Node2Code(
             component_init=[f"self.{cname} = NZDiode({self.vcut}, {self.Is},{self.Nut}," +
                             f"{self.IsZ}, {self.NutZ}, {self.lcut_off},{self.rcut_off})"],
