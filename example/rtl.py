@@ -1,7 +1,10 @@
 """ resistor transistor logic"""
 import argparse
+import matplotlib.pyplot as plt
+
 from avspice import SubCircuit, Circuit, Analysis, Variable, NPNTransistor
 
+from avspice.util import drange
 
 tnpn =  NPNTransistor("TT", 1e-12, 25e-3,100, 10)
 
@@ -190,6 +193,119 @@ def cmd_or4(args):
     print(f"----   or4({args.vi1}, {args.vi2}, {args.vi3}, {args.vi3}) -> {o} ----")
 
 
+def cmd_plot_not(args):
+    net = Circuit()
+    net.addV("V", 5, "vc","0")
+
+    vi = Variable("vi")
+    ri = 1e4
+    rc = 1e3
+    ro = ri/3
+
+    net.addV("vi", vi, "i", "0")
+
+    ng = create_not_gate(ri=ri, rc=rc)
+
+    net.add_subcircuit("n1", ng, ("vc","0","i", "o1"))
+
+    net.addR("ro", ro, "o1", "0")
+
+    ana = Analysis(net)
+
+    x = []
+    y= []
+    for vi in drange(0,5,0.01):
+        res= ana.analyze(variables={"vi":vi})
+        if isinstance(res,str):
+            x.append(vi)
+            y.append(None)
+        else:
+            x.append(vi)
+            y.append(res.get_voltage("ro.p"))
+    _, _ = plt.subplots()  # Create a figure containing a single axes.
+    plt.plot(x,y)
+    plt.show()
+
+def cmd_plot_not(args):
+    net = Circuit()
+    net.addV("V", 5, "vc","0")
+
+    vi = Variable("vi")
+    ri = 1e4
+    rc = 1e3
+    ro = ri/3
+
+    net.addV("vi", vi, "i", "0")
+
+    ng = create_not_gate(ri=ri, rc=rc)
+
+    net.add_subcircuit("n1", ng, ("vc","0","i", "o1"))
+
+    net.addR("ro", ro, "o1", "0")
+
+    ana = Analysis(net)
+
+    x = []
+    y= []
+    for vi in drange(0,5,0.01):
+        res= ana.analyze(variables={"vi":vi})
+        if isinstance(res,str):
+            x.append(vi)
+            y.append(None)
+        else:
+            x.append(vi)
+            y.append(res.get_voltage("ro.p"))
+    _, _ = plt.subplots()  # Create a figure containing a single axes.
+    plt.plot(x,y)
+    plt.show()
+
+def cmd_plot_or2(args):
+
+    assert args.step > 0 and args.step <=5, "stepsize must be >0 and <=5"
+    net = Circuit()
+
+    vi1 = Variable("vi1")
+    vi2 = Variable("vi2")
+
+    ri = 1e4
+    rc = 1e3
+    ro = ri/3
+
+    or2 = create_or2_gate(ri=ri, rc=rc)
+
+    net.addV("V", 5, "v","0")
+
+    net.addV("vi1", vi1, "i1", "0")
+    net.addV("vi2", vi2, "i2", "0")
+
+    net.add_subcircuit("or", or2, ("v","0","i1","i2", "o"))
+    net.addR("ro", ro, "o", "0")
+
+    ana = Analysis(net)
+
+    x = drange(0,5,args.step)
+    y = drange(0,5,args.step)
+
+    m = []
+    for xx in x:
+        s = list()
+        sol_vec = None
+        for yy in y:
+            res= ana.analyze(variables={"vi1":xx, "vi2":yy}, start_solution_vec = sol_vec)
+            if isinstance(res,str):
+                s.append(-1)
+                sol_vec = None
+            else:
+                s.append(res.get_voltage("ro.p"))
+                sol_vec = res.solution_vec
+        m.append(list(s))
+    fig, ax = plt.subplots()  # Create a figure containing a single axes.
+    c = ax.pcolormesh(y,x,m)
+    fig.colorbar(c, ax=ax)
+    plt.show()
+
+
+
 
 def main():
     parser = argparse.ArgumentParser( prog='RTL-Examples',
@@ -223,6 +339,12 @@ def main():
     p_or4.add_argument("vi3", type=float)
     p_or4.add_argument("vi4", type=float)
 
+    p_plot_not = subparsers.add_parser('plot_not')
+    p_plot_not.set_defaults(func=cmd_plot_not)
+
+    p_plot_or2 = subparsers.add_parser('plot_or2')
+    p_plot_or2.set_defaults(func=cmd_plot_or2)
+    p_plot_or2.add_argument("-step", type=float,default=0.1)
 
     args = parser.parse_args()
     args.func(args)

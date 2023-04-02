@@ -3,14 +3,14 @@
 import math
 import sys
 
-from collections.abc import Iterator
 from typing import Optional, Any, Callable,Union
 
 import numpy as np
 import numpy.typing as npt
 
-def drange(start:float, end:float, step:Optional[float]=None)->Iterator[float]:
+def drange(start:float, end:float, step:Optional[float]=None)->list[float]:
     x = float(start)
+    l = []
     if step is None:
         s = 1.0
     else:
@@ -19,10 +19,11 @@ def drange(start:float, end:float, step:Optional[float]=None)->Iterator[float]:
     if s <=0:
         raise Exception("step <=0")
     while x < end:
-        yield x
+        l.append(x)
         x += s
     if x < end + s/2.0:
-        yield end
+        l.append(end)
+    return l
 
 def saw_tooth(freq:float, t:float) ->  float:
     t = 1.0 * t * freq

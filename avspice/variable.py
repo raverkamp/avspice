@@ -1,7 +1,7 @@
 """class variable"""
 
 import numbers
-from typing import Optional, Union
+from typing import Optional
 
 class Variable:
     """a variable"""
@@ -13,4 +13,3 @@ class Variable:
 
     def __repr__(self)->str:
         return f"<Variable {self.name}, {self.default}>"
-
