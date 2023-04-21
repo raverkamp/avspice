@@ -148,7 +148,7 @@ class CodeGenerator:
             "    def __init__(self, variables):",
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
                      + " NPNPTransistor, NFET, NJFETn,"
-                    + "NVoltage, NSineVoltage, NSawVoltage, NPieceWiseLinearVoltage"]
+                    + "NVoltage, NSineVoltage, NSawVoltage, NPwmVoltage, NPieceWiseLinearVoltage"]
         self.y_code = [f"    def y(self, time, sol, state_vec{h_par}):",
                        "        import numpy as np",
                        f"        res = np.zeros({self.n})"]

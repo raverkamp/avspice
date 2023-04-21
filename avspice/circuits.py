@@ -156,6 +156,19 @@ class SawVoltage(Voltage):
         init = [f"self.{cname} = NSawVoltage({v}, {self._frequency})"]
         return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
 
+class PwmVoltage(Voltage):
+    """pwm voltage"""
+    def __init__(self, name:str, volts:float, frequency: float, duty:float=0.5):
+        super().__init__(name, volts)
+        self._frequency = frequency
+        self._duty = duty
+
+    def codev(self, valueCode:ValueCode, cname:str)->VoltageCode:
+        v = valueCode(self._volts)
+        init = [f"self.{cname} = NPwmVoltage({v}, {self._frequency}, {self._duty})"]
+        return VoltageCode(init, [f"{cname}_voltage = self.{cname}.voltage(time)"],f"{cname}_voltage")
+
+    
 class PieceWiseLinearVoltage(Voltage):
     """piecewise linear voltage"""
     def __init__(self, name:str, pairs:list[tuple[float,Union[Variable,float]]]):

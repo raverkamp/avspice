@@ -4,8 +4,6 @@ import numbers
 from .util import explin, dexplin
 from . import util
 
-
-
 class NVoltage:
     """voltage source"""
 
@@ -31,13 +29,27 @@ class NSineVoltage:
         return self.v * math.sin(2 * math.pi * self.f * time)
 
 class NSawVoltage:
-    """savw voltage source"""
+    """saw voltage source"""
     def __init__(self, v:float, f:float):
         self.v = v
         self.f = f
 
     def voltage(self, time:float)->float:
         return self.v * util.saw_tooth(self.f, time)
+
+class NPwmVoltage:
+    """pwm voltage source"""
+    def __init__(self, v:float, f:float, d:float):
+        self.v = v
+        self.f = f
+        self.duty = d
+
+    def voltage(self, time:float)->float:
+        frac,_ = math.modf(self.f*time)
+        if frac > 1-self.duty:
+            return self.v
+        else:
+            return 0
 
 class NPieceWiseLinearVoltage:
     """piecewise linear volatge source"""
