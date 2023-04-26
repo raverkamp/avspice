@@ -594,9 +594,9 @@ class Analysis:
             res[name + "." +port] = cv[self.curr_index(name, port)]
         return res
 
-    def _compute_voltages(self, parts:list[Part], solution_vec:np_float_vec)->dict[str, float]:
+    def _compute_voltages(self, solution_vec:np_float_vec)->dict[str, float]:
         voltages: dict[str, float] = {}
-        for part in parts:
+        for part in self.parts:
             ports = part.component.get_ports()
             nodes = part.connections
             assert len(ports) == len(nodes)
@@ -697,7 +697,7 @@ class Analysis:
         else:
             cond=None
         currents = self._compute_currents(c, time, res.x, state_vec)
-        voltages = self._compute_voltages(self.parts, res.x)
+        voltages = self._compute_voltages(res.x)
         return ((res.x, res.y, res.norm_y, cond, res.iterations), voltages, currents)
 
 

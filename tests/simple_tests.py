@@ -775,15 +775,15 @@ class TestPwmVoltage(unittest.TestCase):
 
     def test1(self):
         net = Circuit()
-        f = 3
+        f = 1
         v = 7
-        duty = 0.4
-        vs = PwmVoltage("A",v,f)
+        duty = 0.3
+        vs = PwmVoltage("A",v,f,duty)
         net.add_component("V",vs,("V","0"))
         r = 9
         net.addR("R",r,"V", "0")
         ana = Analysis(net)
-        res = ana.transient(10/f,0.01/f)
+        res = ana.transient(10/f,0.005/f)
 
 
         def vat(t):
@@ -791,11 +791,10 @@ class TestPwmVoltage(unittest.TestCase):
         def cat(t):
             return res.get_current_at(t, "R.p")
 
-        for x in  [0.010,0.2,0.35,0.55,0.8]:
-            for i in range(0,2):
+        for x in  sorted([0.010,0.2,0.35,0.55,0.8, duty-0.01, duty+0.01, 1-duty-0.01, 1-duty+0.01]):
+            for i in range(2):
                 t = (x+i)/ f
-                y = v if x> (1-duty) else 0
-                print(t,x,vat(t),y)
+                y = 0 if x < 1 - duty else v
                 self.assertAlmostEqual(vat(t),y)
                 self.assertAlmostEqual(cat(t),y/r)
 
