@@ -244,7 +244,8 @@ class Test1(unittest.TestCase):
         self.assertAlmostEqual(res.get_voltage("r1.p"), x)
         self.assertAlmostEqual(res.get_current("r1.p"), x/20)
         self.assertAlmostEqual(res.y_norm, 0)
-
+        self.assertEqual(res.get_voltage("r1.p"), res.get_voltage("1"))
+        self.assertEqual(res.get_voltage("r1.n"), res.get_voltage("0"))
 
     # diode and resistor in serial
     def test_diode_simple1(self):
@@ -603,6 +604,11 @@ class TransientTest(unittest.TestCase):
         ve_expected = v0 *(1-math.exp(-timespan/(r*capa)))
         print(ve, ve_expected)
         self.assertTrue(0.98 < ve/ve_expected <1.02)
+
+        for (a,b) in zip(res.get_voltage("vc.p"), res.get_voltage("v")):
+            self.assertEqual(a, b)
+        for (a,b) in zip(res.get_voltage("ca.p"), res.get_voltage("c")):
+            self.assertEqual(a, b)
 
     def test1b(self):
         r = 1000000

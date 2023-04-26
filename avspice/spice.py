@@ -104,6 +104,9 @@ class Result:
                 k = analysis.node_index(node)
                 port_name = part.name +"."  + port
                 self.voltages[port_name] = solution_vec[k]
+        for node in analysis.node_list:
+            k = analysis.node_index(node)
+            self.voltages[node] = solution_vec[k]
 
     def get_voltages(self) ->dict[str,float]:
         return self.voltages
@@ -604,6 +607,9 @@ class Analysis:
                 k = self.node_index(node)
                 port_name = part.name +"."  + port
                 voltages[port_name] = solution_vec[k]
+        for node in self.node_list:
+            k = self.node_index(node)
+            voltages[node] = solution_vec[k]
         return voltages
 
     def analyze(self,
