@@ -1,6 +1,7 @@
 """ simple routines for experimenting with nodal analysis """
 
 import pprint as pp
+import time as time_module
 from typing import TypeAlias, Union, Optional, Callable, Any
 import numpy as np
 import numpy.typing as npt
@@ -750,7 +751,14 @@ class Analysis:
         sol = res0.solution_vec
         bla = self.generate_code(True)
         computer = bla(variables or {})
+
+        clock_start_time = time_module.time()
+        clock_last_time = clock_start_time
         while time < maxtime:
+            clock_time = time_module.time()
+            if clock_time - clock_last_time >= 1:
+                print(f"\rdone % {100*time/maxtime:10.5f}, total secs:{clock_time-clock_start_time:10.0f}", end="")
+                clock_last_time =  clock_time
             res = self.solve_internal(time,
                     maxit,
                     sol,
@@ -771,12 +779,13 @@ class Analysis:
                 if timestep < min_timestep:
                     print(f"fail at time {time}: {res}, stepisze={timestep}")
                     break
-                print("dec step", time, timestep)
+                timestep = util.round_significant(timestep,3)
+                print(f"dec step {time:10.5g} {timestep:10.3g}")
                 continue
-            a = timestep * 1.05
+            a = util.round_significant(timestep * 1.05,3)
             if a < max_timestep:
                 timestep = a
-                print("inc step", time, timestep)
+                print(f"inc step {time:10.5g} {timestep:10.3g}")
             ((sol_x, _sol_y, _sol_ny, _sol_cond, _sol_iterations), voltages, currents) = res
             time_list.append(time)
             voltage_list.append(voltages)

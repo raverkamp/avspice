@@ -33,7 +33,6 @@ def saw_tooth(freq:float, t:float) ->  float:
     else:
         return 2 - t*2
 
-
 def explin(x: float, lcutoff: float, rcutoff:float) ->float:
     assert lcutoff  <= rcutoff, "cutoffs wrong"
 
@@ -115,3 +114,11 @@ def ndiff(fun:Callable[[float], float], x:float) -> float:
         h = eps05 * abs(x)
 
     return (fun(x+h) - fun(x-h))/( 2  *h)
+
+def round_significant(x:float,n:int):
+    assert n>=1, "n must be >=1"
+    if x ==0.0:
+        return x
+    l10 = math.floor(math.log10(abs(x)))
+    p10 = 10 ** l10
+    return p10 * round(x/p10,n-1)

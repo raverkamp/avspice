@@ -5,7 +5,7 @@ import math
 import numpy as np
 from avspice import Circuit, Analysis, Diode, NPNTransistor,\
     Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage, SawVoltage, PwmVoltage
-from avspice.util import  explin, dexplin, linear_interpolate, smooth_step, dsmooth_step, ndiff
+from avspice.util import  explin, dexplin, linear_interpolate, smooth_step, dsmooth_step, ndiff, round_significant
 
 from avspice import ncomponents
 
@@ -125,6 +125,13 @@ class TestMath(unittest.TestCase):
         self.assertAlmostEqual(df(1)/ndf(1.0),1)
         self.assertAlmostEqual(df(1e10)/ndf(1e10), 1)
         self.assertAlmostEqual(df(2e-5)/ndf(2e-5), 1)
+
+    def test_round_significant(self):
+        self.assertAlmostEqual(round_significant(0.0,1), 0.0)
+        self.assertAlmostEqual(round_significant(1.2,1), 1)
+        self.assertAlmostEqual(round_significant(1.23e-8,2), 1.2e-8)
+        self.assertAlmostEqual(round_significant(1.23e8,2), 1.2e8)
+
 
 
 class TestSolve(unittest.TestCase):
