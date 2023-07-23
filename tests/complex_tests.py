@@ -1,23 +1,31 @@
 """complex unit tests"""
 import unittest
-from avspice import Circuit, Analysis, Diode, NPNTransistor,\
-    Variable, PNPTransistor, SubCircuit, PieceWiseLinearVoltage, ZDiode,\
-    FET
-
+from avspice import (
+    Circuit,
+    Analysis,
+    Diode,
+    NPNTransistor,
+    Variable,
+    PNPTransistor,
+    SubCircuit,
+    PieceWiseLinearVoltage,
+    ZDiode,
+    FET,
+)
 
 
 class TestZener(unittest.TestCase):
     """a test using a subcircuit to simulate a zender diode
-       accuracy is not that important, just check that the subc ircuit stuff works"""
+    accuracy is not that important, just check that the subc ircuit stuff works"""
 
     def zener(self, name, v):
-        d =  Diode("D", 1e-8, 25e-3)
+        d = Diode("D", 1e-8, 25e-3)
         cutoff = 40
         d = Diode(name, 1e-8, 25e-3, lcut_off=-cutoff, rcut_off=cutoff)
-        sc =  SubCircuit(("p", "n"))
+        sc = SubCircuit(("p", "n"))
         sc.add("Df", d, ("p", "n"))
         sc.add("Dr", d, ("m", "p"))
-        sc.addV("v",v, "n", "m")
+        sc.addV("v", v, "n", "m")
         return sc
 
     def test_1(self):
@@ -34,24 +42,23 @@ class TestZener(unittest.TestCase):
 
         res = ana.analyze(variables={"v": -3})
         current_3 = res.get_current("V.p")
-        self.assertTrue(-1e-20 <current_3  < 0)
+        self.assertTrue(-1e-20 < current_3 < 0)
 
         res = ana.analyze(variables={"v": 0.1})
         current_01 = res.get_current("V.p")
-        self.assertTrue(0 <current_01  < 0.0001)
+        self.assertTrue(0 < current_01 < 0.0001)
 
         res = ana.analyze(variables={"v": 0.3})
         current_03 = res.get_current("V.p")
-        self.assertTrue(0 <current_03  < 0.002)
+        self.assertTrue(0 < current_03 < 0.002)
 
         res = ana.analyze(variables={"v": 0.4})
         current_04 = res.get_current("V.p")
-        self.assertTrue(0.05 <current_04  < 0.1)
+        self.assertTrue(0.05 < current_04 < 0.1)
 
         res = ana.analyze(variables={"v": 0.5})
         current_05 = res.get_current("V.p")
-        self.assertTrue(4 <current_05  < 6)
-
+        self.assertTrue(4 < current_05 < 6)
 
     def test_2(self):
         net = Circuit()
@@ -69,32 +76,34 @@ class TestZener(unittest.TestCase):
         res = ana.analyze(variables={"v": -3})
         current_3 = res.get_current("V.p")
         print(current_3)
-        self.assertTrue(-1e-7 <current_3  < 0)
+        self.assertTrue(-1e-7 < current_3 < 0)
 
         res = ana.analyze(variables={"v": 0.1})
         current_01 = res.get_current("V.p")
-        self.assertTrue(0 <current_01  < 0.0001)
+        self.assertTrue(0 < current_01 < 0.0001)
 
         res = ana.analyze(variables={"v": 0.3})
         current_03 = res.get_current("V.p")
-        self.assertTrue(0 <current_03  < 0.002)
+        self.assertTrue(0 < current_03 < 0.002)
 
         res = ana.analyze(variables={"v": 0.4})
         current_04 = res.get_current("V.p")
-        self.assertTrue(0.05 <current_04  < 0.1)
+        self.assertTrue(0.05 < current_04 < 0.1)
 
         res = ana.analyze(variables={"v": 0.5})
         current_05 = res.get_current("V.p")
-        self.assertTrue(4 <current_05  < 6)
+        self.assertTrue(4 < current_05 < 6)
+
 
 class TestFET(unittest.TestCase):
     "FET tests"
+
     def test_1(self):
         net = Circuit()
         v = 6
         net.addV("V", v, "VCC", "0")
 
-        net.addV("VG",7, "VCG", "0")
+        net.addV("VG", 7, "VCG", "0")
 
         net.addR("R1", 100, "VCC", "D")
         net.addR("R2", 1, "S", "0")
@@ -105,6 +114,7 @@ class TestFET(unittest.TestCase):
         res = ana.analyze()
         current = res.get_current("F.D")
         self.assertTrue(0.058 < current < 0.06)
+
 
 class TestCurrentSource(unittest.TestCase):
     "sweep for current source"
@@ -118,25 +128,25 @@ class TestCurrentSource(unittest.TestCase):
         net.addV("V", v, "V", "0")
         rl = Variable("RL")
         net.addR("RL", rl, "V", "C")
-        net.addR("R1", r1, "V","B")
-        net.addR("R2", r2, "B","0")
+        net.addR("R1", r1, "V", "B")
+        net.addR("R2", r2, "B", "0")
         net.addR("RE", re, "E", "0")
-        t1 = NPNTransistor("Model T1",1e-12, 25e-3, 100, 10)
+        t1 = NPNTransistor("Model T1", 1e-12, 25e-3, 100, 10)
         net.add_component("t1", t1, ("B", "C", "E"))
 
         # a simple current source, the voltage drop across the transsistor is 0.5 V
         # so the voltage at E should be (10 - 0.5) * re/(re+r1)
         # and current is (10 -0.5) /(re +r1)
-        cu_approx = (v - 0.5)/ (re + r1)
+        cu_approx = (v - 0.5) / (re + r1)
 
-        ana =Analysis (net)
+        ana = Analysis(net)
         x = 1
-        while x < re * ( v/(v - 0.5) - 1):
+        while x < re * (v / (v - 0.5) - 1):
             res = ana.analyze(variables={"RL": x})
             cu = res.get_current("RL.p")
-            self.assertTrue(abs(1-cu/cu_approx) <0.05)
+            self.assertTrue(abs(1 - cu / cu_approx) < 0.05)
             x = x * 2
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
