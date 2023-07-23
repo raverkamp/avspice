@@ -18,7 +18,7 @@ def drange(start: float, end: float, step: Optional[float] = None) -> list[float
         s = step
     s = float(s)
     if s <= 0:
-        raise Exception("step <=0")
+        raise ValueError("step <=0")
     while x < end:
         l.append(x)
         x += s
@@ -69,7 +69,7 @@ def find_pos(v: Union[npt.NDArray[np.float64], list[float]], x: float) -> int:
     """v is sorted double vector, x is double
     return largest i such that  x >= v[i], -1 if x< v[0]"""
     if len(v) == 0:
-        raise Exception("argument v must have length >=1")
+        raise ValueError("argument v must have length >=1")
     if x < v[0]:
         return -1
     i = len(v) - 1
@@ -134,7 +134,7 @@ def ndiffn(
     fun: Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]],
     x: npt.NDArray[np.float64],
 ) -> npt.NDArray[np.float64]:
-    n = len(x)
+    n = x.shape[0]
     eps05 = math.sqrt(eps())
     res = np.zeros((n, n))
 
@@ -152,4 +152,4 @@ def ndiffn(
         dfi = (fun(xip) - fun(xim)) / (2 * h)
         for j in range(n):
             res[j, i] = dfi[j]
-        return res
+    return res

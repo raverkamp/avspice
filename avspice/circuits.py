@@ -676,10 +676,10 @@ class Network:
         assert isinstance(name, str), "name parameter must be a string"
         assert isinstance(comp, Component), "component parameter must be a component"
         if name in self.part_dict:
-            raise Exception(f"a part with name {name} already exists")
+            raise ValueError(f"a part with name {name} already exists")
         ports = comp.get_ports()
         if not len(ports) == len(nodes):
-            raise Exception(
+            raise ValueError(
                 f"for part {name} #ports={len(ports)} and #connections={len(nodes)} do not match"
             )
         for node in nodes:

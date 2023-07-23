@@ -37,13 +37,13 @@ class TransientResult:
         currents: list[dict[str, float]],
     ) -> None:
         if len(time_points) == 0:
-            raise Exception("init has length 0")
+            raise ValueError("init has length 0")
         volts: dict[str, list[float]] = {}
         currs: dict[str, list[float]] = {}
         self.start_time = time_points[0]
         self.end_time = time_points[len(time_points) - 1]
         if len(time_points) != len(voltages) or len(time_points) != len(currents):
-            raise Exception("length of lists do not match")
+            raise ValueError("length of lists do not match")
         for k in voltages[0]:
             volts[k] = []
         for k in currents[0]:
@@ -52,9 +52,9 @@ class TransientResult:
             v = voltages[i]
             c = currents[i]
             if len(v) != len(volts):
-                raise Exception("length for volts does not match")
+                raise ValueError("length for volts does not match")
             if len(c) != len(currs):
-                raise Exception("length for currents does not match")
+                raise ValueError("length for currents does not match")
             for k, val in volts.items():
                 val.append(v[k])
             for k, val in currs.items():
@@ -212,7 +212,7 @@ class CodeGenerator:
         elif isinstance(x, (float, int)):
             return str(x)
         else:
-            raise Exception("wrong type for scalar value:" + str(x))
+            raise ValueError("wrong type for scalar value:" + str(x))
 
     def add_ysum(self, k: int, e: str) -> None:
         self.ysum[k].append(e)
