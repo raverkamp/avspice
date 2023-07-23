@@ -623,13 +623,18 @@ class Analysis:
                 start_voltages: Optional[dict[str, float]]=None,
                 time:float =0,
                 transient:bool=False,
-                compute_cond:bool=False)-> Union[str, Result]:
+                compute_cond:bool=False,
+                verbose:bool=False)-> Union[str, Result]:
 
         n = self._equation_size(transient)
         if start_solution_vec is None:
             if start_voltages is None:
+                if verbose:
+                    print("starting from zero")
                 solution_vec0 = np.zeros(n)
             else:
+                if verbose:
+                    print("starting from start voltages")
                 solution_vec0 = np.zeros(n)
                 for vk in start_voltages:
                     n = self.port_node_indexes[vk]
@@ -648,12 +653,13 @@ class Analysis:
         computer = bla(variables or {})
 
         def f(x:np_float_vec)->np_float_vec:
+            assert not isinstance(x, str)
             return computer.y(time, x, state_vec, 0)
 
         def Df(x:np_float_vec)-> np_float_vec:
             return computer.dy(time, x, state_vec, 0)
 
-        res = solving.solve_alfa(solution_vec, f, Df, abstol, reltol, maxit)
+        res = solving.solve_alfa(solution_vec, f, Df, abstol, reltol, maxit,verbose=verbose)
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             if compute_cond:

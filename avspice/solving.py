@@ -4,7 +4,7 @@ from typing import Optional, Callable, Union, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
-
+from .util import ndiffn
 
 
 def reldiff(x:float,y:float) ->float:
@@ -38,7 +38,7 @@ def solve(xstart: npt.NDArray[np.float64],
           verbose:bool=False) ->Union[BasicSolution,str]:
     iterations = 0
     if verbose:
-        print("-----------------------------",xstart,alfa)
+        print(f"---------  SOLVE  alfa={alfa}-----------")
     x0 = xstart
     x = xstart
     if not alfa is None:
@@ -63,20 +63,26 @@ def solve(xstart: npt.NDArray[np.float64],
             return  df(x) + dalfa
 
     y = fn(x)
-    norm_y = float(np.linalg.norm(y))
+    norm_y = float(np.linalg.norm(y, np.inf))
 
     while True:
         if iterations > maxiter:
+            if verbose:
+                print("----- dfn ---")
+                print(dfn(x))
+                print("----- num d fn ------")
+                print(ndiffn(fn,x))
             return f"Fail #iterations={iterations}"
         iterations +=1
 
         dfx = dfn(x)
         dx = np.linalg.solve(dfx, -y)
         if verbose:
-            print(f"iteration {iterations}, norm_y={norm_y}, norm_dx={np.linalg.norm(dx)} ----")
+            norm_x = np.linalg.norm(dx)
+            print(f"iteration {iterations}, norm_y={norm_y}, norm_dx={np.linalg.norm(dx)}, norm_x ={norm_x} ----")
         xn = x + dx
         yn =  fn(xn)
-        norm_y_n = float(np.linalg.norm(yn))
+        norm_y_n = float(np.linalg.norm(yn,np.inf))
         #if iterations > 100:
         #    print("iteration", norm_y, x-xn)
         if close_enough(x, xn, abstol, reltol):
@@ -89,15 +95,19 @@ def solve(xstart: npt.NDArray[np.float64],
             # is there an improvement in the residual error?
             if norm_y_n < abstol or norm_y_n/norm_y <= (1-a/4):
                 x = xn
+                if verbose:
+                    print("step factor",a)
                 break
             k = k + 1
             if k >= 20:
                 x =  xn
-                return "Fail no improvment"
+                if verbose:
+                    print("Fail no improvment at: " + str(norm_y_n))
+                return "Fail no improvment at: " + str(norm_y_n)
             a = a/2
             xn = x + a * dx
             yn = fn(xn)
-            norm_y_n = float(np.linalg.norm(yn))
+            norm_y_n = float(np.linalg.norm(yn, np.inf))
         x = xn
         y = yn
         norm_y = norm_y_n
@@ -110,7 +120,7 @@ def solve_alfa(xstart:npt.NDArray[np.float64],
                maxiter:int=20,
                verbose:bool=False) -> Union[BasicSolution,str]:
     solution_vec = xstart
-    res = solve(solution_vec, f, df, abstol, reltol, maxiter)
+    res = solve(solution_vec, f, df, abstol, reltol, maxiter,verbose=verbose)
     if not isinstance(res, str):
         return res
     alfa = 0.5
@@ -133,11 +143,15 @@ def solve_alfa(xstart:npt.NDArray[np.float64],
         if alfa < 1e-3:
             alfa = 0
         res = solve(solution_vec, f, df, abstol, reltol, maxiter,
-                            alfa=alfa)
+                            alfa=alfa, verbose=verbose)
         if isinstance(res, str):
             if verbose:
                 print(f"fail at alfa={alfa}")
-            return res
+            if alfa == 0:
+                return res
+            else:
+                alfa = 0
+                continue
         if alfa <=0:
             break
         solution_vec = res[0]

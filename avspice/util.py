@@ -115,3 +115,25 @@ def ndiff(fun:Callable[[float], float], x:float) -> float:
         h = eps05 * abs(x)
 
     return (fun(x+h) - fun(x-h))/( 2  *h)
+
+
+def ndiffn(fun:Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]], x:npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    n = len(x)
+    eps05 = math.sqrt(eps())
+    res = np.zeros((n, n))
+
+    for i in range(n):
+        xi = x[i]
+        if abs(xi) < eps05:
+            h = eps05
+        else:
+            h = eps05 * abs(xi)
+        xip= x+0
+        xip[i] = xip[i]+h
+        xim = x+0
+        xim[i] = xim[i]-h
+        
+        dfi =  (fun(xip) - fun(xim))/( 2  *h)
+        for j in range(n):
+            res[j,i] = dfi[j]
+        return res

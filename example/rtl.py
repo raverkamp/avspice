@@ -100,9 +100,13 @@ def cmd_not_not(args):
 
     ana = Analysis(net)
 
-    res= ana.analyze(variables={"vi": args.vi})
-    res.display()
-    print(f"----   not2({args.vi}) -> {res.get_voltage('ro2.p')}  -----")
+    res= ana.analyze(variables={"vi": args.vi}, verbose=args.verbose,
+                     maxit=args.maxit)
+    if isinstance(res,str):
+        print("fail", res)
+    else:
+        res.display()
+        print(f"----   not2({args.vi}) -> {res.get_voltage('ro2.p')}  -----")
 
 def cmd_nor2(args):
     net = Circuit()
@@ -228,7 +232,7 @@ def cmd_plot_not(args):
 
 def cmd_plot_not(args):
     net = Circuit()
-    net.addV("V", 5, "vc","0")
+    net.addV("v", 5, "vc","0")
 
     vi = Variable("vi")
     ri = 1e4
@@ -239,9 +243,9 @@ def cmd_plot_not(args):
 
     ng = create_not_gate(ri=ri, rc=rc)
 
-    net.add_subcircuit("n1", ng, ("vc","0","i", "o1"))
+    net.add_subcircuit("n1", ng, ("vc","0","i", "o"))
 
-    net.addR("ro", ro, "o1", "0")
+    net.addR("ro", ro, "o", "0")
 
     ana = Analysis(net)
 
@@ -250,11 +254,49 @@ def cmd_plot_not(args):
     for vi in drange(0,5,0.01):
         res= ana.analyze(variables={"vi":vi})
         if isinstance(res,str):
+            print(vi, res)
             x.append(vi)
             y.append(None)
         else:
             x.append(vi)
             y.append(res.get_voltage("ro.p"))
+    _, _ = plt.subplots()  # Create a figure containing a single axes.
+    plt.plot(x,y)
+    plt.show()
+
+
+def cmd_plot_not_not(args):
+    net = Circuit()
+    net.addV("v", 5, "vc","0")
+
+    vi = Variable("vi")
+    ri = 1e4
+    rc = 1e3
+    ro = ri/3
+
+    net.addV("vi", vi, "i", "0")
+
+    ng = create_not_gate(ri=ri, rc=rc)
+    ng = create_not_gate(ri=ri, rc=rc)
+
+    net.add_subcircuit("n1", ng, ("vc","0","i", "o1"))
+    net.add_subcircuit("n2", ng, ("vc","0","o1", "o2"))
+
+    net.addR("ro2", ro, "o2", "0")
+
+    ana = Analysis(net)
+
+    x = []
+    y= []
+    for vi in drange(0,5,0.01):
+        res= ana.analyze(variables={"vi":vi},maxit=args.maxit)
+        if isinstance(res,str):
+            print(vi, res)
+            x.append(vi)
+            y.append(None)
+        else:
+            x.append(vi)
+            y.append(res.get_voltage("ro2.p"))
     _, _ = plt.subplots()  # Create a figure containing a single axes.
     plt.plot(x,y)
     plt.show()
@@ -321,6 +363,8 @@ def main():
     p_not_not = subparsers.add_parser('not_not')
     p_not_not.set_defaults(func=cmd_not_not)
     p_not_not.add_argument("vi", type=float)
+    p_not_not.add_argument("-verbose", type=bool, default=False)
+    p_not_not.add_argument("-maxit", type=int, default=20)
 
     p_nor2 = subparsers.add_parser('nor2')
     p_nor2.set_defaults(func=cmd_nor2)
@@ -341,6 +385,11 @@ def main():
 
     p_plot_not = subparsers.add_parser('plot_not')
     p_plot_not.set_defaults(func=cmd_plot_not)
+
+    p_plot_not_not = subparsers.add_parser('plot_not_not')
+    p_plot_not_not.set_defaults(func=cmd_plot_not_not)
+    p_plot_not_not.add_argument("-maxit", type=int, default=20)
+
 
     p_plot_or2 = subparsers.add_parser('plot_or2')
     p_plot_or2.set_defaults(func=cmd_plot_or2)
