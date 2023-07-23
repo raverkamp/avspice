@@ -339,7 +339,9 @@ def cmd_plot_or2(args):
         sol_vec = None
         for yy in y:
             res = ana.analyze(
-                variables={"vi1": xx, "vi2": yy}, start_solution_vec=sol_vec
+                variables={"vi1": xx, "vi2": yy},
+                start_solution_vec=sol_vec,
+                maxit=args.maxit,
             )
             if isinstance(res, str):
                 s.append(-1)
@@ -399,6 +401,7 @@ def main():
     p_plot_or2 = subparsers.add_parser("plot_or2")
     p_plot_or2.set_defaults(func=cmd_plot_or2)
     p_plot_or2.add_argument("-step", type=float, default=0.1)
+    p_plot_or2.add_argument("-maxit", type=int, default=20)
 
     args = parser.parse_args()
     args.func(args)
