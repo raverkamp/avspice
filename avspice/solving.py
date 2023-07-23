@@ -83,6 +83,8 @@ def solve(
                 print(dfn(x))
                 print("----- num d fn ------")
                 print(ndiffn(fn, x))
+                print("----- diff ------")
+                print(ndiffn(fn, x)- dfn(x))
             return f"Fail #iterations={iterations}"
         iterations += 1
 
