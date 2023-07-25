@@ -359,7 +359,7 @@ def cmd_plot_or2(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="RTL-Examples",
-        description="""Resistor Translogic circuits arguments are at the input voltages
+        description="""Resistor Transistor logic circuits, arguments are at the input voltages
 1 is about 3.8V, 0 is less than 0.5V""",
     )
     subparsers = parser.add_subparsers(required=True)
