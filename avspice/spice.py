@@ -166,7 +166,8 @@ class CodeGenerator:
             "    def __init__(self, variables):",
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
             + " NPNPTransistor, NFET, NJFETn,"
-            + "NVoltage, NSineVoltage, NSawVoltage, NPwmVoltage, NPieceWiseLinearVoltage",
+            + "NVoltage, NSineVoltage, NSawVoltage, NPwmVoltage, NPieceWiseLinearVoltage,"
+            + " NPeriodicPieceWiseLinearVoltage",
         ]
         self.y_code = [
             f"    def y(self, time, sol, state_vec{h_par}):",
@@ -622,7 +623,7 @@ class Analysis:
         x = [
             "    def set_variable(self, name, value):",
             "        if not name in self.variable_map:",
-            "            raise Exception('unknown variable')",
+            "            raise Exception('unknown variable: ' +repr(name))",
             "        self.variables[self.variable_map[name]] = value",
             "",
         ]

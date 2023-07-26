@@ -228,6 +228,42 @@ class PieceWiseLinearVoltage(Voltage):
         )
 
 
+class PeriodicPieceWiseLinearVoltage(Voltage):
+    """periodic piecewise linear voltage"""
+
+    def __init__(
+        self,
+        name: str,
+        period: float,
+        pairs: list[tuple[float, Union[Variable, float]]],
+        freq_mul: Union[Variable, float],
+        volt_mul: Union[Variable, float],
+    ):
+        super().__init__(name, 0)
+        self.pairs = list(pairs)
+        assert isinstance(period, (float, int))
+        self.period = period
+        assert isinstance(freq_mul, (Variable, int, float))
+        self.freq_mul = freq_mul
+        assert isinstance(volt_mul, (Variable, int, float))
+        self.volt_mul = volt_mul
+
+    def codev(self, valueCode: ValueCode, cname: str) -> VoltageCode:
+        a = list(self.pairs)
+        a.sort(key=lambda x: x[0])
+        vx = list(x for (x, y) in a)
+
+        vy = "[" + ", ".join(list(valueCode(y) for (x, y) in a)) + "]"
+
+        init = [
+            f"self.{cname} = NPeriodicPieceWiseLinearVoltage({self.period}, {vx},"
+            + f"  {vy}, {valueCode(self.freq_mul)}, {valueCode(self.volt_mul)})"
+        ]
+        return VoltageCode(
+            init, [f"{cname}_voltage = self.{cname}.voltage(time)"], f"{cname}_voltage"
+        )
+
+
 class Diode(Node2Current):
     """solid state diode"""
 

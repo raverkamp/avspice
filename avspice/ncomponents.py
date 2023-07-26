@@ -71,6 +71,33 @@ class NPieceWiseLinearVoltage:
         return util.linear_interpolate(self.vx, self.vy, time)
 
 
+class NPeriodicPieceWiseLinearVoltage:
+    """piecewise linear voltage source"""
+
+    def __init__(
+        self,
+        period: float,
+        vx: list[float],
+        vy: list[float],
+        freq_mul: float,
+        volt_mul: float,
+    ):
+        self.period = period
+        ax = list(vx)
+        ax.append(period)
+        self.vx = ax
+        ay = list(vy)
+        ay.append(ay[0])
+        self.vy = ay
+        self.freq_mul = freq_mul
+        self.volt_mul = volt_mul
+
+    def voltage(self, time: float) -> float:
+        time2 = time * self.freq_mul
+        x = time2 % self.period
+        return util.linear_interpolate(self.vx, self.vy, x) * self.volt_mul
+
+
 class NDiode:
     """solid state diode"""
 

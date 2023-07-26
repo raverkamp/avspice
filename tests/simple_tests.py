@@ -14,6 +14,7 @@ from avspice import (
     PieceWiseLinearVoltage,
     SawVoltage,
     PwmVoltage,
+    PeriodicPieceWiseLinearVoltage,
 )
 from avspice.util import (
     explin,
@@ -828,6 +829,43 @@ class TestPwmVoltage(unittest.TestCase):
                 y = 0 if x < 1 - duty else v
                 self.assertAlmostEqual(vat(t), y)
                 self.assertAlmostEqual(cat(t), y / r)
+
+
+class TestPeriodicPiecewiseLinearVoltage(unittest.TestCase):
+    def test1(self):
+        net = Circuit()
+        m = 7
+        var_freq = Variable("freq_mul", 1)
+        var_volt = Variable("volt_mul", 1)
+
+        period = 4
+        vs = PeriodicPieceWiseLinearVoltage(
+            "V", period, [(0, 0), (1, m), (2, m)], var_freq, var_volt
+        )
+        net.add_component("V", vs, ("V", "0"))
+        r = 9
+        net.addR("R", r, "V", "0")
+        ana = Analysis(net)
+
+        for freq_mul in [0.5, 1, 2, 3]:
+            for volt_mul in [5, 6, 7]:
+                res = ana.transient(
+                    3 * period + 1,
+                    period / 100 / freq_mul,
+                    variables={"freq_mul": freq_mul, "volt_mul": volt_mul},
+                )
+
+                def vat(t):
+                    return res.get_voltage_at(t, "R.p")
+
+                t = 0.5
+                self.assertAlmostEqual(vat(t / freq_mul), m / 2 * volt_mul)
+
+                t = 1.5
+                self.assertAlmostEqual(vat(t / freq_mul), m * volt_mul)
+
+                t = 3
+                self.assertAlmostEqual(vat(t / freq_mul), m / 2 * volt_mul)
 
 
 if __name__ == "__main__":

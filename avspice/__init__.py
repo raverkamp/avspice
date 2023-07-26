@@ -16,6 +16,7 @@ from .circuits import (
     Node2,
     Network,
     PieceWiseLinearVoltage,
+    PeriodicPieceWiseLinearVoltage,
     SineVoltage,
     SawVoltage,
     PwmVoltage,
