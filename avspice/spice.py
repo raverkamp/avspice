@@ -109,6 +109,10 @@ class Result:
         self.y_norm = y_norm
         self.currents = currents
 
+        for node in analysis.node_list:
+            k = analysis.node_index(node)
+            self.voltages[node] = solution_vec[k]
+
         for part in parts:
             ports = part.component.get_ports()
             nodes = part.connections
