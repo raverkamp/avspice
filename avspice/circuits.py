@@ -807,10 +807,13 @@ class Network:
     def add(
         self, name: str, x: Union["SubCircuit", Component], nodes: list[str]
     ) -> None:
+        assert isinstance(name, str)
         if isinstance(x, SubCircuit):
             self.add_subcircuit(name, x, nodes)
         elif isinstance(x, Component):
             self.add_component(name, x, nodes)
+        else:
+            raise ValueError("expecting a Component or Subcircuit as second argument")
 
 
 class Circuit(Network):
