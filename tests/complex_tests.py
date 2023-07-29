@@ -14,6 +14,7 @@ from avspice import (
     VoltageControlledVoltageSource,
     ncomponents,
     Result,
+    LinearVoltageControlledVoltageSource,
 )
 
 
@@ -151,10 +152,10 @@ class TestCurrentSource(unittest.TestCase):
             x = x * 2
 
 
-class TestVoltragecontrolledVoltageSource(unittest.TestCase):
+class TestVoltagecontrolledVoltageSource(unittest.TestCase):
     def test_ncompo(self):
         fac = 7
-        a = ncomponents.NSimpleVoltageControlledVoltageSource(fac)
+        a = ncomponents.NLinearVoltageControlledVoltageSource(fac)
         self.assertAlmostEqual(a.voltage(2), 2 * fac)
         self.assertAlmostEqual(a.dvoltage(1), fac)
 
@@ -171,6 +172,23 @@ class TestVoltragecontrolledVoltageSource(unittest.TestCase):
         self.assertAlmostEqual(res.get_voltage("VINp"), 5)
         self.assertAlmostEqual(res.get_voltage("VOUTp") - res.get_voltage("0"), 5)
         self.assertAlmostEqual(res.get_current("r1.p"), 5 / 7)
+
+    def test_compo_linear(self):
+        gain = 0.3
+        net = Circuit()
+        vcv = LinearVoltageControlledVoltageSource("VCF", gain)
+        net.addV("V", 5, "VINp", "0")
+        net.add_component("vcv", vcv, ("VINp", "0", "VOUTp", "0"))
+        net.addR("r1", 7, "VOUTp", "0")
+
+        ana = Analysis(net)
+        res = ana.analyze()
+        self.assertIsInstance(res, Result)
+        self.assertAlmostEqual(res.get_voltage("VINp"), 5)
+        self.assertAlmostEqual(
+            res.get_voltage("VOUTp") - res.get_voltage("0"), 5 * gain
+        )
+        self.assertAlmostEqual(res.get_current("r1.p"), 5 * gain / 7)
 
 
 if __name__ == "__main__":

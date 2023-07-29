@@ -274,7 +274,7 @@ class VoltageControlledVoltageSource(Component):
         return ["vinp", "vinn", "voutp", "voutn"]
 
     def ncompo_code(self) -> str:
-        return f"NSimpleVoltageControlledVoltageSource(1.0)"
+        return f"NLinearVoltageControlledVoltageSource(1.0)"
 
     def vcvcode(self, valueCode: ValueCode, cname: str, dvname: str) -> VCVCode:
         component_init = [f"self.{cname} = " + self.ncompo_code()]
@@ -284,6 +284,15 @@ class VoltageControlledVoltageSource(Component):
 
     def __repr__(self) -> str:
         return f"<VoltageControlledVoltageSource {self.name}>"
+
+
+class LinearVoltageControlledVoltageSource(VoltageControlledVoltageSource):
+    def __init__(self, name: str, gain: float):
+        super().__init__(name)
+        self.gain = gain
+
+    def ncompo_code(self) -> str:
+        return f"NLinearVoltageControlledVoltageSource({self.gain})"
 
 
 class Diode(Node2Current):

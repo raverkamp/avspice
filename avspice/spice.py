@@ -18,6 +18,7 @@ from .circuits import (
     NPort,
     Network,
     VoltageControlledVoltageSource,
+    LinearVoltageControlledVoltageSource,
 )
 from .variable import Variable
 from . import solving
@@ -172,7 +173,7 @@ class CodeGenerator:
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
             + " NPNPTransistor, NFET, NJFETn,"
             + "NVoltage, NSineVoltage, NSawVoltage, NPwmVoltage, NPieceWiseLinearVoltage,"
-            + " NPeriodicPieceWiseLinearVoltage, NSimpleVoltageControlledVoltageSource",
+            + " NPeriodicPieceWiseLinearVoltage, NLinearVoltageControlledVoltageSource",
         ]
         self.y_code = [
             f"    def y(self, time, sol, state_vec{h_par}):",

@@ -98,7 +98,7 @@ class NPeriodicPieceWiseLinearVoltage:
         return util.linear_interpolate(self.vx, self.vy, x) * self.volt_mul
 
 
-class NSimpleVoltageControlledVoltageSource:
+class NLinearVoltageControlledVoltageSource:
     """simple linear voltage controlled voltage source"""
 
     def __init__(self, factor: float):

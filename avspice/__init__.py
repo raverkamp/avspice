@@ -21,6 +21,7 @@ from .circuits import (
     SawVoltage,
     PwmVoltage,
     VoltageControlledVoltageSource,
+    LinearVoltageControlledVoltageSource,
     ZDiode,
     FET,
     JFET,
