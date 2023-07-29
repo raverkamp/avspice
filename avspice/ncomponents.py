@@ -111,6 +111,19 @@ class NLinearVoltageControlledVoltageSource:
         return self.factor
 
 
+class NLinearVoltageControlledCurrentSource:
+    """simple linear voltage controlled current source"""
+
+    def __init__(self, factor: float):
+        self.factor = factor
+
+    def current(self, vin_diff: float) -> float:
+        return self.factor * vin_diff
+
+    def dcurrent(self, vin_diff: float) -> float:
+        return self.factor
+
+
 class NDiode:
     """solid state diode"""
 

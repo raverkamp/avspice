@@ -19,6 +19,7 @@ from .circuits import (
     Network,
     VoltageControlledVoltageSource,
     LinearVoltageControlledVoltageSource,
+    VoltageControlledCurrentSource,
 )
 from .variable import Variable
 from . import solving
@@ -173,7 +174,8 @@ class CodeGenerator:
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
             + " NPNPTransistor, NFET, NJFETn,"
             + "NVoltage, NSineVoltage, NSawVoltage, NPwmVoltage, NPieceWiseLinearVoltage,"
-            + " NPeriodicPieceWiseLinearVoltage, NLinearVoltageControlledVoltageSource",
+            + " NPeriodicPieceWiseLinearVoltage, NLinearVoltageControlledVoltageSource,"
+            + " NLinearVoltageControlledCurrentSource",
         ]
         self.y_code = [
             f"    def y(self, time, sol, state_vec{h_par}):",
@@ -493,6 +495,22 @@ class Analysis:
                         f"res[{curr_index_n}] =  -({code2.current})",
                     ]
                 )
+            elif isinstance(comp, VoltageControlledCurrentSource):
+                kin_p = self.node_index(nodes[0])
+                kin_n = self.node_index(nodes[1])
+                kout_p = self.node_index(nodes[2])
+                kout_n = self.node_index(nodes[3])
+
+                codec = comp.vcccode(valueCode, cname, f"sol[{kin_p}] - sol[{kin_n}]")
+                cg.add_to_cinit(codec.init)
+                cg.add_ysum(kout_p, codec.expr)
+                cg.add_ysum(kout_n, "-{codec.expr}")
+
+                cg.add_dysum(kout_p, kin_p, codec.dexpr)
+                cg.add_dysum(kout_p, kin_n, f"-{codec.dexpr}")
+
+                cg.add_dysum(kout_n, kin_p, f"-{codec.dexpr}")
+                cg.add_dysum(kout_n, kin_n, codec.dexpr)
 
             elif isinstance(comp, NPort):
                 ports = comp.get_ports()

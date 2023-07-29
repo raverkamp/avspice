@@ -22,6 +22,7 @@ from .circuits import (
     PwmVoltage,
     VoltageControlledVoltageSource,
     LinearVoltageControlledVoltageSource,
+    VoltageControlledCurrentSource,
     ZDiode,
     FET,
     JFET,

@@ -48,6 +48,8 @@ VoltageCode = collections.namedtuple("VoltageCode", ["init", "pre", "expr"])
 
 VCVCode = collections.namedtuple("VCVCode", ["init", "expr", "dexpr"])
 
+VCCCode = collections.namedtuple("VCCCode", ["init", "expr", "dexpr"])
+
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
@@ -293,6 +295,26 @@ class LinearVoltageControlledVoltageSource(VoltageControlledVoltageSource):
 
     def ncompo_code(self) -> str:
         return f"NLinearVoltageControlledVoltageSource({self.gain})"
+
+
+class VoltageControlledCurrentSource(Component):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def get_ports(self) -> list[str]:
+        return ["vinp", "vinn", "ioutp", "ioutn"]
+
+    def ncompo_code(self) -> str:
+        return f"NLinearVoltageControlledCurrentSource(1.0)"
+
+    def vcccode(self, valueCode: ValueCode, cname: str, dvname: str) -> VCVCode:
+        component_init = [f"self.{cname} = " + self.ncompo_code()]
+        i_code = f"self.{cname}.current({dvname})"
+        di_code = f"self.{cname}.dcurrent({dvname})"
+        return VCCCode(component_init, i_code, di_code)
+
+    def __repr__(self) -> str:
+        return f"<VoltageControlledCurrentSource {self.name}>"
 
 
 class Diode(Node2Current):
