@@ -98,6 +98,19 @@ class NPeriodicPieceWiseLinearVoltage:
         return util.linear_interpolate(self.vx, self.vy, x) * self.volt_mul
 
 
+class NSimpleVoltageControlledVoltageSource:
+    """simple linear voltage controlled voltage source"""
+
+    def __init__(self, factor: float):
+        self.factor = factor
+
+    def voltage(self, vin_diff: float) -> float:
+        return self.factor * vin_diff
+
+    def dvoltage(self, vin_diff: float) -> float:
+        return self.factor
+
+
 class NDiode:
     """solid state diode"""
 

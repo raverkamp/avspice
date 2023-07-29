@@ -20,6 +20,7 @@ from .circuits import (
     SineVoltage,
     SawVoltage,
     PwmVoltage,
+    VoltageControlledVoltageSource,
     ZDiode,
     FET,
     JFET,
@@ -27,4 +28,4 @@ from .circuits import (
 
 from .variable import Variable
 
-from .spice import Analysis
+from .spice import Analysis, Result, TransientResult

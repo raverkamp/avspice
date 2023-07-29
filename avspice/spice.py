@@ -17,6 +17,7 @@ from .circuits import (
     Part,
     NPort,
     Network,
+    VoltageControlledVoltageSource,
 )
 from .variable import Variable
 from . import solving
@@ -171,7 +172,7 @@ class CodeGenerator:
             "        from avspice.ncomponents import NDiode, NZDiode, NNPNTransistor,"
             + " NPNPTransistor, NFET, NJFETn,"
             + "NVoltage, NSineVoltage, NSawVoltage, NPwmVoltage, NPieceWiseLinearVoltage,"
-            + " NPeriodicPieceWiseLinearVoltage",
+            + " NPeriodicPieceWiseLinearVoltage, NSimpleVoltageControlledVoltageSource",
         ]
         self.y_code = [
             f"    def y(self, time, sol, state_vec{h_par}):",
@@ -326,7 +327,7 @@ class Analysis:
         self.curr_port_list: list[tuple[str, str]] = []
 
         for part in self.parts:
-            if isinstance(part.component, Voltage):
+            if isinstance(part.component, (Voltage, VoltageControlledVoltageSource)):
                 self.voltage_list.append(part)
             if isinstance(part.component, Capacitor):
                 self.capa_list.append(part)
@@ -445,6 +446,29 @@ class Analysis:
                         f"res[{curr_index_n}] = -(sol[{k}])",
                     ]
                 )
+
+            elif isinstance(comp, VoltageControlledVoltageSource):
+                k = self.voltage_index(part)
+                kin_p = self.node_index(nodes[0])
+                kin_n = self.node_index(nodes[1])
+                kout_p = self.node_index(nodes[2])
+                kout_n = self.node_index(nodes[3])
+
+                codev = comp.vcvcode(valueCode, cname, f"sol[{kin_p}] - sol[{kin_n}]")
+
+                cg.add_to_cinit(codev.init)
+
+                cg.add_ysum(kout_p, f"sol[{k}]")
+                cg.add_ysum(kout_n, f"(-sol[{k}])")
+                cg.add_dysum(kout_p, k, "1")
+                cg.add_dysum(kout_n, k, "-1")
+
+                cg.add_ysum(k, f"(sol[{kout_p}] - sol[{kout_n}]) - ({codev.expr})")
+
+                cg.add_dysum(k, kout_p, "1")
+                cg.add_dysum(k, kout_n, "-1")
+                cg.add_dysum(k, kin_p, f"-{codev.dexpr}")
+                cg.add_dysum(k, kin_n, f"{codev.dexpr}")
 
             elif isinstance(comp, Node2Current):
                 # a simple componenet where the current depends onyl on the voltage

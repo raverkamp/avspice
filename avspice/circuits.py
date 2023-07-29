@@ -46,6 +46,8 @@ NodeNCode = collections.namedtuple(
 
 VoltageCode = collections.namedtuple("VoltageCode", ["init", "pre", "expr"])
 
+VCVCode = collections.namedtuple("VCVCode", ["init", "expr", "dexpr"])
+
 
 class Component:
     """Component in a electrical network, e.g. resistor, current source, node"""
@@ -262,6 +264,26 @@ class PeriodicPieceWiseLinearVoltage(Voltage):
         return VoltageCode(
             init, [f"{cname}_voltage = self.{cname}.voltage(time)"], f"{cname}_voltage"
         )
+
+
+class VoltageControlledVoltageSource(Component):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def get_ports(self) -> list[str]:
+        return ["vinp", "vinn", "voutp", "voutn"]
+
+    def ncompo_code(self) -> str:
+        return f"NSimpleVoltageControlledVoltageSource(1.0)"
+
+    def vcvcode(self, valueCode: ValueCode, cname: str, dvname: str) -> VCVCode:
+        component_init = [f"self.{cname} = " + self.ncompo_code()]
+        v_code = f"self.{cname}.voltage({dvname})"
+        dv_code = f"self.{cname}.dvoltage({dvname})"
+        return VCVCode(component_init, v_code, dv_code)
+
+    def __repr__(self) -> str:
+        return f"<VoltageControlledVoltageSource {self.name}>"
 
 
 class Diode(Node2Current):
