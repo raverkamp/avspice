@@ -46,15 +46,32 @@ def cmd_gain1(args):
     res.display()
 
 
+def cmd_feedback(args):
+    net = Circuit()
+    dv = 3
+    net.addV("VIN", dv, "INPUT", "0")
+    s = create_opamp(1000)
+    net.add("OPAMP", s, ["INPUT", "OUT", "OUT", "0"])
+    net.addR("RL", 100, "OUT", "0")
+
+    ana = Analysis(net)
+    res = ana.analyze()
+    assert isinstance(res, Result)
+    res.display()
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="Simple OpAmp Model",
-        description="""example for a simpe opamp""",
+        description="""example for a simple opamp""",
     )
     subparsers = parser.add_subparsers(required=True)
 
     p_gain1 = subparsers.add_parser("gain")
     p_gain1.set_defaults(func=cmd_gain1)
+
+    p_feedback = subparsers.add_parser("feedback")
+    p_feedback.set_defaults(func=cmd_feedback)
 
     args = parser.parse_args()
     args.func(args)
