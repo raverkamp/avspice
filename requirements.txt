@@ -1,3 +1,5 @@
 pylint
+mypy
+black
 numpy
 matplotlib
