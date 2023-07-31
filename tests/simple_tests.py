@@ -877,5 +877,18 @@ class TestPeriodicPiecewiseLinearVoltage(unittest.TestCase):
                 self.assertAlmostEqual(vat(t / freq_mul), m / 2 * volt_mul)
 
 
+class TestNames(unittest.TestCase):
+    def test1(self):
+        net = Circuit()
+        vs = vs = PwmVoltage("A", 5, 50, 0.7)
+
+        net.add_component("ab", vs, ["0", "1-2"])
+        net.addR("1R'2", 1, "0", "1-2")
+
+        ana = Analysis(net)
+        res = ana.analyze()
+        res.display()
+
+
 if __name__ == "__main__":
     unittest.main()

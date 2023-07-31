@@ -57,6 +57,7 @@ class Component:
     name: str
 
     def __init__(self, name: str):
+        assert isinstance(name, str)
         self.name = name
 
     def get_ports(self) -> list[str]:
@@ -745,6 +746,13 @@ class NPNTransistor(NPort):
         )
 
 
+def check_valid_name(name):
+    if name == "" or not name.isascii() or not name.isprintable():
+        raise ValueError("name must be not empty, ascii and printable")
+    if "/" in name:
+        raise ValueError("'/' is not allowed in names")
+
+
 # utility class for for networks
 # name: a name of the component in a network,
 # component:  the component itself, e.g. transistor BC238, a resistor with a specific resistance
@@ -763,6 +771,7 @@ class Network:
 
     def add_component(self, name: str, comp: Component, nodes: list[str]) -> None:
         assert isinstance(name, str), "name parameter must be a string"
+        check_valid_name(name)
         assert isinstance(comp, Component), "component parameter must be a component"
         if name in self.part_dict:
             raise ValueError(f"a part with name {name} already exists")
@@ -771,8 +780,13 @@ class Network:
             raise ValueError(
                 f"for part {name} #ports={len(ports)} and #connections={len(nodes)} do not match"
             )
+
+        # it is possible and OK that there are duplicates in nodes!
         for node in nodes:
             assert isinstance(node, str)
+            check_valid_name(node)
+
+        for node in nodes:
             if not node in self.node_list:
                 self.node_list.append(node)
         part = Part(name, comp, nodes)

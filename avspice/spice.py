@@ -317,6 +317,19 @@ def flattenCircuit(circuit: Circuit) -> tuple[list[Part], list[str]]:
     return (parts, node_list)
 
 
+def sanitize_name(name):
+    res = ""
+    for char in name:
+        if char.isalnum():
+            if char == "X":
+                res = res + "XXX"
+            else:
+                res = res + char
+        else:
+            res = res + "X" + str(ord(char)) + "X"
+    return "_" + res
+
+
 class Analysis:
     """captures all data for analysis"""
 
@@ -420,7 +433,7 @@ class Analysis:
         counter = 0
         for part in self.parts:
             comp = part.component
-            cname = part.name.replace("/", "_") + str(counter)
+            cname = sanitize_name(part.name) + str(counter)
             nodes = part.connections
             valueCode = lambda x: cg.get_value_code(x)
             if isinstance(comp, Node2):
