@@ -77,6 +77,9 @@ class TransientResult:
     def get_voltage(self, k: str) -> np_float_vec:
         return self.voltages[k]
 
+    def get_voltage2(self, k1: str, k2: str) -> np_float_vec:
+        return self.voltages[k1] - self.voltages[k2]
+
     def get_current(self, k: str) -> np_float_vec:
         return self.currents[k]
 

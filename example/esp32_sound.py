@@ -26,7 +26,10 @@ def mk_circuit(pullup=1e3):
     net.addV("VC5", v5, "V5", "0")
     net.addV("VC3", v33, "V33", "0")
     # open collector output
-    net.add_component("VPWM", PwmVoltage("A", 3.3, 440, 0.5), ("RSIG", "0"))
+    pwm = PeriodicPieceWiseLinearVoltage(
+        "A", 1, [(0, 0), (0.05, 1), (0.5, 1), (0.55, 0)], 440, 3.3
+    )
+    net.add_component("VPWM", pwm, ("RSIG", "0"))
     net.addR("RSIG", 10e3, "RSIG", "VSIG")
     net.add_component("TCHIP", tchip, ("VSIG", "SIG", "00"))
 
@@ -88,6 +91,7 @@ def sound1(args):
     p41.set_title("v(t1.c, t1.e)")
     p41.plot(time, res.get_voltage2("T.C", "T.E"))
 
+    fig.tight_layout()
     plt.show()
 
 
@@ -98,7 +102,13 @@ def mk_circuit2(pullup=1e3):
     net.addV("VC5", v5, "V5", "0")
     net.addV("VC3", v33, "V33", "0")
     # open collector output
-    net.add_component("VPWM", PwmVoltage("A", 3.3, 440, 0.5), ("RSIG", "0"))
+
+    pwm = PeriodicPieceWiseLinearVoltage(
+        "A", 1, [(0, 0), (0.05, 1), (0.5, 1), (0.55, 0)], 440, 3.3
+    )
+
+    net.add_component("VPWM", pwm, ("RSIG", "0"))
+
     net.addR("RSIG", 10e3, "RSIG", "VSIG")
     net.add_component("TCHIP", tchip, ("VSIG", "SIG", "00"))
 
