@@ -60,6 +60,26 @@ def cmd_feedback(args):
     res.display()
 
 
+def cmd_feedback2(args):
+    net = Circuit()
+    dv = 3
+
+    net.addV("INPUT", 0.1, "INPUT+", "0")
+    s = create_opamp(args.gain)
+    net.add("OPAMP", s, ["INPUT+", "INPUT-", "OUT", "0"])
+    net.addR("RL", 100, "OUT", "0")
+
+    net.addR("R1", args.r1, "INPUT-", "OUT")
+    net.addR("R2", args.r2, "INPUT-", "0")
+
+    ana = Analysis(net)
+    res = ana.analyze()
+    assert isinstance(res, Result)
+
+    for s in ["INPUT+", "INPUT-", "OUT"]:
+        print(f"Voltage({s}) = {res.get_voltage(s)}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="Simple OpAmp Model",
@@ -72,6 +92,14 @@ def main():
 
     p_feedback = subparsers.add_parser("feedback")
     p_feedback.set_defaults(func=cmd_feedback)
+
+    p_feedback2 = subparsers.add_parser("feedback2")
+    p_feedback2.set_defaults(func=cmd_feedback2)
+
+    p_feedback2.add_argument("r1", type=float)
+    p_feedback2.add_argument("r2", type=float)
+
+    p_feedback2.add_argument("-gain", type=float, default=1000)
 
     args = parser.parse_args()
     args.func(args)
