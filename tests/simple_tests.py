@@ -846,10 +846,11 @@ class TestPeriodicPiecewiseLinearVoltage(unittest.TestCase):
         m = 7
         var_freq = Variable("freq_mul", 1)
         var_volt = Variable("volt_mul", 1)
+        var_shift = Variable("shift", 0)
 
         period = 4
         vs = PeriodicPieceWiseLinearVoltage(
-            "V", period, [(0, 0), (1, m), (2, m)], var_freq, var_volt
+            "V", period, [(0, 0), (1, m), (2, m)], var_freq, var_volt, var_shift
         )
         net.add_component("V", vs, ("V", "0"))
         r = 9
@@ -858,23 +859,40 @@ class TestPeriodicPiecewiseLinearVoltage(unittest.TestCase):
 
         for freq_mul in [0.5, 1, 2, 3]:
             for volt_mul in [5, 6, 7]:
-                res = ana.transient(
-                    3 * period + 1,
-                    period / 100 / freq_mul,
-                    variables={"freq_mul": freq_mul, "volt_mul": volt_mul},
-                )
+                for shift in [0, 0.2, 1.1, 2.3, 3.4]:
+                    res = ana.transient(
+                        (3 * period + 1) / freq_mul,
+                        period / 100 / freq_mul,
+                        variables={
+                            "freq_mul": freq_mul,
+                            "volt_mul": volt_mul,
+                            "shift": shift,
+                        },
+                    )
 
-                def vat(t):
-                    return res.get_voltage_at(t, "R.p")
+                    def vat(x):
+                        return res.get_voltage_at(x, "R.p")
 
-                t = 0.5
-                self.assertAlmostEqual(vat(t / freq_mul), m / 2 * volt_mul)
+                    t = 0.5
+                    self.assertAlmostEqual(
+                        vat((period + t - shift) / freq_mul),
+                        m / 2 * volt_mul,
+                        msg=f"shift={shift}",
+                    )
 
-                t = 1.5
-                self.assertAlmostEqual(vat(t / freq_mul), m * volt_mul)
+                    t = 1.5
+                    self.assertAlmostEqual(
+                        vat((period + t - shift) / freq_mul),
+                        m * volt_mul,
+                        msg=f"shift={shift}",
+                    )
 
-                t = 3
-                self.assertAlmostEqual(vat(t / freq_mul), m / 2 * volt_mul)
+                    t = 3
+                    self.assertAlmostEqual(
+                        vat((period + t - shift) / freq_mul),
+                        m / 2 * volt_mul,
+                        msg=f"shift={shift}",
+                    )
 
 
 class TestNames(unittest.TestCase):

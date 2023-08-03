@@ -243,6 +243,7 @@ class PeriodicPieceWiseLinearVoltage(Voltage):
         pairs: list[tuple[float, Union[Variable, float]]],
         freq_mul: Union[Variable, float],
         volt_mul: Union[Variable, float],
+        shift: Union[Variable, float] = 0,
     ):
         super().__init__(name, 0)
         self.pairs = list(pairs)
@@ -252,6 +253,8 @@ class PeriodicPieceWiseLinearVoltage(Voltage):
         self.freq_mul = freq_mul
         assert isinstance(volt_mul, (Variable, int, float))
         self.volt_mul = volt_mul
+        assert isinstance(shift, (Variable, int, float))
+        self.shift = shift
 
     def codev(self, valueCode: ValueCode, cname: str) -> VoltageCode:
         a = list(self.pairs)
@@ -262,7 +265,7 @@ class PeriodicPieceWiseLinearVoltage(Voltage):
 
         init = [
             f"self.{cname} = NPeriodicPieceWiseLinearVoltage({self.period}, {vx},"
-            + f"  {vy}, {valueCode(self.freq_mul)}, {valueCode(self.volt_mul)})"
+            + f"  {vy}, {valueCode(self.freq_mul)}, {valueCode(self.volt_mul)}, {valueCode(self.shift)})"
         ]
         return VoltageCode(
             init, [f"{cname}_voltage = self.{cname}.voltage(time)"], f"{cname}_voltage"

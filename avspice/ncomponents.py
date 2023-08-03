@@ -81,6 +81,7 @@ class NPeriodicPieceWiseLinearVoltage:
         vy: list[float],
         freq_mul: float,
         volt_mul: float,
+        shift: float,
     ):
         self.period = period
         ax = list(vx)
@@ -91,10 +92,11 @@ class NPeriodicPieceWiseLinearVoltage:
         self.vy = ay
         self.freq_mul = freq_mul
         self.volt_mul = volt_mul
+        self.shift = shift
 
     def voltage(self, time: float) -> float:
         time2 = time * self.freq_mul
-        x = time2 % self.period
+        x = (time2 + self.shift) % self.period
         return util.linear_interpolate(self.vx, self.vy, x) * self.volt_mul
 
 
