@@ -766,6 +766,7 @@ class Analysis:
         time: float = 0,
         transient: bool = False,
         compute_cond: bool = False,
+        nrandom: int = 0,
         verbose: bool = False,
     ) -> Union[str, Result]:
         n = self._equation_size(transient)
@@ -806,6 +807,15 @@ class Analysis:
         res = solving.solve_alfa(
             solution_vec, f, Df, abstol, reltol, maxit, verbose=verbose
         )
+        if isinstance(res, str):
+            for i in range(nrandom):
+                print("try random: " + str(i))
+                solution_vec = np.random.rand(n) * 10 - 5
+                res = solving.solve_alfa(
+                    solution_vec, f, Df, abstol, reltol, maxit, verbose=verbose
+                )
+                if not isinstance(res, str):
+                    break
         if not isinstance(res, str):
             (sol, y, dfx, iterations, norm_y) = res
             if compute_cond:
