@@ -26,3 +26,35 @@ def create_blinker(transistor_gain=None, cutoff=40, rampup=None):
     net.add_component("t1", tt, ("t1b", "t1c", "0"))
     net.add_component("t2", tt, ("t1c", "t2c", "0"))
     return net
+
+
+def create_current_mirror_npn(model):
+    assert isinstance(model, NPNTransistor)
+    sc = SubCircuit(("inc", "outc", "00"))
+    sc.add("Tin", model, ("inc", "inc", "00"))
+    sc.add("Tout", model, ("inc", "oiutc", "00"))
+    return sc
+
+
+def create_current_mirror_pnp(model):
+    assert isinstance(model, PNPTransistor)
+    sc = SubCircuit(("inc", "outc", "top"))
+    sc.add("Tin", model, ("inc", "inc", "top"))
+    sc.add("Tout", model, ("inc", "outc", "top"))
+    return sc
+
+
+def create_current_source_npn(
+    tmodel: NPNTransistor, zdiode_voltage: float, current: float
+):
+    assert isinstance(tmodel, NPNTransistor)
+
+    r = (zdiode_voltage - 0.3) / current
+    zdiode_model = ZDiode("Z0", zdiode_voltage, 1e-8, 25e-3)
+
+    sc = SubCircuit(("vc", "top", "bot"))
+    sc.addR("RB", 1e3, "vc", "B")
+    sc.add("Q", tmodel, ["B", "top", "Rout"])
+    sc.addR("RBot", r, "Rout", "bot")
+    sc.add("ZD", zdiode_model, ["bot", "B"])
+    return sc

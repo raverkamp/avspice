@@ -914,7 +914,6 @@ class Analysis:
         clock_start_time = time_module.time()
         clock_last_time = clock_start_time
         while time < maxtime:
-
             clock_time = time_module.time()
             if clock_time - clock_last_time >= 1:
                 print(

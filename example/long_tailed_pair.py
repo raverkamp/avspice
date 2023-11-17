@@ -2,6 +2,7 @@
 
 import argparse
 import matplotlib.pyplot as plt
+import pprint as pp
 
 from avspice import (
     Diode,
@@ -15,140 +16,105 @@ from avspice import (
 )
 from avspice.util import drange
 
-
-def create_current_mirror_npn(model):
-    assert isinstance(model, NPNTransistor)
-    sc = SubCircuit(("inc", "outc", "00"))
-    sc.add("Tin", model, ("inc", "inc", "00"))
-    sc.add("Tout", model, ("inc", "oiutc", "00"))
-    return sc
-
-
-def create_current_mirror_pnp(model):
-    assert isinstance(model, PNPTransistor)
-    sc = SubCircuit(("inc", "outc", "top"))
-    sc.add("Tin", model, ("inc", "inc", "top"))
-    sc.add("Tout", model, ("inc", "outc", "top"))
-    return sc
-
-
-def create_current_source_npn(tmodel: NPNTransistor, zmodel: ZDiode, r: float):
-    assert isinstance(tmodel, NPNTransistor)
-    assert isinstance(zmodel, ZDiode)
-
-    sc = SubCircuit(("vc", "top", "bot"))
-    sc.addR("RB", 1e3, "vc", "B")
-    sc.add("Q", tmodel, ["B", "top", "Rout"])
-    sc.addR("RBot", r, "Rout", "bot")
-    sc.addV("V5", 5, "B", "bot")
-    #    sc.add("D", zmodel, ["bot","B"])
-    return sc
+from example_circuits import create_current_source_npn, create_current_mirror_pnp
 
 
 def cmd_current_source(args):
-    r = (5 - 0.65) / args.cu
+    supply_voltage = args.supply_voltage
+    current = args.current
+    zdiode_voltage = args.zdiode_voltage
+
     rcin = Variable("r", 0)
     net = Circuit()
-    net.addV("V", 10, "V", "0")
+    net.addV("V", supply_voltage, "V", "0")
     net.addR("R", rcin, "V", "top")
-    t1 = NPNTransistor("NPn", 1e-12, 25e-3, 100, 10)
-    z1 = ZDiode("Z5", 5, 1e-8, 25e-3)
-    a = create_current_source_npn(t1, z1, r)
+    t1 = NPNTransistor("NPN", 1e-12, 25e-3, 100, 10)
+    a = create_current_source_npn(t1, zdiode_voltage, current)
     net.add("CS", a, ["V", "top", "0"])
 
     ana = Analysis(net)
-    res = ana.analyze(variables={"r": 10}, maxit=args.maxit)
-    if isinstance(res, str):
-        print(res)
-    else:
-        res.display()
-
-
-def cmd_plot_mirror(args):
-    rcin = Variable("rcin", 0)
-    net = Circuit()
-
-    net.addV("V", 10, "pV", "0")
-    ts = PNPTransistor("PNP", 1e-12, 25e-3, 100, 10)
-    q = create_current_mirror_pnp(ts)
-
-    net.add("MIR", q, ["in", "out", "pV"])
-    net.addR("RC", rcin, "in", "0")
-
-    net.addR("RCout", 100, "out", "0")
 
     x = []
     y = []
     z = []
 
-    ana = Analysis(net)
-    for r in drange(100, 1000, 1):
-        x.append(r)
-        res = ana.analyze(variables={"rcin": r}, maxit=args.maxit)
+    maxr = 1.01 * (supply_voltage / current)
+    solution_vec = None
+
+    for rl in drange(1, maxr, maxr / 1000):
+        x.append(rl)
+        res = ana.analyze(
+            variables={"r": rl}, maxit=args.maxit, start_solution_vec=solution_vec
+        )
         if isinstance(res, str):
             y.append(None)
             z.append(None)
+            solution_vec = None
         else:
-            y.append(res.get_current("RCout.p"))
-            z.append(res.get_current("RC.p"))
+            y.append(res.get_current("R.p"))
+            z.append((res.get_current("R.p") / current - 1) * 100)
+            solution_vec = res.solution_vec
+        if res.get_current("R.p") / current < 0.9:
+            break
 
     fig, (ax1, ax2) = plt.subplots(2)
     ax1.plot(x, y)
+    ax1.set_xlabel("RL")
+    ax1.set_ylabel("Current")
     ax2.plot(x, z)
+    ax2.set_xlabel("RL")
+    ax2.set_ylabel("Error %")
+
+    fig.suptitle(
+        f"Current Source, target current={current}, supply voltage={supply_voltage}, zdiode voltage={zdiode_voltage}"
+    )
     fig.tight_layout()
     plt.show()
 
 
-def cmd_plot_mirror2(args):
-    rcin = Variable("rcin", 0)
+def cmd_plot_mirror(args):
+    cin = Variable("current", 0)
     net = Circuit()
 
     net.addV("V", 10, "pV", "0")
+    ts = PNPTransistor("PNP", args.IS, 25e-3, args.beta, 10)
+    q = create_current_mirror_pnp(ts)
 
-    ts = NPNTransistor("NPn", 1e-12, 25e-3, 100, 10)
+    net.add("MIR", q, ["in", "out", "pV"])
+    net.addC("CU", cin, "in", "0")
 
-    net.addR("RC", rcin, "pV", "t1C")
-    net.addR("RC2", 100, "pV", "t2C")
-
-    net.add("T1", ts, ("t1C", "t1C", "0"))
-
-    net.add("T2", ts, ("t1C", "t2C", "0"))
+    net.addR("RCout", 10, "out", "0")
 
     x = []
     y = []
     z = []
-    ib1 = []
-    ib2 = []
-    vc1 = []
-    vc2 = []
+    w = []
+
     ana = Analysis(net)
-    for r in drange(100, 1000, 1):
-        x.append(r)
-        res = ana.analyze(variables={"rcin": r}, maxit=args.maxit)
+    for current in drange(0.01, 0.9, 0.01):
+        x.append(current)
+        res = ana.analyze(variables={"current": -current}, maxit=args.maxit)
         if isinstance(res, str):
             y.append(None)
             z.append(None)
-            ib1.append(None)
-            ib2.append(None)
+            w.append(None)
         else:
-            y.append(res.get_current("T1.C"))
-            z.append(res.get_current("T2.C"))
-            ib1.append(res.get_current("T1.B"))
-            ib2.append(res.get_current("T2.B"))
+            y.append(res.get_current("RCout.p"))
+            z.append(current - res.get_current("RCout.p"))
+            w.append(100 * (current - res.get_current("RCout.p")) / current)
 
-            vc1.append(res.get_voltage("T1.C"))
-            vc2.append(res.get_voltage("T2.C"))
-
-    fig, ((ax1, ax2), (bx1, bx2), (cx1, cx2)) = plt.subplots(3, 2)
+    fig, (ax1, ax2, ax3) = plt.subplots(3)
     ax1.plot(x, y)
+    ax1.set_xlabel("Input Current")
+    ax1.set_ylabel("Output Current")
     ax2.plot(x, z)
-    bx1.plot(x, ib1)
-    bx2.plot(x, ib2)
-
-    cx1.plot(x, vc1)
-    cx2.plot(x, vc2)
+    ax2.set_xlabel("Input Current")
+    ax2.set_ylabel("Input- Output Current")
+    ax3.plot(x, w)
+    ax3.set_xlabel("Input Current")
+    ax3.set_ylabel("% Error")
+    fig.suptitle(f"Current Mirror beta={args.beta}, IS={args.IS}")
     fig.tight_layout()
-
     plt.show()
 
 
@@ -174,10 +140,10 @@ def create_circuit(rc, re, beta, cu):
     if re > 0:
         net.addR("RE", re, "e", "nVCC")
     else:
-        net.addC("CS", cu, "e", "nVCC")
-    #        z = ZDiode("Z5", 5, 1e-8, 25e-3)
-    #        cus = create_current_source_npn(tt, z, 5-0.3/cu)
-    #        net.add("CS",cus, ["pVCC","e", "nVCC"])
+        # net.addC("CS", cu, "e", "nVCC")
+        z = ZDiode("Z5", 5, 1e-8, 25e-3)
+        cus = create_current_source_npn(tt, z, (5 - 0.65) / cu)
+        net.add("CS", cus, ["pVCC", "e", "nVCC"])
 
     net.add("t1", tt, ("ip", "t1c", "e"))
     net.add("t2", tt, ("in", "t2c", "e"))
@@ -192,6 +158,7 @@ def create_circuit(rc, re, beta, cu):
 
 
 def cmd_analysis(args):
+    pp.pprint(args)
     if (args.re >= 0 and args.cu >= 0) or (args.re <= 0 and args.cu <= 0):
         raise Exception("re or cu must be given")
 
@@ -205,37 +172,42 @@ def cmd_analysis(args):
         variables={"vp": signal_p, "vn": signal_n},
         maxit=args.maxit,
         verbose=args.verbose,
-        nrandom=10000,
+        nrandom=100,
+        abstol=1e-20,
     )
     if isinstance(res, str):
         print(res)
     else:
         res.display()
-        print(
-            (
-                "OUT:",
-                res.get_voltage("t1.C"),
-                res.get_voltage("t2.C"),
-                res.get_voltage("t1.C") - res.get_voltage("t2.C"),
-                (res.get_voltage("t1.C") - res.get_voltage("t2.C")) / args.dv,
-            )
+        pp.pprint(
+            {
+                "V(t1.C)": res.get_voltage("t1.C"),
+                "(V(t2.C)": res.get_voltage("t2.C"),
+                "v1-v2": res.get_voltage("t1.C") - res.get_voltage("t2.C"),
+                "gain": (res.get_voltage("t1.C") - res.get_voltage("t2.C")) / args.dv,
+                "Current(t1.C)": res.get_current("t1.C"),
+                "Current(t2.C)": res.get_current("t2.C"),
+                "Current(t1.B)": res.get_current("t1.B"),
+                "Current(t2.B)": res.get_current("t2.B"),
+                "Current(CS)": res.get_current("CS/RBot.p"),
+            }
         )
 
 
 def cmd_plot(args):
-
     if (args.re >= 0 and args.cu >= 0) or (args.re >= 0 and args.cu >= 0):
         raise Exception("re or cu must be given")
 
-    net = create_circuit(rc=args.rc, re=args.re, beta=args.beta, cu=-args.cu)
+    pp.pprint(args)
+    net = create_circuit(rc=args.rc, re=args.re, beta=args.beta, cu=args.cu)
 
     x = []
     y = []
     z = []
-    dv = 0.0001
+    dv = args.dv
     ana = Analysis(net)
     solution_vec = None
-    for v in drange(1, 4, 0.01):
+    for v in drange(-4, 4, 0.01):
         x.append(v)
 
         signal_p = v + dv / 2
@@ -246,6 +218,9 @@ def cmd_plot(args):
             maxit=args.maxit,
             nrandom=100,
         )
+        # res.display()
+        # break
+
         if isinstance(res, str):
             y.append(None)
             z.append(None)
@@ -276,36 +251,58 @@ def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(required=True)
 
-    parser_comp = subparsers.add_parser("comp")
-    parser_comp.set_defaults(func=cmd_analysis)
-    parser_comp.add_argument("v", type=float, default=0)
-    parser_comp.add_argument("dv", type=float, default=0)
-    parser_comp.add_argument("-rc", type=float, default=1000)
-    parser_comp.add_argument("-re", type=float, default=-1)
-    parser_comp.add_argument("-cu", type=float, default=-1)
-    parser_comp.add_argument("-beta", type=float, default=100)
-    parser_comp.add_argument("-maxit", type=int, default=20)
-    parser_comp.add_argument("-verbose", type=bool, default=False)
+    pa = subparsers.add_parser("comp")
+    pa.set_defaults(func=cmd_analysis)
+    pa.add_argument("v", type=float, default=0, help="voltage at inputs")
+    pa.add_argument(
+        "dv", type=float, default=0, help="voltage difference between inputs"
+    )
+    pa.add_argument(
+        "-rc",
+        type=float,
+        default=1000,
+        help="collector resistor, <0 means use currency mirror",
+    )
+    pa.add_argument("-re", type=float, default=-1, help="emitter resistance")
+    pa.add_argument("-cu", type=float, default=-1, help="emitter current")
+    pa.add_argument("-beta", type=float, default=100, help="beta of the transistors")
+    pa.add_argument("-maxit", type=int, default=20, help="max iteration")
+    pa.add_argument("-verbose", type=bool, default=False, help="verbose messaging")
 
-    parser_plot = subparsers.add_parser("plot")
-    parser_plot.set_defaults(func=cmd_plot)
-    parser_plot.add_argument("-rc", type=float, default=1000)
-    parser_plot.add_argument("-re", type=float, default=-1)
-    parser_plot.add_argument("-cu", type=float, default=-1)
-    parser_plot.add_argument("-beta", type=float, default=100)
-    parser_plot.add_argument("-maxit", type=int, default=20)
+    pa = subparsers.add_parser("plot")
+    pa.set_defaults(func=cmd_plot)
+    pa.add_argument("-rc", type=float, default=1000)
+    pa.add_argument("-re", type=float, default=-1)
+    pa.add_argument("-cu", type=float, default=-1)
+    pa.add_argument("-beta", type=float, default=100)
+    pa.add_argument("-maxit", type=int, default=20)
+    pa.add_argument("-dv", type=float, default=0.01)
 
-    parser_mirror = subparsers.add_parser("mirror")
-    parser_mirror.set_defaults(func=cmd_plot_mirror)
-    parser_mirror.add_argument("-maxit", type=int, default=20)
+    pa = subparsers.add_parser("mirror", description="current mirror plot")
+    pa.set_defaults(func=cmd_plot_mirror)
+    pa.add_argument("-maxit", type=int, default=20)
+    pa.add_argument("-beta", type=float, default=100)
+    pa.add_argument("-IS", type=float, default=1e-12)
 
-    parserx = subparsers.add_parser("mirror2")
-    parserx.set_defaults(func=cmd_plot_mirror2)
-    parserx.add_argument("-maxit", type=int, default=20)
-
-    pa = subparsers.add_parser("cs")
+    pa = subparsers.add_parser("current_source", description="current source")
     pa.set_defaults(func=cmd_current_source)
-    pa.add_argument("cu", type=float)
+    pa.add_argument(
+        "current", type=float, help="target current", metavar="target_current"
+    )
+    pa.add_argument(
+        "-supply_voltage",
+        type=float,
+        help="supply voltage",
+        metavar="supply_voltage",
+        default=10,
+    )
+    pa.add_argument(
+        "-zdiode_voltage",
+        type=float,
+        help="zdiode voltage",
+        metavar="zdiode_voltage",
+        default=5,
+    )
     pa.add_argument("-maxit", type=int, default=20)
 
     args = parser.parse_args()
